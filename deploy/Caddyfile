@@ -1,0 +1,41 @@
+(api_routes) {
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle /uploads/* {
+		reverse_proxy api:3000
+	}
+}
+
+(security_headers) {
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+{$STORE_DOMAIN} {
+	encode zstd gzip
+	import api_routes
+	import security_headers
+
+	handle {
+		root * /srv/storefront
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	import api_routes
+	import security_headers
+
+	handle {
+		root * /srv/admin
+		try_files {path} /index.html
+		file_server
+	}
+}

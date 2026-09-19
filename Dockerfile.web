@@ -1,0 +1,19 @@
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/admin/package.json apps/admin/package.json
+COPY apps/storefront/package.json apps/storefront/package.json
+COPY packages/domain/package.json packages/domain/package.json
+COPY packages/pricing-engine/package.json packages/pricing-engine/package.json
+RUN npm ci
+COPY apps/storefront apps/storefront
+COPY apps/admin apps/admin
+ENV VITE_API_URL=/api
+RUN npm run build -w @vikipat/storefront
+RUN npm run build -w @vikipat/admin
+
+FROM caddy:2.10-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/storefront/dist /srv/storefront
+COPY --from=build /app/apps/admin/dist /srv/admin

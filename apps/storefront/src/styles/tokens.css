@@ -1,0 +1,155 @@
+/* ------------------------------------------------------------------
+   VIKIPAT Design System — "Studio Premium v2"
+   Real brand colours pulled from the logo mark: deep navy ink + four
+   living accent dots (blue, green, orange, magenta). Apple/GiftBanc-
+   register structure (soft rounded surfaces, restrained layout, one
+   accent used decisively per moment) but genuinely on-brand and
+   colourful rather than monochrome-plus-one-accent.
+   ------------------------------------------------------------------ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500&display=swap');
+
+:root {
+  /* --- Neutral surfaces: push toward white, warmth only as a whisper */
+  --bg: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7FB;
+  --surface-3: #ECEEF5;
+
+  /* --- Ink: the logo's own navy, not a warm black --------------- */
+  --ink: #0D123A;
+  --ink-muted: #454A6B;
+  --ink-subtle: #767AA0;
+  --ink-faint: #A9ACC7;
+  --ink-inverse: #FFFFFF;
+  --ink-inverse-muted: #C4C7E0;
+
+  /* --- Brand: the logo's own four dots, used as a living palette -- */
+  --brand-primary: #F38432;        /* orange — primary CTA / price */
+  --brand-primary-hover: #DD6E1B;
+  --brand-primary-deep: #0D123A;
+  --brand-primary-light: #FDEBDA;
+  --brand-primary-soft: #FBD3AC;
+
+  --brand-blue: #1177BF;
+  --brand-blue-light: #E3F1FB;
+  --brand-green: #2EA54A;
+  --brand-green-light: #E3F7E8;
+  --brand-magenta: #C42A5C;
+  --brand-magenta-light: #FBE3EC;
+
+  --brand-dark: #0D123A;
+  --brand-dark-surface: #171C48;
+  --brand-dark-border: rgba(255, 255, 255, 0.12);
+
+  /* Secondary/status accent = brand blue (reads as "info/production") */
+  --accent-cyan: var(--brand-blue);
+  --accent-cyan-soft: var(--brand-blue-light);
+  --accent-cyan-ink: #0D5A8F;
+
+  --accent-amber: #B8860B;
+  --accent-amber-soft: #FBF1D6;
+  --accent-amber-ink: #7A5A06;
+
+  --whatsapp: #25d366;
+  --whatsapp-hover: #1ebd5a;
+  --whatsapp-deep: #075e54;
+  --whatsapp-soft: #e8f9ef;
+
+  --danger: var(--brand-magenta);
+  --danger-soft: var(--brand-magenta-light);
+  --success: var(--brand-green);
+  --success-soft: var(--brand-green-light);
+
+  /* --- Borders & Dividers ------------------------------------------ */
+  --line: #E8E9F2;
+  --line-2: #D6D8E8;
+
+  /* --- Typography Stacks -------------------------------------------- */
+  --display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'Inter', ui-monospace, Menlo, Consolas, monospace;
+
+  /* Fluid Typography Scale — hero pulled in from v1, less shouty */
+  --t-hero: clamp(2.5rem, 5vw, 4.25rem);
+  --t-display: clamp(2rem, 4vw, 3.1rem);
+  --t-h1: clamp(1.8rem, 3vw, 2.4rem);
+  --t-h2: clamp(1.35rem, 2.1vw, 1.8rem);
+  --t-h3: clamp(1.1rem, 1.5vw, 1.3rem);
+  --t-body-lg: 1.125rem;
+  --t-body: 1rem;
+  --t-small: 0.875rem;
+  --t-label: 0.75rem;
+  --t-micro: 0.6875rem;
+
+  /* Radii — generous and soft */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-2xl: 32px;
+  --r-pill: 999px;
+
+  /* Spacing */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+  --s8: 4rem;
+  --s9: 6rem;
+
+  /* Layout Widths */
+  --max-w: 1380px;
+  --gutter: clamp(1rem, 3.5vw, 2.5rem);
+  --shell: min(var(--max-w), calc(100% - (var(--gutter) * 2)));
+  --bar-h: 38px;
+  --head-h: 76px;
+
+  /* Elevation — soft, diffuse */
+  --shadow-sm: 0 1px 3px rgba(13, 18, 58, 0.05);
+  --shadow-md: 0 8px 24px rgba(13, 18, 58, 0.07);
+  --shadow-lg: 0 20px 48px rgba(13, 18, 58, 0.1);
+  --shadow-xl: 0 32px 72px rgba(13, 18, 58, 0.14);
+
+  /* Transitions */
+  --fast: 160ms;
+  --mid: 280ms;
+  --slow: 460ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Z-indexes */
+  --z-sticky: 30;
+  --z-head: 60;
+  --z-scrim: 90;
+  --z-drawer: 100;
+  --z-skip: 200;
+
+  color-scheme: light;
+
+  /* Backward Compatibility Aliases */
+  --plum: var(--brand-primary-deep);
+  --plum-deep: var(--brand-dark);
+  --plum-mid: var(--brand-primary);
+  --plum-soft: var(--brand-primary-light);
+  --teal: var(--brand-primary);
+  --teal-ink: var(--brand-primary);
+  --teal-deep: var(--brand-primary-deep);
+  --on-teal: #ffffff;
+  --teal-soft: var(--brand-primary-light);
+  --amber: var(--accent-amber);
+  --amber-ink: var(--accent-amber-ink);
+  --amber-soft: var(--accent-amber-soft);
+  --paper: var(--bg);
+  --on-plum: #ffffff;
+  --on-plum-2: var(--ink-inverse-muted);
+  --plum-rule: var(--brand-dark-border);
+  --r-1: var(--r-xs);
+  --r-2: var(--r-sm);
+  --r-3: var(--r-lg);
+  --lift: var(--shadow-md);
+  --lift-lg: var(--shadow-xl);
+}

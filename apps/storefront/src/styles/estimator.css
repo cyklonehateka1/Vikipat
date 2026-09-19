@@ -1,0 +1,423 @@
+/* ------------------------------------------------------------------
+   Print Estimator — "Studio Premium": a soft, confident configurator
+   panel. Rounded surfaces, one accent colour, calm live pricing.
+   ------------------------------------------------------------------ */
+
+.estimator-card {
+  background: var(--surface);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.estimator-header {
+  padding: var(--s5) var(--s6);
+  background: var(--ink);
+  color: var(--ink-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.estimator-header h2 {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-inverse);
+  margin: 0;
+}
+
+.estimator-header p {
+  font-family: var(--sans);
+  color: var(--ink-inverse-muted);
+  font-size: var(--t-micro);
+  margin-top: 4px;
+}
+
+.estimator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(255, 106, 26, 0.16);
+  color: #ffb488;
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.estimator-body {
+  padding: var(--s6);
+  display: grid;
+  gap: var(--s6);
+}
+
+/* Material Selection Grid — soft rounded swatch tiles */
+.material-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.material-chip {
+  position: relative;
+  text-align: left;
+  padding: 16px 18px;
+  background: var(--surface-2);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.material-chip:hover {
+  background: var(--surface-3);
+}
+
+.material-chip.is-active {
+  background: var(--surface);
+  border-color: var(--brand-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.material-chip-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.material-chip-name {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.material-chip-rate {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-primary);
+  white-space: nowrap;
+}
+
+.material-chip-desc {
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  color: var(--ink-subtle);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.material-chip-tag {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  background: var(--brand-primary);
+  color: #ffffff;
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Dimensions & Visual Aspect Ratio Canvas */
+.dimensions-section {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: var(--s6);
+  align-items: center;
+  background: var(--surface-2);
+  padding: var(--s5);
+  border-radius: var(--r-xl);
+}
+
+@media (max-width: 840px) {
+  .dimensions-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dimension-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+}
+
+.dimension-field label {
+  display: block;
+  font-family: var(--sans);
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dimension-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.dimension-input-wrap input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0.6rem 2.8rem 0.6rem 1.1rem;
+  background: var(--surface);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.dimension-input-wrap input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 4px var(--brand-primary-light);
+}
+
+.dimension-unit-badge {
+  position: absolute;
+  right: 14px;
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-subtle);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+/* Unit Toggle */
+.unit-toggle {
+  display: flex;
+  background: var(--surface-3);
+  padding: 4px;
+  gap: 2px;
+  border-radius: var(--r-pill);
+}
+
+.unit-toggle button {
+  flex: 1;
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  background: transparent;
+  color: var(--ink-subtle);
+  border: none;
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+}
+
+.unit-toggle button.is-active {
+  background: var(--ink);
+  color: var(--ink-inverse);
+}
+
+/* Aspect Ratio Live Canvas */
+.aspect-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  position: relative;
+}
+
+.aspect-preview-box {
+  background: var(--brand-primary-light);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-primary-hover);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  font-weight: 700;
+  position: relative;
+  transition:
+    width 240ms var(--ease),
+    height 240ms var(--ease);
+  max-width: 100%;
+  max-height: 140px;
+}
+
+.aspect-badge {
+  position: absolute;
+  bottom: 8px;
+  background: var(--ink);
+  color: var(--ink-inverse);
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Quantity & Extras Grid */
+.config-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s5);
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .config-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.design-service-card {
+  padding: 16px 18px;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: all var(--fast) var(--ease);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.design-service-card.is-selected {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-light);
+}
+
+.design-service-card input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand-primary);
+  margin-top: 2px;
+}
+
+.design-service-info strong {
+  display: block;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.design-service-info p {
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  color: var(--ink-subtle);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* --- Live pricing summary ------------------------------------------ */
+.estimate-ticker {
+  background: var(--ink);
+  color: var(--ink-inverse);
+  padding: var(--s5) var(--s6);
+  border-radius: var(--r-xl);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s5);
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .estimate-ticker {
+    grid-template-columns: 1fr;
+  }
+}
+
+.estimate-breakdown-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4) var(--s6);
+}
+
+.estimate-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.estimate-stat dt {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-inverse-muted);
+}
+
+.estimate-stat dd {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink-inverse);
+  margin-top: 2px;
+}
+
+.estimate-total-block {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+  .estimate-total-block {
+    text-align: left;
+    align-items: flex-start;
+  }
+}
+
+.estimate-total-label {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.estimate-total-price {
+  font-family: var(--display);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.1rem, 3.5vw, 2.9rem);
+  font-weight: 700;
+  color: var(--ink-inverse);
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.estimate-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: var(--s4);
+}

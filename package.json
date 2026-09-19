@@ -1,0 +1,18 @@
+{
+  "name": "vikipat",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:store": "npm run dev -w @vikipat/storefront",
+    "dev:admin": "npm run dev -w @vikipat/admin",
+    "dev:api": "npm run start:dev -w @vikipat/api",
+    "build:packages": "npm run build -w @vikipat/domain && npm run build -w @vikipat/pricing-engine",
+    "test:pricing": "npm run build -w @vikipat/domain && npm run test -w @vikipat/pricing-engine",
+    "build": "npm run build:packages && npm run build -w @vikipat/storefront && npm run build -w @vikipat/admin && npm run build -w @vikipat/api",
+    "test:operations": "npm run build:packages && npm run build -w @vikipat/api && node --test apps/api/test/*.test.cjs",
+    "test:staff:integration": "npm run build:packages && tsc -p apps/api/tsconfig.json --outDir apps/api/.test-runtime && node --test apps/api/test/staff-postgres.integration.cjs"
+  }
+}

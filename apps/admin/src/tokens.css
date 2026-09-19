@@ -1,0 +1,21 @@
+:root{
+  /* Precision SaaS register (Stripe/Linear/Vercel): neutral zinc base,
+     hairline borders, tight radii, one brand accent used with restraint.
+     Vikipat navy is reserved for the wordmark/logo and quiet emphasis;
+     orange is the single functional accent for primary actions/attention. */
+  --color-ink:#18181B;--color-muted:#52525B;--color-subtle:#71717A;
+  --color-paper:#FAFAFA;--color-surface:#FFFFFF;--color-line:#E4E4E7;
+  --color-navy:#0D123A;--color-blue:#1177BF;--color-blue-soft:#EAF3FA;
+  --color-lime:#C2540C;--color-green:#1A7F37;--color-green-soft:#E9F7EE;
+  --color-orange:#C2540C;--color-orange-soft:#FCEEE3;--color-red:#B42318;--color-red-soft:#FBEAE9;
+  --color-on-dark-muted:#A1A6C4;--color-on-dark-label:#C4C8E0;--color-on-dark-field:rgba(255,255,255,.06);--color-on-dark-rule:rgba(255,255,255,.12);
+  --font-display:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;--font-body:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --space-xs:4px;--space-sm:8px;--space-md:16px;--space-lg:24px;--space-xl:32px;--space-2xl:48px;
+  --text-xs:.75rem;--text-sm:.8125rem;--text-base:.875rem;--text-lg:1rem;--text-xl:1.25rem;--text-2xl:1.625rem;--text-display:clamp(1.9rem,3vw,2.6rem);
+  --radius-sm:5px;--radius-md:6px;--radius-lg:8px;--radius-xl:10px;--radius-pill:999px;
+  --ease-out:cubic-bezier(.16,1,.3,1);--ease-in:cubic-bezier(.7,0,.84,0);--ease-in-out:cubic-bezier(.65,0,.35,1);
+  --dur-fast:120ms;--dur-base:180ms;--rule:1px solid var(--color-line);
+  --shadow-sm:0 1px 2px rgba(24,24,27,.04);
+  --shadow-lg:0 4px 16px rgba(24,24,27,.08),0 1px 2px rgba(24,24,27,.06);
+}

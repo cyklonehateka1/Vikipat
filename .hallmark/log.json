@@ -1,0 +1,47 @@
+[
+  {
+    "date": "2026-09-12",
+    "scope": "admin-feature",
+    "macrostructure": "Split Index Workspace",
+    "theme": "locked Vikipat system",
+    "theme_axes": "cool paper / operational data / Vikipat blue",
+    "enrichment": "live calculation sandbox",
+    "brief": "Versioned large-format pricing draft, test and publish workspace"
+  },
+  {
+    "date": "2026-09-11",
+    "scope": "storefront-feature",
+    "macrostructure": "Focused verification funnel",
+    "theme": "custom",
+    "theme_axes": "cool paper / secure service desk / Vikipat blue",
+    "enrichment": "order status timeline",
+    "brief": "Guest email-OTP order tracking without customer accounts"
+  },
+  {
+    "date": "2026-09-05",
+    "scope": "admin-app",
+    "macrostructure": "Operational Command Center",
+    "theme": "custom",
+    "theme_axes": "cool paper / geometric operational / Vikipat blue",
+    "enrichment": "live catalogue, inventory and quote data",
+    "brief": "Secure connected administration dashboard for Vikipat operations"
+  },
+  {
+    "date": "2026-09-03",
+    "scope": "app",
+    "macrostructure": "Photographic Index",
+    "theme": "custom",
+    "theme_axes": "crisp white / condensed industrial / Vikipat navy",
+    "enrichment": "user-supplied production banner",
+    "brief": "Second full storefront redesign replacing inherited retail structure"
+  },
+  {
+    "date": "2026-09-02",
+    "scope": "app",
+    "macrostructure": "Photographic Catalogue",
+    "theme": "custom",
+    "theme_axes": "clean white / industrial display / Vikipat royal blue",
+    "enrichment": "user-supplied production banner",
+    "brief": "Full Vikipat storefront redesign using the supplied brand banner and colors"
+  }
+]

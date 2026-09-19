@@ -1,0 +1,157 @@
+/* ------------------------------------------------------------------
+   Vikipat — Signature Brand Flourishes ("Wet Ink / Press Proof")
+   ------------------------------------------------------------------ */
+
+/* --- Artwork drop-zone -------------------------------------------- */
+.artwork-drop {
+  display: flex;
+  min-height: 118px;
+  padding: 22px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1.5px dashed var(--line-2);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.artwork-drop:hover {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-light);
+}
+
+.artwork-drop span {
+  font-family: var(--sans);
+  font-weight: 700;
+}
+
+.artwork-drop small {
+  color: var(--ink-subtle);
+  font-size: 0.78rem;
+}
+
+/* --- Corporate capability panel: ledger-styled, ink on paper ------ */
+.corporate-section {
+  width: min(1400px, calc(100% - 32px));
+  margin: 20px auto 110px;
+  padding: clamp(48px, 6vw, 88px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1fr);
+  gap: clamp(40px, 7vw, 100px);
+  border-radius: var(--r-2xl);
+  background: var(--ink);
+  color: var(--ink-inverse);
+  overflow: hidden;
+  position: relative;
+}
+
+.corporate-copy {
+  align-self: center;
+}
+
+.corporate-copy .eyebrow {
+  font-family: var(--sans);
+  font-size: var(--t-label);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-primary);
+}
+
+.corporate-copy h2 {
+  max-width: 600px;
+  margin: 12px 0 20px;
+  font: 600 clamp(2.4rem, 4.4vw, 4rem)/1.02 var(--display);
+  letter-spacing: -0.01em;
+  color: var(--ink-inverse);
+}
+
+.corporate-copy > p:not(.eyebrow) {
+  max-width: 560px;
+  color: var(--ink-inverse-muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.corporate-copy .btn {
+  margin-top: 30px;
+}
+
+.corporate-capabilities {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.corporate-capabilities > div {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 14px 16px;
+  background: var(--brand-dark-surface);
+  border-radius: var(--r-md);
+  transition: background 0.2s;
+}
+
+.corporate-capabilities > div:hover {
+  background: #2b2a24;
+}
+
+.corporate-capabilities span {
+  font-family: var(--mono);
+  color: var(--brand-primary);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.corporate-capabilities strong {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-inverse);
+}
+
+.corporate-capabilities svg {
+  width: 16px;
+  color: var(--brand-primary);
+}
+
+@media (max-width: 900px) {
+  .corporate-section {
+    grid-template-columns: 1fr;
+  }
+  .corporate-capabilities {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Brandmark lockup ----------------------------------------------- */
+.vikipat-logo {
+  display: block;
+  width: auto;
+  height: 42px;
+  object-fit: contain;
+  background: transparent;
+}
+
+.site-footer .vikipat-logo {
+  filter: none;
+  background: transparent;
+}
+
+.footer-logo-panel {
+  display: inline-flex;
+  justify-self: start;
+}
+
+.footer-logo-panel .brand {
+  line-height: 0;
+  filter: invert(1) brightness(1.6);
+}

@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SEED_PRODUCTS = exports.CATEGORIES = void 0;
+exports.CATEGORIES = ['Labels', 'Packaging', 'DTF', 'Large Format', 'Corporate Branding', 'Souvenirs', 'Events'];
+exports.SEED_PRODUCTS = [
+    { name: 'Premium Logo T-Shirt', category: 'DTF', price: 85, unit: '1 shirt', description: 'Soft cotton tee with a crisp full-colour DTF print.', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=900&q=85', stock: 40, status: 'Active', featured: true },
+    { name: 'Embroidered Polo Shirt', category: 'Corporate Branding', price: 140, unit: '1 polo', description: 'Smart branded polo for teams, events and corporate uniforms.', image: 'https://images.unsplash.com/photo-1625910513413-5fc45e421565?auto=format&fit=crop&w=900&q=85', stock: 24, status: 'Active', featured: true },
+    { name: 'Custom Ceramic Mug', category: 'Souvenirs', price: 55, unit: '1 mug', description: 'Full-wrap personalised mug for gifts, teams and promotions.', image: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=900&q=85', stock: 65, status: 'Active', featured: true },
+    { name: 'Premium Product Labels', category: 'Labels', price: 180, unit: '100 labels', description: 'Durable full-colour labels cut to your preferred shape and finish.', image: 'https://images.unsplash.com/photo-1600508774634-4e11d34730e2?auto=format&fit=crop&w=900&q=85', stock: 100, status: 'Active', featured: true },
+    { name: 'Custom Product Boxes', category: 'Packaging', price: 480, unit: '50 boxes', description: 'Branded folding cartons and product packaging built to your dimensions.', image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=900&q=85', stock: 50, status: 'Active', featured: true },
+    { name: 'A5 Promotional Flyers', category: 'Events', price: 240, unit: '100 flyers', description: 'Vibrant full-colour flyers for campaigns, launches and events.', image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=900&q=85', stock: 100, status: 'Active', featured: false },
+    { name: 'Pull-Up Banner', category: 'Large Format', price: 650, unit: '1 banner', description: 'Portable display system supplied with printed graphic and carry bag.', image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85', stock: 12, status: 'Active', featured: true },
+    { name: 'Outdoor Vinyl Banner', category: 'Large Format', price: 220, unit: 'per square metre', description: 'Weather-resistant banner with reinforced eyelets, ready to hang.', image: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?auto=format&fit=crop&w=900&q=85', stock: 30, status: 'Active', featured: false },
+    { name: 'Personalised Tote Bag', category: 'Souvenirs', price: 70, unit: '1 bag', description: 'Reusable cotton tote printed with your artwork or message.', image: 'https://images.unsplash.com/photo-1597484662317-9bd7bdda2907?auto=format&fit=crop&w=900&q=85', stock: 28, status: 'Active', featured: false },
+    { name: 'Logo Design Starter', category: 'Corporate Branding', price: 850, unit: '1 package', description: 'A focused identity starter with logo concepts and production-ready files.', image: 'https://images.unsplash.com/photo-1561070791-36c11767b26a?auto=format&fit=crop&w=900&q=85', stock: 10, status: 'Active', featured: false },
+];
+//# sourceMappingURL=catalog.seed.js.map

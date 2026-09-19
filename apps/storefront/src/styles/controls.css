@@ -1,0 +1,527 @@
+/* ------------------------------------------------------------------
+   Buttons, Inputs, Badges, Chips & Interactive Controls
+   ------------------------------------------------------------------ */
+
+.btn {
+  --btn-bg: var(--surface-2);
+  --btn-ink: var(--ink);
+  --btn-border: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: 0.6875rem var(--s5);
+  min-height: 46px;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--t-small);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease);
+}
+
+.btn:hover {
+  --btn-bg: var(--surface-3);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  stroke-width: 2;
+}
+
+/* Primary action — solid near-black pill, Apple/GiftBanc register */
+.btn-primary {
+  --btn-bg: var(--ink);
+  --btn-ink: #ffffff;
+  --btn-border: var(--ink);
+}
+
+.btn-primary:hover {
+  --btn-bg: var(--brand-dark-surface);
+  --btn-border: var(--brand-dark-surface);
+  color: #ffffff;
+}
+
+/* WhatsApp Direct Action */
+.btn-whatsapp,
+.btn-mark {
+  --btn-bg: var(--whatsapp);
+  --btn-ink: #ffffff;
+  --btn-border: var(--whatsapp);
+  font-weight: 600;
+}
+
+.btn-whatsapp:hover,
+.btn-mark:hover {
+  --btn-bg: var(--whatsapp-hover);
+  --btn-border: var(--whatsapp-hover);
+  color: #ffffff;
+}
+
+/* Secondary Outline / Neutral */
+.btn-secondary {
+  --btn-bg: var(--surface);
+  --btn-ink: var(--ink);
+  --btn-border: var(--line-2);
+}
+
+.btn-secondary:hover {
+  --btn-bg: var(--surface-2);
+  --btn-border: var(--ink-faint);
+}
+
+/* Accent action — used sparingly, e.g. a featured/limited CTA */
+.btn-accent {
+  --btn-bg: var(--brand-primary);
+  --btn-ink: #ffffff;
+  --btn-border: var(--brand-primary);
+}
+
+.btn-accent:hover {
+  --btn-bg: var(--brand-primary-hover);
+  --btn-border: var(--brand-primary-hover);
+}
+
+/* Ghost / Quiet Control */
+.btn-quiet {
+  --btn-bg: transparent;
+  --btn-ink: var(--ink-muted);
+  --btn-border: transparent;
+  padding-inline: var(--s3);
+}
+
+.btn-quiet:hover {
+  --btn-bg: var(--surface-2);
+  --btn-ink: var(--ink);
+  transform: none;
+}
+
+/* Sizing Modifiers */
+.btn-sm {
+  min-height: 38px;
+  padding: 0.4rem var(--s4);
+  font-size: var(--t-label);
+  border-radius: var(--r-pill);
+}
+
+.btn-sm svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-lg {
+  min-height: 54px;
+  padding-inline: var(--s6);
+  font-size: var(--t-body);
+  border-radius: var(--r-pill);
+}
+
+.btn-lg svg {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Circular Icon Button */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--brand-primary);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.8;
+}
+
+/* --- Form Fields ------------------------------------------------- */
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.75rem var(--s4);
+  min-height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-size: var(--t-body);
+  transition:
+    border-color var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ink-faint);
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover {
+  border-color: var(--line-2);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px var(--brand-primary-soft);
+  background: #ffffff;
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.select {
+  appearance: none;
+  padding-right: var(--s7);
+  cursor: pointer;
+}
+
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.select-wrap svg {
+  position: absolute;
+  right: var(--s3);
+  pointer-events: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-subtle);
+}
+
+.field {
+  display: grid;
+  gap: var(--s2);
+}
+
+.field-req {
+  color: var(--danger);
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.field-error svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.field-help {
+  font-size: var(--t-small);
+  color: var(--ink-subtle);
+  line-height: 1.5;
+}
+
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* --- Badges ------------------------------------------------------ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.badge-stock {
+  background: var(--success-soft);
+  color: #065f46;
+}
+
+.badge-low {
+  background: var(--accent-amber-soft);
+  color: var(--accent-amber-ink);
+}
+
+.badge-out {
+  background: var(--surface-3);
+  color: var(--ink-subtle);
+}
+
+.badge-flag,
+.badge-featured {
+  background: var(--brand-primary-light);
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-primary-soft);
+}
+
+.badge-flag::before,
+.badge-featured::before {
+  display: none;
+}
+
+/* --- Chips & Filters --------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0.45rem 0.95rem;
+  min-height: 38px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font-family: var(--sans);
+  font-size: var(--t-small);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease);
+}
+
+.chip:hover {
+  background: var(--surface-2);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+
+.chip[aria-pressed='true'],
+.chip.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.chip[aria-pressed='true'] .count,
+.chip.is-on .count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.chip .count {
+  display: inline-grid;
+  place-items: center;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  font-size: var(--t-micro);
+  color: var(--ink-subtle);
+}
+
+/* --- Quantity Stepper -------------------------------------------- */
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 3px;
+}
+
+.stepper button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.stepper button:hover:not([disabled]) {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+.stepper button[disabled] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: transparent;
+  box-shadow: none;
+}
+
+.stepper button svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+}
+
+.stepper-value {
+  min-width: 3ch;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.stepper-sm button {
+  width: 30px;
+  height: 30px;
+}
+
+.stepper-sm button svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* --- Links ------------------------------------------------------- */
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--sans);
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--brand-primary);
+  transition: color var(--fast) var(--ease);
+}
+
+.link:hover {
+  color: var(--brand-primary-hover);
+}
+
+.link svg {
+  width: 15px;
+  height: 15px;
+  transition: transform var(--fast) var(--ease);
+}
+
+.link:hover svg {
+  transform: translateX(4px);
+}
+
+/* --- Loading States & Spinners ----------------------------------- */
+
+.loader {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--brand-primary);
+  animation: spin 750ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--r-sm);
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn-sm {
+    min-height: 44px;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .chip {
+    min-height: 44px;
+  }
+  .stepper button {
+    width: 42px;
+    height: 42px;
+  }
+}

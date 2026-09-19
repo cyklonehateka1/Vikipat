@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-12",
+  "designSystem": "design.md",
+  "fontStack": "Sora + Manrope in current admin implementation",
+  "palette": "OKLCH Vikipat navy, royal blue, white and lime focus",
+  "motion": "CSS transform and opacity only",
+  "spacing": "4px token scale",
+  "framework": "React 19 + Vite",
+  "preserved": ["existing admin shell", "navigation", "tokens", "responsive behaviour"]
+}

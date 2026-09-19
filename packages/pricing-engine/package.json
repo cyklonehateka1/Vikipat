@@ -1,0 +1,18 @@
+{
+  "name": "@vikipat/pricing-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "@vikipat/domain": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "latest"
+  }
+}

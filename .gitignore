@@ -1,0 +1,11 @@
+node_modules
+apps/api/vikipat.sqlite
+dist
+.env
+.env.production
+.DS_Store
+*.log
+*.tsbuildinfo
+apps/api/data/
+apps/api/uploads/
+apps/api/.test-runtime/
