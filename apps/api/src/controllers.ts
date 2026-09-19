@@ -8,7 +8,8 @@ import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
 import { AdjustStockDto, ChangePasswordDto, CreateProductDto, CreateQuoteDto, LoginDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
 import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
-const cookieOptions={httpOnly:true,sameSite:'strict' as const,secure:process.env.COOKIE_SECURE==='true',maxAge:8*60*60*1000,path:'/'};
+const cookieSecure=process.env.COOKIE_SECURE==='true';
+const cookieOptions={httpOnly:true,sameSite:(cookieSecure?'none':'strict') as 'none'|'strict',secure:cookieSecure,maxAge:8*60*60*1000,path:'/'};
 const mediaExtensions:Record<string,string>={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','application/pdf':'.pdf'};
 const mediaFilename=(_req:unknown,file:Express.Multer.File,callback:(error:Error|null,filename:string)=>void)=>callback(null,randomUUID()+mediaExtensions[file.mimetype]);
 

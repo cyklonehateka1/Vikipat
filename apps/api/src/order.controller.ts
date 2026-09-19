@@ -5,7 +5,8 @@ import { AddProductionJobNoteDto, CreateGuestOrderDto, LargeFormatEstimateDto, R
 import { OrderService } from './order.service';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 
-const trackingCookie={httpOnly:true,sameSite:'strict' as const,secure:process.env.COOKIE_SECURE==='true',maxAge:20*60*1000,path:'/api/order-tracking'};
+const trackingCookieSecure=process.env.COOKIE_SECURE==='true';
+const trackingCookie={httpOnly:true,sameSite:(trackingCookieSecure?'none':'strict') as 'none'|'strict',secure:trackingCookieSecure,maxAge:20*60*1000,path:'/api/order-tracking'};
 
 @Controller()
 export class CustomerOrderController {
