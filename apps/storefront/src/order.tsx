@@ -78,6 +78,7 @@ type OrderValue = {
   remove: (id: string) => void;
   addCustomJob: (job: Omit<CustomPrintJobItem, "id">) => string;
   removeCustomJob: (jobId: string) => void;
+  updateCustomJobEstimate: (jobId: string, estimate: CustomPrintJobItem["estimate"]) => void;
   clear: () => void;
   qtyOf: (id: string) => number;
 };
@@ -129,6 +130,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   const removeCustomJob = useCallback((jobId: string) => {
     setCustomJobs((current) => current.filter((j) => j.id !== jobId));
+  }, []);
+
+  /** Replaces a job's price quote in place, e.g. after re-pricing an expired estimate at checkout. */
+  const updateCustomJobEstimate = useCallback((jobId: string, estimate: CustomPrintJobItem["estimate"]) => {
+    setCustomJobs((current) => current.map((j) => (j.id === jobId ? { ...j, estimate } : j)));
   }, []);
 
   const setQty = useCallback((id: string, qty: number) => {
@@ -214,6 +220,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       add,
       addCustomJob,
       removeCustomJob,
+      updateCustomJobEstimate,
       setQty,
       stepQty,
       remove,
@@ -232,6 +239,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       add,
       addCustomJob,
       removeCustomJob,
+      updateCustomJobEstimate,
       setQty,
       stepQty,
       remove,

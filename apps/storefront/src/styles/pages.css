@@ -456,6 +456,17 @@
   flex-wrap: wrap;
 }
 
+.studio-promo-actions .btn-primary {
+  --btn-bg: var(--brand-primary);
+  --btn-ink: #ffffff;
+  --btn-border: var(--brand-primary);
+}
+
+.studio-promo-actions .btn-primary:hover {
+  --btn-bg: var(--brand-primary-hover);
+  --btn-border: var(--brand-primary-hover);
+}
+
 .studio-promo-list {
   display: flex;
   flex-direction: column;

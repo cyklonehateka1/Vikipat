@@ -446,33 +446,56 @@ export default function Home() {
 
       {/* Corporate Capabilities */}
       <section className="corporate-section reveal">
-        <div className="corporate-copy">
-          <p className="eyebrow">Enterprise &amp; Institutions</p>
-          <h2>Corporate Supply &amp; Contract Printing</h2>
+        <div className="corporate-head">
+          <div className="corporate-copy">
+            <span className="eyebrow">
+              <i aria-hidden="true" />
+              Corporate accounts
+            </span>
+            <h2>
+              Printing <em>under contract</em>, not one job at a time.
+            </h2>
+          </div>
+          <dl className="corporate-terms">
+            <dt>Account terms</dt>
+            <dd>Net 30 on approval</dd>
+          </dl>
+        </div>
+
+        <div className="ledger">
+          <div className="ledger-row ledger-row-head">
+            <span>Item</span>
+            <span>Line</span>
+            <span>Minimum order</span>
+            <span>Status</span>
+          </div>
+          {[
+            { code: "01", item: "Large Format Signage", qty: "10+ units" },
+            { code: "02", item: "Corporate Uniforms & Tees", qty: "50+ pieces" },
+            { code: "03", item: "Die-Cut Packaging & Labels", qty: "500+ pieces" },
+            { code: "04", item: "Vehicle Fleet Graphics", qty: "Per vehicle" },
+            { code: "05", item: "Trade Show Banners", qty: "5+ sets" },
+            { code: "06", item: "Corporate Identity Kits", qty: "20+ kits" },
+          ].map((row) => (
+            <div className="ledger-row" key={row.code}>
+              <span className="ledger-code">{row.code}</span>
+              <span className="ledger-item">{row.item}</span>
+              <span className="ledger-qty">{row.qty}</span>
+              <span className="ledger-status">
+                <i /> Open account
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="corporate-foot">
           <p>
             Reliable print manufacturing support for businesses, marketing
-            agencies, schools, and NGOs across West Africa.
+            agencies, schools and NGOs across West Africa.
           </p>
           <Link className="btn btn-primary btn-lg" to="/contact">
             Request a corporate quote <ArrowRight aria-hidden="true" />
           </Link>
-        </div>
-        <div className="corporate-capabilities">
-          {[
-            "Large Format Signage",
-            "Corporate Uniforms & Tees",
-            "Die-Cut Packaging & Labels",
-            "Vehicle Fleet Graphics",
-            "Trade Show Banners",
-            "Promotional Souvenirs",
-            "Exhibition Photo Walls",
-            "Corporate Identity Kits",
-          ].map((item, index) => (
-            <div key={item}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <strong>{item}</strong>
-            </div>
-          ))}
         </div>
       </section>
 

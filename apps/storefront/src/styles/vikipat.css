@@ -35,14 +35,14 @@
   font-size: 0.78rem;
 }
 
-/* --- Corporate capability panel: ledger-styled, ink on paper ------ */
+/* --- Corporate accounts: the ledger page --------------------------
+   The next real document after the docket and the proof: the page a
+   procurement officer actually sees, an account ledger with ruled
+   rows and minimum-order terms, not an icon grid. */
 .corporate-section {
   width: min(1400px, calc(100% - 32px));
   margin: 20px auto 110px;
-  padding: clamp(48px, 6vw, 88px);
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(420px, 1fr);
-  gap: clamp(40px, 7vw, 100px);
+  padding: clamp(40px, 5vw, 64px);
   border-radius: var(--r-2xl);
   background: var(--ink);
   color: var(--ink-inverse);
@@ -50,86 +50,164 @@
   position: relative;
 }
 
-.corporate-copy {
-  align-self: center;
+.corporate-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  padding-bottom: clamp(24px, 3vw, 32px);
+  border-bottom: 1px solid var(--brand-dark-border);
 }
 
 .corporate-copy .eyebrow {
-  font-family: var(--sans);
-  font-size: var(--t-label);
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--brand-primary);
+  color: var(--ink-inverse-muted);
+}
+
+.corporate-copy .eyebrow i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand-primary);
 }
 
 .corporate-copy h2 {
   max-width: 600px;
-  margin: 12px 0 20px;
-  font: 600 clamp(2.4rem, 4.4vw, 4rem)/1.02 var(--display);
-  letter-spacing: -0.01em;
+  margin: 10px 0 0;
+  font: 900 clamp(2.1rem, 3.8vw, 3.2rem)/1.04 var(--display);
+  letter-spacing: -0.03em;
   color: var(--ink-inverse);
 }
 
-.corporate-copy > p:not(.eyebrow) {
-  max-width: 560px;
-  color: var(--ink-inverse-muted);
-  font-size: 1.05rem;
-  line-height: 1.7;
-}
-
-.corporate-copy .btn {
-  margin-top: 30px;
-}
-
-.corporate-capabilities {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.corporate-capabilities > div {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  align-items: center;
-  gap: 10px;
-  min-height: 74px;
-  padding: 14px 16px;
-  background: var(--brand-dark-surface);
-  border-radius: var(--r-md);
-  transition: background 0.2s;
-}
-
-.corporate-capabilities > div:hover {
-  background: #2b2a24;
-}
-
-.corporate-capabilities span {
-  font-family: var(--mono);
+.corporate-copy h2 em {
+  font-style: normal;
   color: var(--brand-primary);
+}
+
+.corporate-terms {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.corporate-terms dt {
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-inverse-muted);
+}
+
+.corporate-terms dd {
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+.ledger {
+  margin-top: 8px;
+}
+
+.ledger-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 150px 110px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 4px;
+  border-bottom: 1px solid var(--brand-dark-border);
+}
+
+.ledger-row-head {
+  padding-top: 20px;
+  padding-bottom: 10px;
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-inverse-muted);
+  border-bottom-color: var(--brand-dark-border);
+}
+
+.ledger-code {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+.ledger-item {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-inverse);
+}
+
+.ledger-qty {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-inverse-muted);
+}
+
+.ledger-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
   font-size: 0.7rem;
   font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--brand-green);
+  justify-self: start;
 }
 
-.corporate-capabilities strong {
-  font-family: var(--sans);
+.ledger-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.corporate-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: clamp(24px, 3vw, 32px);
+}
+
+.corporate-foot p {
+  color: var(--ink-inverse-muted);
   font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--ink-inverse);
+  max-width: 46ch;
 }
 
-.corporate-capabilities svg {
-  width: 16px;
-  color: var(--brand-primary);
+.corporate-foot .btn-primary {
+  --btn-bg: var(--brand-primary);
+  --btn-ink: #ffffff;
+  --btn-border: var(--brand-primary);
 }
 
-@media (max-width: 900px) {
-  .corporate-section {
-    grid-template-columns: 1fr;
-  }
-  .corporate-capabilities {
-    grid-template-columns: 1fr;
-  }
+.corporate-foot .btn-primary:hover {
+  --btn-bg: var(--brand-primary-hover);
+  --btn-border: var(--brand-primary-hover);
+}
+
+@media (max-width: 720px) {
+  .ledger-row { grid-template-columns: 40px 1fr; row-gap: 4px; }
+  .ledger-row-head { display: none; }
+  .ledger-qty, .ledger-status { grid-column: 2 / 3; }
 }
 
 /* --- Brandmark lockup ----------------------------------------------- */

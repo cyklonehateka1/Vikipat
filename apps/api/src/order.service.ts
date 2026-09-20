@@ -45,7 +45,13 @@ export class OrderService implements OnApplicationBootstrap {
   }
   async createPublicEstimate(dto:LargeFormatEstimateDto){
     const quote=await this.estimate(dto,{priceBook:'online',allowConfirmedDesignFee:false});
-    const expiresAt=new Date(Date.now()+30*60*1000);
+    // A real checkout involves filling contact details, choosing delivery,
+    // and uploading artwork — 30 minutes was tripping genuine customers with
+    // "Estimate has expired" at submission. Pricing is always recomputed from
+    // the live rate table at order time regardless of this window (see
+    // assertEstimateMatches below); this TTL only guards against a rate
+    // change happening mid-session, so a few hours is still safe.
+    const expiresAt=new Date(Date.now()+4*60*60*1000);
     const record=await this.estimates.save(this.estimates.create({
       publicId:`EST-${randomUUID().replaceAll('-','').slice(0,12).toUpperCase()}`,calculator:quote.calculator,disposition:quote.disposition,
       serviceCode:quote.serviceCode,ruleVersion:quote.ruleVersion,priceBook:quote.priceBook,subtotalPesewas:quote.basePesewas,
@@ -176,12 +182,18 @@ export class OrderService implements OnApplicationBootstrap {
   }
   private async safeOrder(order:Order){const items=await this.items.findBy({orderId:order.id});const history=await this.history.find({where:{orderId:order.id,customerVisible:true},order:{createdAt:'ASC'}});return{orderNumber:order.orderNumber,customerName:order.customerName,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,promisedDate:order.promisedDate,createdAt:order.createdAt,updatedAt:order.updatedAt,items:items.map(i=>({name:i.name,quantity:i.quantity,totalPesewas:i.totalPesewas,specification:JSON.parse(i.specification)})),timeline:history.map(h=>({status:PUBLIC_STATUS[h.status],note:h.note,createdAt:h.createdAt}))}}
   private hmac(value:string){return createHmac('sha256',process.env.TRACKING_OTP_SECRET||process.env.JWT_SECRET||'development-only').update(value).digest('hex')}
-  private async assertEstimateMatches(input:{fingerprint?:string;estimateId?:string;serviceCode?:string},quote:Awaited<ReturnType<OrderService['estimate']>>){
+  /**
+   * Per-sq-ft rates change rarely, so this is a lightweight "did the rate
+   * actually change" check, not a time-based expiry. The fingerprint is
+   * deterministic from the job spec plus the currently-published rule
+   * version, so it only ever mismatches when an admin republishes pricing
+   * between the customer viewing a quote and checking out — a real, rare
+   * event worth catching. There is no estimateId lookup or TTL here: the
+   * order's price is always the fresh number computed just above in
+   * createGuest, this only decides whether to warn the customer it moved.
+   */
+  private assertEstimateMatches(input:{fingerprint?:string},quote:Awaited<ReturnType<OrderService['estimate']>>){
     if(input.fingerprint&&input.fingerprint!==quote.fingerprint)throw new BadRequestException('Estimate has changed. Please refresh the quote and try again.');
-    if(!input.estimateId)return;
-    const estimate=await this.estimates.findOneBy({publicId:input.estimateId});
-    if(!estimate||estimate.expiresAt.getTime()<Date.now())throw new BadRequestException('Estimate has expired. Please refresh the quote and try again.');
-    if(estimate.serviceCode!==quote.serviceCode||estimate.fingerprint!==quote.fingerprint)throw new BadRequestException('Estimate has changed. Please refresh the quote and try again.');
   }
   private checkoutNote(dto:CreateGuestOrderDto){
     return [

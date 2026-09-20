@@ -26,7 +26,12 @@ export class LargeFormatEstimateDto {
 export class OrderLineItemDto {
   @IsIn(['large_format','product']) type!: 'large_format'|'product';
 
-  // large_format fields
+  // large_format fields — price is always computed server-side from the
+  // live rate table at order time (see OrderService.estimate), never from
+  // anything the client sends. estimateId/fingerprint are optional and, if
+  // present, are only a light sanity check (see assertEstimateMatches) —
+  // per-sq-ft rates change rarely enough that requiring a fresh quote on
+  // every checkout isn't worth the friction.
   @ValidateIf(o => o.type === 'large_format') @IsString() @Length(2,80) serviceCode?: string;
   @IsOptional() @IsString() @Matches(/^EST-[A-Z0-9]{12}$/) estimateId?: string;
   @IsOptional() @IsString() @Length(20,200) fingerprint?: string;

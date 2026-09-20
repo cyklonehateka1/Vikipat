@@ -51,7 +51,7 @@ const artworkSummary: Record<string, string> = {
 export default function Checkout() {
   useTitle(`Checkout & Complete Order | ${site.fullName}`);
   const navigate = useNavigate();
-  const { items, customJobs, total, totalPesewas, count, clear } = useOrder();
+  const { items, customJobs, total, totalPesewas, count, clear, updateCustomJobEstimate } = useOrder();
 
   // Customer Contact State
   const [customerName, setCustomerName] = useState("");
@@ -71,6 +71,7 @@ export default function Checkout() {
   // Submission State
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [pricesRefreshed, setPricesRefreshed] = useState(false);
 
   const isEmpty = items.length === 0 && customJobs.length === 0;
 
@@ -84,11 +85,12 @@ export default function Checkout() {
 
     setSubmitting(true);
     setSubmitError("");
+    setPricesRefreshed(false);
 
     try {
       const orderArtwork = deriveOrderArtwork(customJobs);
 
-      const lineItems = [
+      const buildLineItems = () => [
         ...customJobs.map((job) => ({
           type: "large_format" as const,
           serviceCode: job.estimate.serviceCode,
@@ -140,7 +142,7 @@ export default function Checkout() {
           customerEmail: customerEmail.trim().toLowerCase(),
           customerPhone: customerPhone.trim(),
           source: "online",
-          items: lineItems,
+          items: buildLineItems(),
           customerNote: consolidatedNote,
           fulfilmentMethod,
           deliveryAddress,
@@ -149,10 +151,57 @@ export default function Checkout() {
           ...orderArtwork,
         }),
       });
-
       const data = await response.json();
 
       if (!response.ok) {
+        // Rates change rarely, so this only fires on that rare event: a rate
+        // was republished between the customer viewing a quote and checking
+        // out. Re-price every job and show the customer the new totals —
+        // never resubmit at a price they haven't seen and agreed to.
+        if (/estimate has changed/i.test(data.message || "")) {
+          await Promise.all(
+            customJobs.map(async (job) => {
+              const refreshed = await fetch(`${API_BASE}/estimates/large-format`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  serviceCode: job.estimate.serviceCode,
+                  width: job.estimate.width,
+                  height: job.estimate.height,
+                  unit: job.estimate.unit,
+                  quantity: job.estimate.quantity,
+                  needsDesign: job.estimate.designFeePesewas > 0,
+                }),
+              });
+              if (!refreshed.ok) return;
+              const fresh = await refreshed.json();
+              updateCustomJobEstimate(job.id, {
+                serviceCode: fresh.serviceCode,
+                serviceName: fresh.name || fresh.serviceName,
+                width: fresh.width,
+                height: fresh.height,
+                unit: fresh.unit,
+                quantity: fresh.quantity,
+                areaPerPieceSqFt: fresh.areaSqFt ?? fresh.areaPerPieceSqFt,
+                totalAreaSqFt: fresh.totalAreaSqFt,
+                ratePesewasPerSqFt: fresh.ratePesewas ?? fresh.ratePesewasPerSqFt,
+                basePesewas: fresh.basePesewas,
+                designFeePesewas: fresh.designFeePesewas,
+                totalPesewas: fresh.totalPesewas,
+                requiresReview: fresh.requiresReview,
+                reviewReasons: fresh.reviewReasons || [],
+                designMessage: fresh.designMessage,
+                estimateId: fresh.estimateId,
+                fingerprint: fresh.fingerprint,
+              });
+            }),
+          );
+          setPricesRefreshed(true);
+          throw new Error(
+            "Prices changed since you last checked out. We've refreshed them below, please review the new total and submit again.",
+          );
+        }
+
         throw new Error(
           data.message || "Could not submit your order. Please try again.",
         );
@@ -673,8 +722,8 @@ export default function Checkout() {
             {submitError && (
               <div
                 style={{
-                  background: "var(--danger-soft)",
-                  color: "var(--danger)",
+                  background: pricesRefreshed ? "var(--accent-amber-soft)" : "var(--danger-soft)",
+                  color: pricesRefreshed ? "var(--accent-amber-ink)" : "var(--danger)",
                   padding: "10px 14px",
                   borderRadius: "var(--r-md)",
                   marginTop: "16px",
