@@ -547,3 +547,86 @@ textarea{min-height:96px;padding-top:8px;resize:vertical}
 .console-dark .data-table td small{display:block;margin-top:2px}
 @media(max-width:900px){.console-dark{margin-inline:-16px;padding-inline:16px}}
 @media(max-width:1120px){.console-dark .ops-workspace{grid-template-columns:1fr}}
+
+
+/* --- Stat strip, tabs and insights (analytics, people, customers) ----- */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.stat{display:flex;flex-direction:column;gap:6px;padding:18px 20px}
+.stat>span{display:flex;align-items:center;gap:7px;font-size:var(--text-sm);color:var(--color-muted)}
+.stat>span>svg{width:15px;height:15px;color:var(--color-subtle)}
+.stat>strong{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;color:var(--color-ink);font-variant-numeric:tabular-nums}
+.stat>small{font-size:var(--text-xs);color:var(--color-muted)}
+
+.tab-row{display:flex;gap:8px;flex-wrap:wrap}
+
+.insight-list{padding:0 20px 20px}
+.insight{background:var(--color-surface,#fff)}
+.insight strong{font-size:var(--text-base);color:var(--color-ink)}
+.insight p{color:var(--color-muted)}
+.insight p:last-of-type{color:var(--color-ink)}
+
+.revenue-chart{width:100%}
+.revenue-chart>div{cursor:default}
+
+.refund-modal{max-width:520px;padding:24px;display:grid;gap:14px}
+.refund-modal h2{font-size:var(--text-lg);color:var(--color-ink)}
+.refund-modal label{display:grid;gap:6px;font-size:var(--text-sm);font-weight:600;color:var(--color-ink)}
+.refund-modal textarea{min-height:80px;resize:vertical}
+
+/* Secondary detail under a table cell's headline belongs on its own line.
+   Several tables already relied on this; it was only ever set for .status. */
+.data-table td small{display:block;margin-top:2px;color:var(--color-subtle);font-size:11px;font-weight:500}
+.data-table td .status small{margin-top:2px}
+.data-table td .button{white-space:nowrap}
+
+/* --- Counter workspace (walk-in order desk) --------------------------
+   The screen staff use at the counter with a customer standing there, so
+   it is laid out as a numbered sequence rather than a dense form. */
+.counter-workspace{display:grid;gap:16px}
+.counter-workspace>fieldset{border:0;padding:0;margin:0;display:grid;gap:16px}
+.counter-workspace>fieldset:disabled{opacity:.6}
+.counter-section{padding:20px 22px}
+.counter-section>h3{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:var(--text-base);color:var(--color-ink)}
+.counter-section>h3>span{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--color-ink);color:#fff;font-family:var(--font-mono,ui-monospace);font-size:11px;font-weight:700}
+.counter-section>h4{margin:16px 0 10px;font-size:var(--text-sm);color:var(--color-ink)}
+
+.counter-line{padding:16px;margin-bottom:12px;border:var(--rule);border-radius:12px;background:var(--color-paper)}
+.counter-line-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.counter-line-heading strong{font-size:var(--text-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--color-subtle)}
+
+.counter-total{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 22px}
+.counter-total>div{display:grid;gap:2px}
+.counter-total span{font-size:var(--text-sm);color:var(--color-muted)}
+.counter-total strong{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;color:var(--color-ink);font-variant-numeric:tabular-nums}
+.counter-total small{font-size:var(--text-xs);color:var(--color-subtle)}
+
+.action-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.eyebrow{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--color-subtle)}
+.muted{color:var(--color-muted);font-size:var(--text-sm)}
+
+.order-search{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 14px;border:var(--rule);border-radius:10px;color:var(--color-subtle)}
+.order-search input{flex:1;border:0;padding:0;background:none;font-size:var(--text-sm)}
+.order-search input:focus{outline:none}
+
+.order-detail{display:grid;gap:16px}
+.financial-entry{display:grid;gap:12px;margin-top:16px;padding:16px;border:var(--rule);border-radius:12px;background:var(--color-paper)}
+.financial-entry h3{font-size:var(--text-base);color:var(--color-ink)}
+.financial-entry details{font-size:var(--text-sm);color:var(--color-muted)}
+.financial-entry details p{margin-top:6px;line-height:1.55}
+
+/* Receipt: styled for the screen, then stripped back for the printer so a
+   counter receipt prints on its own without the surrounding workspace. */
+.receipt h2{margin:6px 0 2px;font-size:1.3rem;color:var(--color-ink)}
+.receipt-totals{display:grid;gap:6px;margin:14px 0;padding-top:12px;border-top:var(--rule)}
+.receipt-totals>div{display:flex;justify-content:space-between;gap:16px;font-size:var(--text-sm)}
+.receipt-totals dt{color:var(--color-muted)}
+.receipt-totals dd{font-weight:600;color:var(--color-ink);font-variant-numeric:tabular-nums}
+.receipt-note{margin:10px 0;padding:10px 12px;border-radius:8px;background:var(--color-paper);font-size:var(--text-sm);color:var(--color-muted)}
+
+@media print{
+  .admin-side,.admin-header,.no-print,.order-search,.financial-entry{display:none!important}
+  .admin-main,.admin-shell{margin:0;padding:0;display:block}
+  .surface{border:0;box-shadow:none}
+  .receipt{padding:0}
+  .counter-section:not(.receipt){display:none!important}
+}

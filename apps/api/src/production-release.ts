@@ -48,8 +48,8 @@ export async function releaseProductionJobs(manager: EntityManager, orderId: str
   await manager.getRepository(OrderStatusHistory).save({orderId, status: order.status, actor, customerVisible: true, note});
   const payload = JSON.stringify({subject: `Vikipat order ${order.orderNumber}: production intake`, text: `Hello ${order.customerName}, ${note}`});
   const outbox = manager.getRepository(NotificationOutbox);
-  const email = await outbox.save(outbox.create({orderId, channel: 'email', recipient: order.customerEmail, template: 'order_status', payload}));
-  const notificationIds = [email.id];
+  const email = order.customerEmail ? await outbox.save(outbox.create({orderId, channel: 'email', recipient: order.customerEmail, template: 'order_status', payload})) : null;
+  const notificationIds = email ? [email.id] : [];
   if (order.customerPhone) {
     const settings = (await manager.getRepository(StoreSettings).find({take: 1}))[0];
     if (settings?.whatsappNotificationsEnabled) {

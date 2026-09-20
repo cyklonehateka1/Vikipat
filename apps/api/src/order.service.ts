@@ -7,9 +7,10 @@ import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { CreateGuestOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
-import { Estimate, NotificationOutbox, Order, OrderItem, OrderStatus, OrderStatusHistory, OrderTrackingOtp, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
+import { AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
+import { CustomerService } from './customer.service';
 import { hasPermission, priceBookForSource, type OrderSource, type PriceBookCode } from '@vikipat/domain';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
 
@@ -23,7 +24,7 @@ const PUBLIC_STATUS:Record<OrderStatus,string>={pending_review:'Under review',aw
 
 @Injectable()
 export class OrderService implements OnApplicationBootstrap {
-  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService){}
+  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService,private customers:CustomerService){}
   onApplicationBootstrap(){return this.seed()}
   async seed(){for(const [code,name,employee,marketer,walkIn] of RATE_SEED){if(!await this.rules.findOneBy({code}))await this.rules.save(this.rules.create({code,name,material:name,employeeRatePesewas:employee,marketerRatePesewas:marketer,walkInRatePesewas:walkIn,onlineRatePesewas:walkIn}))}}
   listRules(){return this.rules.find({where:{active:true},order:{name:'ASC'}})}
@@ -61,11 +62,31 @@ export class OrderService implements OnApplicationBootstrap {
     }));
     return {...quote,estimateId:record.publicId,expiresAt};
   }
+  async estimateStaff(dto:CreateGuestOrderDto){
+    const priceBook=priceBookForSource(dto.source==='salesperson'?'salesperson':'walk_in');
+    const lines=[];let requiresReview=false;
+    for(const line of dto.items){
+      if(line.type==='large_format'){const quote=await this.estimate({...line,serviceCode:line.serviceCode!,width:line.width!,height:line.height!,unit:line.unit!},{priceBook,allowConfirmedDesignFee:true});lines.push({name:quote.name,totalPesewas:quote.totalPesewas});requiresReview ||= quote.requiresReview;}
+      else if(line.type==='product'){const product=await this.products.findOneBy({id:line.productId!,status:'Active'});if(!product)throw new BadRequestException('Product is unavailable');if(product.stock<line.quantity)throw new BadRequestException(`Only ${product.stock} of ${product.name} in stock`);lines.push({name:product.name,totalPesewas:Math.round(product.price*100)*line.quantity});}
+      else {requiresReview ||= !line.unitPricePesewas;lines.push({name:line.name,totalPesewas:(line.unitPricePesewas||0)*line.quantity});}
+    }
+    return {lines,requiresReview,totalPesewas:lines.reduce((sum,l)=>sum+l.totalPesewas,0)+(dto.deliveryFeePesewas||0)};
+  }
   async createGuest(dto:CreateGuestOrderDto,source:OrderSource='online'){
+    dto.customerEmail=(dto.customerEmail||'').trim().toLowerCase();
+    if(source==='online'&&!dto.customerEmail)throw new BadRequestException('Email is required for online orders');
+    if(!dto.customerEmail&&!dto.customerPhone)throw new BadRequestException('Provide a customer email or phone number');
+    if(source==='online'&&(dto.items.some(l=>l.type==='custom')||dto.deliveryFeePesewas||dto.salesperson))throw new BadRequestException('Staff-only order fields are not accepted online');
+    if(source==='salesperson'&&!dto.salesperson?.trim())throw new BadRequestException('Enter the salesperson responsible for this order');
+    if(dto.fulfilmentMethod&&!['pickup','delivery'].includes(dto.fulfilmentMethod))throw new BadRequestException('Choose pickup or delivery');
+    if(dto.fulfilmentMethod==='delivery'&&!dto.deliveryAddress?.trim())throw new BadRequestException('A delivery address is required');
+    if(dto.artworkOption==='link'&&!/^https?:\/\//.test(dto.artworkLink||''))throw new BadRequestException('Enter a valid artwork link');
+    if(dto.requestedDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(dto.requestedDate)||!Number.isFinite(Date.parse(dto.requestedDate))||new Date(dto.requestedDate).toISOString().slice(0,10)!==dto.requestedDate))throw new BadRequestException('Enter a valid required date');
     if(dto.website)return{success:true};
     const priceBook=priceBookForSource(source); const allowConfirmedDesignFee=source!=='online';
     const orderNumber=await this.uniqueNumber();
     const order=await this.orders.manager.transaction(async manager=>{
+      if(dto.requestKey){if(manager.connection.options.type==='postgres')await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))',[dto.requestKey]);const existing=await manager.getRepository(Order).findOneBy({requestKey:dto.requestKey});if(existing)return existing;}
       const products=manager.getRepository(Product); const orders=manager.getRepository(Order);
       const items=manager.getRepository(OrderItem); const stocks=manager.getRepository(StockActivity); const history=manager.getRepository(OrderStatusHistory);
       let subtotalPesewas=0,designFeePesewas=0,requiresReview=false;
@@ -80,16 +101,25 @@ export class OrderService implements OnApplicationBootstrap {
           await stocks.save(stocks.create({productId:product.id,productName:product.name,previousStock,newStock:product.stock,reason:'Order placed',actorEmail:`order:${source}`}));
           subtotalPesewas+=totalPesewas;
           lines.push({kind:'product',productId:product.id,serviceCode:'',name:product.name,quantity:line.quantity,unitPricePesewas,totalPesewas,specification:JSON.stringify({unit:product.unit})});
+        }else if(line.type==='custom'){
+          if(!line.unitPricePesewas)requiresReview=true;
+          const total=(line.unitPricePesewas||0)*line.quantity;subtotalPesewas+=total;
+          lines.push({kind:'custom',productId:'',serviceCode:'custom',name:line.name!,quantity:line.quantity,unitPricePesewas:line.unitPricePesewas||0,totalPesewas:total,specification:JSON.stringify({description:line.description||'',artworkUrl:line.artworkUrl||'',artworkName:line.artworkName||'',manualQuote:true})});
         }else{
           const quote=await this.estimate({serviceCode:line.serviceCode!,width:line.width!,height:line.height!,unit:line.unit!,quantity:line.quantity,needsDesign:line.needsDesign,estimateId:line.estimateId,fingerprint:line.fingerprint,designFeePesewas:line.designFeePesewas},{priceBook,allowConfirmedDesignFee});
           await this.assertEstimateMatches(line,quote);
           if(quote.requiresReview)requiresReview=true;
           subtotalPesewas+=quote.basePesewas; designFeePesewas+=quote.designFeePesewas;
-          lines.push({kind:'large_format',productId:'',serviceCode:quote.serviceCode,name:quote.name,quantity:quote.quantity,unitPricePesewas:Math.round(quote.basePesewas/quote.quantity),totalPesewas:quote.totalPesewas,specification:JSON.stringify({estimateId:line.estimateId||'',width:quote.width,height:quote.height,unit:quote.unit,areaSqFt:quote.areaSqFt,totalAreaSqFt:quote.totalAreaSqFt,ratePesewas:quote.ratePesewas,priceBook:quote.priceBook,ruleVersion:quote.ruleVersion,fingerprint:quote.fingerprint,needsDesign:Boolean(line.needsDesign),roundingPolicy:quote.roundingPolicy,artworkOption:dto.artworkOption||'',artworkUrl:dto.artworkUrl||'',artworkName:dto.artworkName||'',artworkLink:dto.artworkLink||'',fulfilmentMethod:dto.fulfilmentMethod||'',deliveryAddress:dto.deliveryAddress||'',deliveryLandmark:dto.deliveryLandmark||''})});
+          lines.push({kind:'large_format',productId:'',serviceCode:quote.serviceCode,name:quote.name,quantity:quote.quantity,unitPricePesewas:Math.round(quote.basePesewas/quote.quantity),totalPesewas:quote.totalPesewas,specification:JSON.stringify({estimateId:line.estimateId||'',width:quote.width,height:quote.height,unit:quote.unit,areaSqFt:quote.areaSqFt,totalAreaSqFt:quote.totalAreaSqFt,ratePesewas:quote.ratePesewas,priceBook:quote.priceBook,ruleVersion:quote.ruleVersion,fingerprint:quote.fingerprint,needsDesign:Boolean(line.needsDesign),roundingPolicy:quote.roundingPolicy,artworkOption:dto.artworkOption||'',artworkUrl:line.artworkUrl||dto.artworkUrl||'',artworkName:line.artworkName||dto.artworkName||'',artworkLink:dto.artworkLink||'',fulfilmentMethod:dto.fulfilmentMethod||'',deliveryAddress:dto.deliveryAddress||'',deliveryLandmark:dto.deliveryLandmark||''})});
         }
       }
-      const totalPesewas=subtotalPesewas+designFeePesewas;
-      const savedOrder=await orders.save(orders.create({orderNumber,source,customerName:dto.customerName.trim(),customerEmail:dto.customerEmail.trim().toLowerCase(),customerPhone:dto.customerPhone||'',status:requiresReview?'pending_review':'awaiting_payment',paymentStatus:requiresReview?'unpaid':'pending',subtotalPesewas,designFeePesewas,totalPesewas,requiresReview,promisedDate:dto.requestedDate||'',customerNote:this.checkoutNote(dto)}));
+      const totalPesewas=subtotalPesewas+designFeePesewas+(dto.deliveryFeePesewas||0);
+      if(!Number.isSafeInteger(totalPesewas)||totalPesewas>100000000)throw new BadRequestException('Order total exceeds the supported limit');
+      // Roll this order up under the customer's email so repeat buyers form
+      // one profile for reporting, whether they came through the storefront
+      // or the counter. Inside the transaction: no orphan profiles.
+      const customerId=await this.customers.linkOrder(manager,{email:dto.customerEmail,name:dto.customerName,phone:dto.customerPhone,totalPesewas:subtotalPesewas+designFeePesewas});
+      const savedOrder=await orders.save(orders.create({orderNumber,source,customerId,requestKey:dto.requestKey||null,salesperson:dto.salesperson||'',deliveryFeePesewas:dto.deliveryFeePesewas||0,customerName:dto.customerName.trim(),customerEmail:dto.customerEmail.trim().toLowerCase(),customerPhone:dto.customerPhone||'',status:requiresReview?'pending_review':'awaiting_payment',paymentStatus:requiresReview?'unpaid':'pending',subtotalPesewas,designFeePesewas,totalPesewas,requiresReview,promisedDate:dto.requestedDate||'',customerNote:this.checkoutNote(dto)}));
       await items.save(lines.map(line=>items.create({...line,orderId:savedOrder.id})));
       await history.save(history.create({orderId:savedOrder.id,status:savedOrder.status,actor:source,customerVisible:true,note:requiresReview?'We are reviewing the design requirement and final price.':'Your order is ready for payment.'}));
       return savedOrder;
@@ -97,7 +127,7 @@ export class OrderService implements OnApplicationBootstrap {
     const payment=source==='online'?await this.payments.initializePaystack(order):null;
     if(payment){order.paymentProvider='paystack';order.paymentReference=payment.reference;await this.orders.save(order)}
     await this.notifications.queueEmail(order,'order_created',{subject:`Vikipat order ${orderNumber} received`,text:`Hello ${order.customerName}, your order number is ${orderNumber}. Current status: ${PUBLIC_STATUS[order.status]}.`});
-    return{orderNumber,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,requiresReview:order.requiresReview,payment:payment?{provider:'paystack',reference:payment.reference,authorizationUrl:payment.authorizationUrl,accessCode:payment.accessCode,providerConfigured:payment.providerConfigured}:null};
+    return{id:order.id,orderNumber:order.orderNumber,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,requiresReview:order.requiresReview,payment:payment?{provider:'paystack',reference:payment.reference,authorizationUrl:payment.authorizationUrl,accessCode:payment.accessCode,providerConfigured:payment.providerConfigured}:null};
   }
   async requestOtp(orderNumber:string,email:string){
     const normalized=email.trim().toLowerCase(); const order=await this.orders.findOneBy({orderNumber,customerEmail:normalized});
@@ -131,7 +161,16 @@ export class OrderService implements OnApplicationBootstrap {
     const job=await this.jobs.findOneBy({id:jobId});if(!job)throw new NotFoundException('Production job not found');
     return this.jobActivity.save(this.jobActivity.create({jobId:job.id,orderId:job.orderId,jobNumber:job.jobNumber,type:'note',note:note.trim(),actor}));
   }
-  async updateStatus(id:string,status:OrderStatus,note:string,customerVisible:boolean,actor:string){const order=await this.orders.findOneBy({id});if(!order)throw new NotFoundException('Order not found');order.status=status;await this.orders.save(order);await this.history.save(this.history.create({orderId:id,status,note,actor,customerVisible}));if(customerVisible){const payload={subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, your order ${order.orderNumber} is now ${PUBLIC_STATUS[status]}.${note?` ${note}`:''}`};await this.notifications.queueEmail(order,'order_status',payload);await this.notifications.queueWhatsApp(order,'order_status',payload)}return order}
+  /**
+   * The money itself is moved by an admin outside this system (Paystack
+   * dashboard, MoMo reversal, cash back over the counter). This records that
+   * it happened, so the order, the customer's lifetime value and the finance
+   * reports all agree with reality.
+   *
+   * Partial refunds are supported and cumulative; the total can never exceed
+   * what the customer actually paid.
+   */
+  async updateStatus(id:string,status:OrderStatus,note:string,customerVisible:boolean,actor:string){const order=await this.orders.findOneBy({id});if(!order)throw new NotFoundException('Order not found');if(status==='paid'&&order.paymentStatus!=='paid')throw new BadRequestException('Record a payment before marking an order paid');if(order.status==='cancelled'&&status!=='cancelled')throw new BadRequestException('Cancelled orders cannot be reopened here');order.status=status;await this.orders.save(order);await this.history.save(this.history.create({orderId:id,status,note,actor,customerVisible}));if(customerVisible){const payload={subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, your order ${order.orderNumber} is now ${PUBLIC_STATUS[status]}.${note?` ${note}`:''}`};await this.notifications.queueEmail(order,'order_status',payload);await this.notifications.queueWhatsApp(order,'order_status',payload)}return order}
   async updateProductionJob(id:string,dto:UpdateProductionJobDto,actor:string,role:string){
     const result=await this.jobs.manager.transaction(async manager=>{
       const jobs=manager.getRepository(ProductionJob);

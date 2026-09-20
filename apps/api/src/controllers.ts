@@ -2,28 +2,32 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post,
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { diskStorage } from 'multer';
-import { randomUUID } from 'crypto';
+import { memoryStorage } from 'multer';
 import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
 import { PricingAdminService } from './pricing-admin.service';
-import { AdjustStockDto, ChangePasswordDto, CreateProductDto, CreateQuoteDto, LoginDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
+import { StorageService } from './storage.service';
+import { AdjustStockDto, ChangePasswordDto, CreateProductDto, CreateQuoteDto, LoginDto, RequestPasswordResetDto, ResetPasswordDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
 import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 const cookieSecure=process.env.COOKIE_SECURE==='true';
 const cookieOptions={httpOnly:true,sameSite:(cookieSecure?'none':'strict') as 'none'|'strict',secure:cookieSecure,maxAge:8*60*60*1000,path:'/'};
-const mediaExtensions:Record<string,string>={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp','application/pdf':'.pdf'};
-const mediaFilename=(_req:unknown,file:Express.Multer.File,callback:(error:Error|null,filename:string)=>void)=>callback(null,randomUUID()+mediaExtensions[file.mimetype]);
+// Files are held in memory only long enough to forward them to R2; nothing
+// is written to the container's disk, which does not survive a redeploy.
+const imageUpload={storage:memoryStorage(),limits:{fileSize:5*1024*1024,files:1}};
+const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files:1}};
 
 @Controller('auth') export class AuthController {
   constructor(private auth:AuthService){}
   @Post('login') @Throttle({default:{limit:5,ttl:60000}}) async login(@Body() dto:LoginDto,@Res({passthrough:true}) response:Response){const result=await this.auth.login(dto.email,dto.password);response.cookie('admin_session',result.token,cookieOptions);return{csrfToken:result.csrf,user:result.user}}
   @Get('me') @UseGuards(AuthGuard) me(@Req() request:Request){const user=request.user!;return{csrfToken:user.csrf,user:{email:user.email,role:user.role,mustChangePassword:user.mustChangePassword,name:user.name,permissions:user.permissions}}}
   @Post('logout') @UseGuards(AuthGuard,CsrfGuard) logout(@Res({passthrough:true}) response:Response){response.clearCookie('admin_session',{...cookieOptions,maxAge:0});return{success:true}}
+  @Post('forgot-password') @Throttle({default:{limit:5,ttl:15*60000}}) forgotPassword(@Body() dto:RequestPasswordResetDto,@Req() request:Request){return this.auth.requestPasswordReset(dto.email,request.ip||'')}
+  @Post('reset-password') @Throttle({default:{limit:5,ttl:15*60000}}) resetPassword(@Body() dto:ResetPasswordDto){return this.auth.resetPassword(dto.token,dto.newPassword)}
   @Post('change-password') @UseGuards(AuthGuard,CsrfGuard) async changePassword(@Req() request:Request,@Body() dto:ChangePasswordDto,@Res({passthrough:true}) response:Response){const result=await this.auth.changePassword(request.user!.id,request.user!.email,dto.currentPassword,dto.newPassword);response.clearCookie('admin_session',{...cookieOptions,maxAge:0});return result}
 }
 
 @Controller('admin') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard) export class AdminController {
-  constructor(private admin:AdminService){}
+  constructor(private admin:AdminService,private storage:StorageService){}
   @Get('products') products(@Query('q') q?:string){return this.admin.list(q)}
   @Get('products/:id') product(@Param('id') id:string){return this.admin.one(id)}
   @Post('products') create(@Req() req:Request,@Body() dto:CreateProductDto){return this.admin.create(dto,req.user!.email)}
@@ -38,13 +42,13 @@ const mediaFilename=(_req:unknown,file:Express.Multer.File,callback:(error:Error
   @Patch('settings') updateSettings(@Req() req:Request,@Body() dto:UpdateSettingsDto){return this.admin.updateSettings(dto,req.user!.email)}
   @Get('quotes') quotes(){return this.admin.listQuotes()}
   @Patch('quotes/:id/status') updateQuote(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateQuoteStatusDto){return this.admin.updateQuoteStatus(id,dto.status,req.user!.email)}
-  @Post('media') @UseInterceptors(FileInterceptor('file',{storage:diskStorage({destination:process.env.UPLOAD_DIRECTORY||'uploads',filename:mediaFilename}),limits:{fileSize:5*1024*1024,files:1},fileFilter:(_req,file,callback)=>callback(null,['image/jpeg','image/png','image/webp'].includes(file.mimetype))})) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return{url:`${process.env.API_PUBLIC_URL||'http://localhost:3000'}/uploads/${file.filename}`}}
+  @Post('media') @UseInterceptors(FileInterceptor('file',imageUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return this.storage.upload(file,{prefix:'catalogue',kind:'image'})}
 }
 
 @Controller('quotes') export class QuoteController {
-  constructor(private admin:AdminService){}
+  constructor(private admin:AdminService,private storage:StorageService){}
   @Post() @Throttle({default:{limit:8,ttl:60000}}) create(@Body() dto:CreateQuoteDto){return this.admin.createQuote(dto)}
-  @Post('media') @Throttle({default:{limit:5,ttl:60000}}) @UseInterceptors(FileInterceptor('file',{storage:diskStorage({destination:process.env.UPLOAD_DIRECTORY||'uploads',filename:mediaFilename}),limits:{fileSize:10*1024*1024,files:1},fileFilter:(_req,file,callback)=>{const allowed=['application/pdf','image/jpeg','image/png','image/webp'];if(!allowed.includes(file.mimetype))return callback(new BadRequestException('Artwork must be PDF, JPG, PNG or WebP'),false);callback(null,true)}})) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid artwork file is required');return{url:`${process.env.API_PUBLIC_URL||'http://localhost:3000'}/uploads/${file.filename}`,name:file.originalname}}
+  @Post('media') @Throttle({default:{limit:5,ttl:60000}}) @UseInterceptors(FileInterceptor('file',artworkUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid artwork file is required');return this.storage.upload(file,{prefix:'artwork',kind:'artwork'})}
 }
 
 @Controller('health') export class HealthController {

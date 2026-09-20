@@ -97,16 +97,49 @@ export class Estimate {
   @CreateDateColumn() createdAt!: Date;
 }
 
+/**
+ * A customer is identified by email, which is the stable key across guest
+ * orders. Checkout stays guest-only; this record is derived from the orders
+ * themselves so repeat buyers roll up into one profile for reporting, and so
+ * customer logins can be added later without re-modelling anything.
+ */
+@Entity('customers')
+export class Customer {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  /** Null for a walk-in identified only by phone; several may coexist. */
+  @Index() @Column({ type: 'varchar', unique: true, nullable: true }) email!: string | null;
+  @Column({ default: '' }) name!: string;
+  @Column({ default: '' }) company!: string;
+  /** Canonical phone keys, comma-delimited on both sides for exact LIKE lookup. */
+  @Index() @Column({ type: 'text', default: '' }) phoneIndex!: string;
+  /** Every distinct phone number seen on this customer's orders, newest first. */
+  @Column({ type: 'text', default: '[]' }) phones!: string;
+  @Column('integer', { default: 0 }) orderCount!: number;
+  @Column('integer', { default: 0 }) lifetimeValuePesewas!: number;
+  @Column({ type: Date, nullable: true }) firstOrderAt!: Date | null;
+  @Column({ type: Date, nullable: true }) lastOrderAt!: Date | null;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ unique: true }) orderNumber!: string;
+  @Column({type: 'varchar', nullable: true, unique: true}) requestKey!: string | null;
+  @Column({default: ''}) salesperson!: string;
+  @Column('integer', {default: 0}) deliveryFeePesewas!: number;
   @Column({ default: 'online' }) source!: OrderSource;
+  @Index() @Column({ default: '' }) customerId!: string;
   @Column() customerName!: string;
   @Column() customerEmail!: string;
   @Column({ default: '' }) customerPhone!: string;
   @Column({ default: 'pending_review' }) status!: OrderStatus;
-  @Column({ default: 'unpaid' }) paymentStatus!: 'unpaid'|'pending'|'paid'|'part_paid'|'refunded';
+  @Column({ default: 'unpaid' }) paymentStatus!: 'unpaid'|'pending'|'paid'|'part_paid'|'part_refunded'|'refunded';
+  @Column('integer', { default: 0 }) refundedPesewas!: number;
+  @Column({ type: 'text', default: '' }) refundReason!: string;
+  @Column({ type: Date, nullable: true }) refundedAt!: Date | null;
+  @Column({ default: '' }) refundedBy!: string;
   @Column({ default: '' }) paymentProvider!: string;
   @Column({ default: '' }) paymentReference!: string;
   @Column('integer',{ default: 0 }) subtotalPesewas!: number;
@@ -124,9 +157,12 @@ export class PaymentTransaction {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column() orderId!: string;
   @Column() orderNumber!: string;
-  @Column() provider!: 'paystack';
+  @Column() provider!: 'paystack'|'cash'|'momo'|'bank_transfer';
   @Column({ unique: true }) reference!: string;
   @Column('integer') amountPesewas!: number;
+  @Column({type: Date, nullable: true}) paidAt!: Date | null;
+  @Column({default: ''}) recordedBy!: string;
+  @Column({default: ''}) externalReference!: string;
   @Column() currency!: 'GHS';
   @Column({ default: 'initialized' }) status!: 'initialized'|'pending'|'paid'|'failed'|'abandoned'|'refunded';
   @Column({ default: '' }) authorizationUrl!: string;
@@ -140,7 +176,7 @@ export class PaymentTransaction {
 export class OrderItem {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Index() @Column() orderId!: string;
-  @Column({ default: 'large_format' }) kind!: 'large_format' | 'product';
+  @Column({ default: 'large_format' }) kind!: 'large_format' | 'product' | 'custom';
   @Column({ default: '' }) productId!: string;
   @Column() serviceCode!: string;
   @Column() name!: string;
@@ -217,9 +253,143 @@ export class NotificationOutbox {
   @Column() recipient!: string;
   @Column() template!: string;
   @Column({ type: 'text' }) payload!: string;
-  @Column({ default: 'pending' }) status!: 'pending'|'sent'|'failed'|'skipped';
+  @Column({ default: 'pending' }) status!: 'pending'|'sending'|'sent'|'failed'|'skipped';
   @Column('integer',{ default: 0 }) attempts!: number;
   @Column({ default: '' }) lastError!: string;
   @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/* ------------------------------------------------------------------
+   People & payroll
+   A User is a login. An Employee is the person: the one the business
+   pays, schedules and measures. Not every employee needs a login (a
+   press operator may never touch the admin), and not every login is
+   payroll-bearing, so the two are linked rather than merged.
+   ------------------------------------------------------------------ */
+
+export type PayType = 'monthly' | 'daily' | 'hourly';
+export type EmploymentStatus = 'active' | 'suspended' | 'terminated';
+
+@Entity('employees')
+export class Employee {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ unique: true }) staffNumber!: string;
+  @Column() fullName!: string;
+  @Column({ default: '' }) email!: string;
+  @Column({ default: '' }) phone!: string;
+  /** Links to a User row when this person also has an admin login. */
+  @Index() @Column({ default: '' }) userId!: string;
+  @Column({ default: '' }) jobTitle!: string;
+  @Column({ default: 'production' }) department!: string;
+  @Column({ default: 'active' }) employmentStatus!: EmploymentStatus;
+  @Column({ default: 'monthly' }) payType!: PayType;
+  /** Monthly salary, daily rate or hourly rate depending on payType. */
+  @Column('integer', { default: 0 }) payRatePesewas!: number;
+  @Column({ default: '' }) bankName!: string;
+  @Column({ default: '' }) bankAccount!: string;
+  @Column({ default: '' }) momoNumber!: string;
+  @Column({ default: '' }) ssnitNumber!: string;
+  @Column({ default: '' }) hiredOn!: string;
+  @Column({ type: 'text', default: '' }) notes!: string;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** One clock-in/clock-out pair. Open shifts have no clockOut yet. */
+@Entity('attendance_records')
+export class AttendanceRecord {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() employeeId!: string;
+  @Column() employeeName!: string;
+  /** Local workday (YYYY-MM-DD) so a night shift still books to its start day. */
+  @Index() @Column() workDate!: string;
+  @Column({ type: Date }) clockIn!: Date;
+  @Column({ type: Date, nullable: true }) clockOut!: Date | null;
+  @Column('integer', { default: 0 }) minutesWorked!: number;
+  @Column('integer', { default: 0 }) overtimeMinutes!: number;
+  @Column({ default: 'present' }) status!: 'present'|'late'|'absent'|'leave'|'holiday';
+  @Column({ type: 'text', default: '' }) note!: string;
+  @Column({ default: '' }) recordedBy!: string;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** A pay run covering a date range: draft → approved → paid. */
+@Entity('payroll_runs')
+export class PayrollRun {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column({ unique: true }) reference!: string;
+  @Column({type:'text',default:'{}'}) policySnapshot!: string;
+  @Column() periodStart!: string;
+  @Column() periodEnd!: string;
+  @Column({ default: 'draft' }) status!: 'draft'|'approved'|'paid'|'cancelled';
+  @Column('integer', { default: 0 }) grossPesewas!: number;
+  @Column('integer', { default: 0 }) deductionsPesewas!: number;
+  @Column('integer', { default: 0 }) netPesewas!: number;
+  @Column('integer', { default: 0 }) payslipCount!: number;
+  @Column({ default: '' }) preparedBy!: string;
+  @Column({ default: '' }) approvedBy!: string;
+  @Column({ type: Date, nullable: true }) paidAt!: Date | null;
+  @Column({ type: 'text', default: '' }) note!: string;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** One employee's line in a pay run, with the maths kept for the record. */
+@Entity('payslips')
+export class Payslip {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() payrollRunId!: string;
+  @Index() @Column() employeeId!: string;
+  @Column() employeeName!: string;
+  @Column() staffNumber!: string;
+  @Column({ default: 'monthly' }) payType!: PayType;
+  @Column('integer', { default: 0 }) payRatePesewas!: number;
+  @Column('integer', { default: 0 }) daysWorked!: number;
+  @Column('integer', { default: 0 }) minutesWorked!: number;
+  @Column('integer', { default: 0 }) overtimeMinutes!: number;
+  @Column('integer', { default: 0 }) basePesewas!: number;
+  @Column('integer', { default: 0 }) overtimePesewas!: number;
+  @Column('integer', { default: 0 }) bonusPesewas!: number;
+  @Column('integer', { default: 0 }) deductionsPesewas!: number;
+  @Column('integer', { default: 0 }) grossPesewas!: number;
+  @Column('integer', { default: 0 }) netPesewas!: number;
+  @Column({ type: 'text', default: '' }) note!: string;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** Single-use, short-lived password reset grant. Only the hash is stored. */
+@Entity('password_reset_tokens')
+export class PasswordResetToken {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() userId!: string;
+  @Index() @Column() tokenHash!: string;
+  @Column({ type: Date }) expiresAt!: Date;
+  @Column({ type: Date, nullable: true }) usedAt!: Date | null;
+  @Column({ default: '' }) requestedIp!: string;
+  @CreateDateColumn() createdAt!: Date;
+}
+
+@Entity('order_refunds')
+export class OrderRefund {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() orderId!: string;
+  @Column({unique: true}) requestKey!: string;
+  @Column('integer') amountPesewas!: number;
+  @Column() method!: string;
+  @Column() externalReference!: string;
+  @Column('text') reason!: string;
+  @Column() recordedBy!: string;
+  @Column({type: Date}) occurredAt!: Date;
+  @Column('text') policySnapshot!: string;
+  @Column({default: false}) cancelRemainingWork!: boolean;
+  @CreateDateColumn() createdAt!: Date;
+}
+@Entity('business_policies')
+export class BusinessPolicy {
+  @Column({primary: true}) id!: string;
+  @Column('text') value!: string;
   @UpdateDateColumn() updatedAt!: Date;
 }

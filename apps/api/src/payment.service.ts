@@ -1,3 +1,4 @@
+import { collectedFor, paymentState } from './finance';
 import { releaseProductionJobs } from './production-release';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -150,12 +151,15 @@ export class PaymentService {
         await paymentRepo.save(payment);
         throw new BadRequestException('Payment amount or currency mismatch');
       }
-      const alreadyPaid = payment.status === 'paid' && order.paymentStatus === 'paid';
+      const alreadyPaid = ['paid','refunded'].includes(payment.status);
+      if(alreadyPaid)return {received:true,paid:true,idempotent:true,orderNumber:order.orderNumber,reference};
       if (!alreadyPaid) {
         payment.status = 'paid';
+        payment.paidAt = new Date();
         payment.providerResponse = JSON.stringify(data);
         await paymentRepo.save(payment);
-        order.paymentStatus = 'paid';
+        const allPayments=await paymentRepo.findBy({orderId:order.id});
+        order.paymentStatus = paymentState(order.totalPesewas,collectedFor(order,allPayments),order.refundedPesewas);
         order.status = order.status === 'awaiting_payment' ? 'paid' : order.status;
         order.paymentProvider = 'paystack';
         order.paymentReference = reference;
@@ -167,7 +171,7 @@ export class PaymentService {
           customerVisible: true,
           note: 'Payment received. Your order status is shown in the tracking timeline.',
         }));
-        await outboxRepo.save(outboxRepo.create({
+        if(order.customerEmail)await outboxRepo.save(outboxRepo.create({
           orderId: order.id,
           channel: 'email',
           recipient: order.customerEmail,

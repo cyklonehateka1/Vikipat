@@ -1,15 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import nodemailer from 'nodemailer';
 import { Repository } from 'typeorm';
 import { NotificationOutbox, Order, StoreSettings } from './entities';
+import { MailService } from './mail.service';
 
 @Injectable()
 export class NotificationService {
   private readonly logger=new Logger(NotificationService.name);
-  constructor(@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,@InjectRepository(StoreSettings) private settings:Repository<StoreSettings>){}
+  constructor(@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,@InjectRepository(StoreSettings) private settings:Repository<StoreSettings>,private mail:MailService){}
 
   async queueEmail(order:Order,template:string,payload:Record<string,unknown>){
+    if(!order.customerEmail)return;
     const record=await this.outbox.save(this.outbox.create({orderId:order.id,channel:'email',recipient:order.customerEmail,template,payload:JSON.stringify(payload)}));
     await this.deliver(record);
   }
@@ -22,11 +23,15 @@ export class NotificationService {
   }
   async deliverQueued(ids:string[]){
     for(const id of ids){
-      const record=await this.outbox.findOneBy({id,status:'pending'});
-      if(record)await this.deliver(record);
+      const record=await this.outbox.findOneBy({id});
+      if(record && ['pending','failed'].includes(record.status))await this.deliver(record);
     }
   }
+  async list(){return this.outbox.find({order:{createdAt:'DESC'},take:200});}
+  async retry(id:string){const record=await this.outbox.findOneBy({id});if(!record||!['pending','failed'].includes(record.status))throw new BadRequestException('Only pending or failed messages can be retried');await this.deliver(record);return this.outbox.findOneBy({id});}
   private async deliver(record:NotificationOutbox){
+    const claimed=await this.outbox.update({id:record.id,status:record.status,attempts:record.attempts},{status:'sending',attempts:record.attempts+1});
+    if(!claimed.affected)return;
     try{
       record.attempts+=1;
       if(record.channel==='email')await this.sendEmail(record);
@@ -39,11 +44,8 @@ export class NotificationService {
     await this.outbox.save(record);
   }
   private async sendEmail(record:NotificationOutbox){
-    const host=process.env.SMTP_HOST;
-    if(!host)throw new Error('SMTP is not configured');
     const payload=JSON.parse(record.payload) as {subject?:string;text?:string};
-    const transport=nodemailer.createTransport({host,port:Number(process.env.SMTP_PORT||587),secure:process.env.SMTP_SECURE==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}:undefined});
-    await transport.sendMail({from:process.env.EMAIL_FROM||'Vikipat <orders@vikipat.com>',to:record.recipient,subject:payload.subject||'Your Vikipat order',text:payload.text||''});
+    await this.mail.send({to:record.recipient,subject:payload.subject||'Your Vikipat order',text:payload.text||'',idempotencyKey:record.id});
   }
   private async sendWhatsApp(record:NotificationOutbox){
     if(!process.env.WHATSAPP_API_URL||!process.env.WHATSAPP_ACCESS_TOKEN)throw new Error('WhatsApp API is not configured');

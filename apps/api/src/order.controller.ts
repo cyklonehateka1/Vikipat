@@ -2,6 +2,7 @@ import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Req, Res
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AddProductionJobNoteDto, CreateGuestOrderDto, LargeFormatEstimateDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
+import { CommerceService, RecordRefundDto } from './commerce.service';
 import { OrderService } from './order.service';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 
@@ -23,12 +24,14 @@ export class CustomerOrderController {
 @Controller('admin/orders')
 @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard)
 export class AdminOrderController {
-  constructor(private orders:OrderService){}
+  constructor(private orders:OrderService,private commerce:CommerceService){}
   @Get() @UseGuards(AdminOnlyGuard) list(){return this.orders.list()}
   @Get('production/intake') intake(@Req() request:Request){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');return this.orders.listProductionIntake()}
   @Get('production/jobs') jobs(@Req() request:Request){return this.orders.listProductionJobs(request.user!.role)}
+  @Post('estimate') @UseGuards(AdminOnlyGuard) estimate(@Body() dto:CreateGuestOrderDto){return this.orders.estimateStaff(dto)}
   @Post() @UseGuards(AdminOnlyGuard) create(@Body() dto:CreateGuestOrderDto){return this.orders.createGuest(dto,dto.source==='salesperson'?'salesperson':'walk_in')}
   @Post(':id/release') release(@Req() request:Request,@Param('id') id:string){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');return this.orders.releaseOrderToProduction(id,request.user!.email)}
+  @Post(':id/refund') @UseGuards(AdminOnlyGuard) refund(@Req() request:Request,@Param('id') id:string,@Body() dto:RecordRefundDto){return this.commerce.refund(id,dto,request.user!.email)}
   @Patch(':id/status') @UseGuards(AdminOnlyGuard) update(@Req() request:Request,@Param('id') id:string,@Body() dto:UpdateOrderStatusDto){return this.orders.updateStatus(id,dto.status,dto.note||'',dto.customerVisible!==false,request.user!.email)}
   @Get('production/jobs/:id/activity') jobActivity(@Param('id') id:string){return this.orders.listProductionJobActivity(id)}
   @Post('production/jobs/:id/activity') addJobNote(@Req() request:Request,@Param('id') id:string,@Body() dto:AddProductionJobNoteDto){if(!request.user!.permissions.includes('jobs.note'))throw new ForbiddenException('Job note permission required');return this.orders.addProductionJobNote(id,dto.note,request.user!.email)}

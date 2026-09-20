@@ -2,6 +2,8 @@ import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, 
 import { Type } from 'class-transformer';
 import { CATEGORIES } from './catalog.seed';
 export class LoginDto { @IsEmail() email!:string; @IsString() @MinLength(8) password!:string; }
+export class RequestPasswordResetDto { @IsEmail() @Length(3,254) email!:string; }
+export class ResetPasswordDto { @IsString() @Length(64,64) token!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
 export class ChangePasswordDto { @IsString() currentPassword!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
 export class CreateProductDto { @IsString() @Length(2,120) name!:string; @IsIn(CATEGORIES) category!:string; @IsNumber() @Min(.01) @Max(1000000) price!:number; @IsString() @Length(1,40) unit!:string; @IsString() @Length(1,1000) description!:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsInt() @Min(0) @Max(1000000) stock!:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; }
 export class UpdateProductDto { @IsOptional() @IsString() @Length(2,120) name?:string; @IsOptional() @IsIn(CATEGORIES) category?:string; @IsOptional() @IsNumber() @Min(.01) @Max(1000000) price?:number; @IsOptional() @IsString() @Length(1,40) unit?:string; @IsOptional() @IsString() @Length(1,1000) description?:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsOptional() @IsInt() @Min(0) @Max(1000000) stock?:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; }
@@ -24,7 +26,12 @@ export class LargeFormatEstimateDto {
 }
 
 export class OrderLineItemDto {
-  @IsIn(['large_format','product']) type!: 'large_format'|'product';
+  @IsIn(['large_format','product','custom']) type!: 'large_format'|'product'|'custom';
+  @ValidateIf(o=>o.type==='custom') @IsString() @Length(2,160) name?:string;
+  @IsOptional() @IsInt() @Min(1) @Max(100000000) unitPricePesewas?:number;
+  @IsOptional() @IsString() @Length(0,2000) description?:string;
+  @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string;
+  @IsOptional() @IsString() @Length(0,180) artworkName?:string;
 
   // large_format fields — price is always computed server-side from the
   // live rate table at order time (see OrderService.estimate), never from
@@ -50,7 +57,10 @@ export class OrderLineItemDto {
 
 export class CreateGuestOrderDto {
   @IsString() @Length(2,120) customerName!: string;
-  @IsEmail() customerEmail!: string;
+  @ValidateIf(o=>Boolean(o.customerEmail)) @IsEmail() customerEmail!: string;
+  @IsOptional() @IsUUID() requestKey?:string;
+  @IsOptional() @IsString() @Length(0,120) salesperson?:string;
+  @IsOptional() @IsInt() @Min(0) @Max(100000000) deliveryFeePesewas?:number;
   @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) customerPhone?: string;
   @IsOptional() @IsIn(['online','walk_in','salesperson']) source?: 'online'|'walk_in'|'salesperson';
   @ValidateNested({ each: true }) @Type(() => OrderLineItemDto) @ArrayMinSize(1) @ArrayMaxSize(30) items!: OrderLineItemDto[];

@@ -4,6 +4,21 @@ export type ApiUser={email:string;name:string;role:string;permissions:readonly s
 export class ApiError extends Error{status:number;constructor(status:number,message:string){super(message);this.status=status}}
 async function request<T>(path:string,options:RequestInit={}){const headers=new Headers(options.headers);if(options.body&&!(options.body instanceof FormData))headers.set('Content-Type','application/json');if(!['GET','HEAD'].includes(options.method||'GET')&&csrfToken)headers.set('X-CSRF-Token',csrfToken);const response=await fetch(`${API_URL}${path}`,{...options,headers,credentials:'include'});const payload=await response.json().catch(()=>({}));if(!response.ok){const message=Array.isArray(payload.message)?payload.message.join('. '):payload.message||payload.error||'Request failed';throw new ApiError(response.status,message)}return payload as T}
 export const api={
+  orderDetail:<T>(id:string)=>request<T>(`/admin/commerce/orders/${id}`),
+  staffEstimate:<T>(data:unknown)=>request<T>('/admin/orders/estimate',{method:'POST',body:JSON.stringify(data)}),
+  recordPayment:<T>(id:string,data:unknown)=>request<T>(`/admin/commerce/orders/${id}/payments`,{method:'POST',body:JSON.stringify(data)}),
+  recordRefund:<T>(id:string,data:unknown)=>request<T>(`/admin/commerce/orders/${id}/refunds`,{method:'POST',body:JSON.stringify(data)}),
+  confirmQuote:<T>(id:string,data:unknown)=>request<T>(`/admin/commerce/orders/${id}/quote`,{method:'PATCH',body:JSON.stringify(data)}),
+  policies:<T>()=>request<T>('/admin/commerce/policies'),
+  savePolicies:<T>(data:unknown)=>request<T>('/admin/commerce/policies',{method:'PATCH',body:JSON.stringify(data)}),
+  notifications:<T>()=>request<T>('/admin/commerce/notifications'),
+  retryNotification:<T>(id:string)=>request<T>(`/admin/commerce/notifications/${id}/retry`,{method:'POST'}),
+  emailQuote:<T>(id:string,data:unknown)=>request<T>(`/admin/commerce/quotes/${id}/email`,{method:'POST',body:JSON.stringify(data)}),
+  emailReport:()=>request('/admin/analytics/email',{method:'POST'}),
+  emailPayslip:(id:string)=>request(`/admin/people/payslips/${id}/email`,{method:'POST'}),
+  correctAttendance:(id:string,data:unknown)=>request(`/admin/people/attendance/${id}`,{method:'PATCH',body:JSON.stringify(data)}),
+  report:<T>(from:string,to:string)=>request<T>(`/admin/analytics?from=${from}&to=${to}`),
+  async uploadArtwork(file:File){const body=new FormData();body.append('file',file);return request<{url:string;name?:string}>('/quotes/media',{method:'POST',body})},
   staff:<T>()=>request<T>('/admin/staff'),
   createStaff:<T>(data:unknown)=>request<T>('/admin/staff',{method:'POST',body:JSON.stringify(data)}),
   updateStaff:<T>(id:string,data:unknown)=>request<T>(`/admin/staff/${id}`,{method:'PATCH',body:JSON.stringify(data)}),
@@ -19,5 +34,29 @@ export const api={
   dashboard:<T>()=>request<T>('/admin/dashboard'),activity:<T>()=>request<T>('/admin/activity'),stockActivity:<T>()=>request<T>('/admin/stock-activity'),insights:<T>()=>request<T>('/admin/insights'),settings:<T>()=>request<T>('/admin/settings'),updateSettings:<T>(data:unknown)=>request<T>('/admin/settings',{method:'PATCH',body:JSON.stringify(data)}),
   payments:<T>()=>request<T>('/admin/payments'),paymentSummary:<T>()=>request<T>('/admin/payments/summary'),
   pricingRules:<T>()=>request<T>('/admin/pricing/rules'),savePricingDraft:<T>(id:string,data:unknown)=>request<T>(`/admin/pricing/rules/${id}/draft`,{method:'PATCH',body:JSON.stringify(data)}),testPricingDraft:<T>(id:string,data:unknown)=>request<T>(`/admin/pricing/drafts/${id}/test`,{method:'POST',body:JSON.stringify(data)}),publishPricingDraft:<T>(id:string)=>request<T>(`/admin/pricing/drafts/${id}/publish`,{method:'POST'}),pricingHistory:<T>(id:string)=>request<T>(`/admin/pricing/rules/${id}/history`),
+  // People, payroll and attendance
+  employees:<T>(includeInactive=false)=>request<T>(`/admin/people/employees${includeInactive?'?includeInactive=true':''}`),
+  createEmployee:<T>(data:unknown)=>request<T>('/admin/people/employees',{method:'POST',body:JSON.stringify(data)}),
+  updateEmployee:<T>(id:string,data:unknown)=>request<T>(`/admin/people/employees/${id}`,{method:'PATCH',body:JSON.stringify(data)}),
+  attendance:<T>(params:{from?:string;to?:string;employeeId?:string}={})=>{const q=new URLSearchParams(Object.entries(params).filter(([,v])=>v) as [string,string][]);return request<T>(`/admin/people/attendance${q.toString()?'?'+q:''}`)},
+  clockIn:<T>(employeeId:string,note='')=>request<T>('/admin/people/attendance/clock-in',{method:'POST',body:JSON.stringify({employeeId,note})}),
+  clockOut:<T>(employeeId:string)=>request<T>('/admin/people/attendance/clock-out',{method:'POST',body:JSON.stringify({employeeId})}),
+  recordAttendance:<T>(data:unknown)=>request<T>('/admin/people/attendance',{method:'POST',body:JSON.stringify(data)}),
+  payrollRuns:<T>()=>request<T>('/admin/people/payroll'),
+  payrollRun:<T>(id:string)=>request<T>(`/admin/people/payroll/${id}`),
+  createPayrollRun:<T>(data:unknown)=>request<T>('/admin/people/payroll',{method:'POST',body:JSON.stringify(data)}),
+  updatePayrollStatus:<T>(id:string,status:string)=>request<T>(`/admin/people/payroll/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
+  updatePayslip:<T>(id:string,data:unknown)=>request<T>(`/admin/people/payslips/${id}`,{method:'PATCH',body:JSON.stringify(data)}),
+  performance:<T>(params:{from?:string;to?:string}={})=>{const q=new URLSearchParams(Object.entries(params).filter(([,v])=>v) as [string,string][]);return request<T>(`/admin/people/performance${q.toString()?'?'+q:''}`)},
+  // Analytics and customers
+  analytics:<T>(days=30)=>request<T>(`/admin/analytics?days=${days}`),
+  analyticsInsights:<T>()=>request<T>('/admin/analytics/insights'),
+  reconcilePayments:<T>()=>request<T>('/admin/analytics/reconcile',{method:'POST'}),
+  customers:<T>(q='')=>request<T>(`/admin/customers${q?`?q=${encodeURIComponent(q)}`:''}`),
+  customer:<T>(id:string)=>request<T>(`/admin/customers/${id}`),
+  refundOrder:<T>(id:string,amountPesewas:number,reason:string)=>request<T>(`/admin/orders/${id}/refund`,{method:'POST',body:JSON.stringify({amountPesewas,reason})}),
+  // Password recovery
+  forgotPassword:<T>(email:string)=>request<T>('/auth/forgot-password',{method:'POST',body:JSON.stringify({email})}),
+  resetPassword:<T>(token:string,newPassword:string)=>request<T>('/auth/reset-password',{method:'POST',body:JSON.stringify({token,newPassword})}),
   async upload(file:File){const body=new FormData();body.append('file',file);return request<{url:string}>('/admin/media',{method:'POST',body})}
 };
