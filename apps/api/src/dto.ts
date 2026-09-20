@@ -76,6 +76,13 @@ export class CreateGuestOrderDto {
   @IsOptional() @IsString() @Length(0,0) website?: string;
 }
 
+/** Public checkout requires an explicit choice; staff orders use their own payment workflow. */
+export class CreateOnlineOrderDto extends CreateGuestOrderDto {
+  @IsString()
+  @IsIn(['mobile_money'], {message: 'Select Mobile Money: paymentMethod must be exactly mobile_money'})
+  paymentMethod!: 'mobile_money';
+}
+
 export class RequestTrackingOtpDto {
   @IsString() @Matches(/^VP-[A-Z0-9]{8}$/) orderNumber!: string;
   @IsEmail() email!: string;

@@ -10,7 +10,7 @@ import {
   MapPin,
   Package,
   Pencil,
-  ShieldCheck,
+  Smartphone,
   Truck,
 } from "lucide-react";
 import { Layout } from "../components/Layout";
@@ -68,6 +68,8 @@ export default function Checkout() {
   const [requestedDate, setRequestedDate] = useState("");
   const [customerNote, setCustomerNote] = useState("");
 
+  const [paymentMethod, setPaymentMethod] = useState<"mobile_money" | "">("");
+
   // Submission State
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -80,6 +82,11 @@ export default function Checkout() {
 
     if (!customerName.trim() || !customerEmail.trim()) {
       setSubmitError("Please provide your name and email address.");
+      return;
+    }
+
+    if (paymentMethod !== "mobile_money") {
+      setSubmitError("Please select Mobile Money to continue.");
       return;
     }
 
@@ -142,6 +149,7 @@ export default function Checkout() {
           customerEmail: customerEmail.trim().toLowerCase(),
           customerPhone: customerPhone.trim(),
           source: "online",
+          paymentMethod,
           items: buildLineItems(),
           customerNote: consolidatedNote,
           fulfilmentMethod,
@@ -611,6 +619,37 @@ export default function Checkout() {
                 </div>
               </div>
             </div>
+            <section className="checkout-step-card">
+              <div className="checkout-step-header">
+                <span className="checkout-step-num">4</span>
+                <div>
+                  <h2>Payment method</h2>
+                  <span className="checkout-payment-hint" id="payment-method-hint">
+                    Select Mobile Money to continue.
+                  </span>
+                </div>
+              </div>
+              <fieldset className="checkout-payment-methods" aria-describedby="payment-method-hint" disabled={submitting}>
+                <legend className="checkout-payment-legend">Choose a payment method</legend>
+                <label className="checkout-payment-option is-disabled">
+                  <input type="radio" name="paymentMethod" value="card" disabled />
+                  <CreditCard aria-hidden="true" />
+                  <span><strong>Card</strong><small>Currently unavailable</small></span>
+                </label>
+                <label className={`checkout-payment-option ${paymentMethod === "mobile_money" ? "is-selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="mobile_money"
+                    required
+                    checked={paymentMethod === "mobile_money"}
+                    onChange={() => { setPaymentMethod("mobile_money"); setSubmitError(""); }}
+                  />
+                  <Smartphone aria-hidden="true" />
+                  <span><strong>Mobile Money</strong><small>Pay with your mobile wallet</small></span>
+                </label>
+              </fieldset>
+            </section>
           </div>
 
           {/* Right Column: Sticky Summary & Paystack Action */}
@@ -721,6 +760,7 @@ export default function Checkout() {
 
             {submitError && (
               <div
+                role="alert"
                 style={{
                   background: pricesRefreshed ? "var(--accent-amber-soft)" : "var(--danger-soft)",
                   color: pricesRefreshed ? "var(--accent-amber-ink)" : "var(--danger)",
@@ -747,19 +787,11 @@ export default function Checkout() {
                 </>
               ) : (
                 <>
-                  <CreditCard aria-hidden="true" />
+                  <Smartphone aria-hidden="true" />
                   <span>Submit Order & Continue to Payment</span>
                 </>
               )}
             </button>
-
-            <div className="paystack-secure-badge">
-              <ShieldCheck
-                aria-hidden="true"
-                style={{ width: 16, height: 16, color: "#16a34a" }}
-              />
-              <span>Protected by Paystack • MTN MoMo, Telecel, Cards</span>
-            </div>
 
             <p
               style={{

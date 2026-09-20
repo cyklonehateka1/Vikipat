@@ -1,6 +1,6 @@
 import { collectedFor, paymentState } from './finance';
 import { releaseProductionJobs } from './production-release';
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
@@ -49,8 +49,8 @@ export class PaymentService {
           currency: 'GHS',
           reference,
           callback_url: this.callbackUrl(order, reference),
-          channels: ['mobile_money', 'card'],
-          metadata: { orderNumber: order.orderNumber, orderId: order.id, customerName: order.customerName },
+          channels: ['mobile_money'],
+          metadata: { orderNumber: order.orderNumber, orderId: order.id, customerName: order.customerName, paymentMethod: 'mobile_money' },
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -188,9 +188,17 @@ export class PaymentService {
   }
 
   private callbackUrl(order: Order, reference: string) {
-    const base = process.env.PAYSTACK_CALLBACK_URL || `${process.env.API_PUBLIC_URL || ''}/confirmation`;
-    if (!base || base === '/confirmation') return undefined;
-    const url = new URL(base);
+    // A payment returns to the customer application, never to the API host.
+    const storefront = process.env.STOREFRONT_URL?.trim();
+    if (!storefront) throw new InternalServerErrorException('STOREFRONT_URL must be configured');
+    let url: URL;
+    try {
+      const base = new URL(storefront);
+      if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password) throw new Error('Invalid storefront URL');
+      url = new URL('/confirmation', base);
+    } catch {
+      throw new InternalServerErrorException('STOREFRONT_URL must be a valid HTTP(S) frontend base URL');
+    }
     url.searchParams.set('orderNumber', order.orderNumber);
     url.searchParams.set('email', order.customerEmail);
     url.searchParams.set('payment', reference);

@@ -218,21 +218,6 @@
   white-space: nowrap;
 }
 
-.paystack-secure-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: var(--success-soft);
-  border-radius: var(--r-pill);
-  padding: 10px;
-  color: var(--success);
-  font-family: var(--sans);
-  font-size: var(--t-micro);
-  font-weight: 700;
-  margin-top: var(--s4);
-}
-
 .confirmation-hero {
   text-align: center;
   padding: var(--s7) var(--s4);
@@ -294,3 +279,41 @@
   background: var(--brand-primary-light);
   color: var(--brand-primary-hover);
 }
+
+/* Payment choice stays side by side, including on narrow screens. */
+.checkout-payment-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.checkout-payment-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.checkout-payment-hint { font-size: var(--t-small); color: var(--ink-subtle); }
+.checkout-payment-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-content: start;
+  padding: 16px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.checkout-payment-option > svg { width: 22px; height: 22px; justify-self: end; }
+.checkout-payment-option > span { grid-column: 1 / -1; min-width: 0; }
+.checkout-payment-option strong { display: block; font-size: var(--t-small); }
+.checkout-payment-option small { display: block; margin-top: 4px; font-size: var(--t-micro); color: var(--ink-subtle); }
+.checkout-payment-option input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand-primary); }
+.checkout-payment-option.is-selected { border-color: var(--brand-primary); background: var(--brand-primary-light); }
+.checkout-payment-option:focus-within { outline: 2px solid var(--brand-primary); outline-offset: 3px; }
+.checkout-payment-option.is-disabled { opacity: .55; cursor: not-allowed; }

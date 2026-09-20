@@ -117,3 +117,17 @@ npm run build
 ```
 
 The integration command requires PostgreSQL `initdb` and `pg_ctl` on `PATH` and permission to open localhost ports. It starts a temporary PostgreSQL cluster and API, tests actual HTTP routes, and removes its temporary data when finished. It uses an isolated API build directory and does not use existing databases or `.env` files.
+
+## Checkout payment method and return URL
+
+Online `POST /api/orders` requests must include `paymentMethod: "mobile_money"` exactly.
+The checkout requires the customer to select Mobile Money explicitly; Card is disabled.
+Paystack sessions expose only the `mobile_money` channel. Staff order/payment entry is unchanged.
+
+Paystack returns customers to `/confirmation` on the required API environment variable
+`STOREFRONT_URL`. Set it to the customer frontend base URL for each environment,
+for example `STOREFRONT_URL=http://localhost:5173` locally. Docker Compose passes
+this variable through from the deployment environment. There is no hardcoded
+fallback; `API_PUBLIC_URL` and `PAYSTACK_CALLBACK_URL` do not control this redirect.
+Already initialized Paystack sessions retain their old callback; create a new
+checkout to use the corrected URL.

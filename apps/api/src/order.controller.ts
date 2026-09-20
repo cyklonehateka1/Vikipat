@@ -1,7 +1,7 @@
 import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { AddProductionJobNoteDto, CreateGuestOrderDto, LargeFormatEstimateDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
+import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
 import { CommerceService, RecordRefundDto } from './commerce.service';
 import { OrderService } from './order.service';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
@@ -14,7 +14,7 @@ export class CustomerOrderController {
   constructor(private orders:OrderService){}
   @Get('services/large-format') services(){return this.orders.listRules()}
   @Post('estimates/large-format') @Throttle({default:{limit:30,ttl:60000}}) estimate(@Body() dto:LargeFormatEstimateDto){return this.orders.createPublicEstimate(dto)}
-  @Post('orders') @Throttle({default:{limit:10,ttl:60000}}) create(@Body() dto:CreateGuestOrderDto){return this.orders.createGuest(dto,'online')}
+  @Post('orders') @Throttle({default:{limit:10,ttl:60000}}) create(@Body() dto:CreateOnlineOrderDto){return this.orders.createGuest(dto,'online')}
   @Post('order-tracking/request-otp') @Throttle({default:{limit:5,ttl:15*60000}}) requestOtp(@Body() dto:RequestTrackingOtpDto){return this.orders.requestOtp(dto.orderNumber,dto.email)}
   @Post('order-tracking/verify-otp') @Throttle({default:{limit:10,ttl:15*60000}}) async verifyOtp(@Body() dto:VerifyTrackingOtpDto,@Res({passthrough:true}) response:Response){const result=await this.orders.verifyOtp(dto.orderNumber,dto.email,dto.code);response.cookie('order_tracking',result.token,trackingCookie);return{order:result.order}}
   @Get('order-tracking/order') tracked(@Req() request:Request){return this.orders.tracked(request.cookies?.order_tracking)}

@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
-import { CreateGuestOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
+import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
 import { AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
@@ -73,6 +73,7 @@ export class OrderService implements OnApplicationBootstrap {
     return {lines,requiresReview,totalPesewas:lines.reduce((sum,l)=>sum+l.totalPesewas,0)+(dto.deliveryFeePesewas||0)};
   }
   async createGuest(dto:CreateGuestOrderDto,source:OrderSource='online'){
+    if(source==='online'&&(dto as Partial<CreateOnlineOrderDto>).paymentMethod!=='mobile_money')throw new BadRequestException('Select Mobile Money: paymentMethod must be exactly mobile_money');
     dto.customerEmail=(dto.customerEmail||'').trim().toLowerCase();
     if(source==='online'&&!dto.customerEmail)throw new BadRequestException('Email is required for online orders');
     if(!dto.customerEmail&&!dto.customerPhone)throw new BadRequestException('Provide a customer email or phone number');
@@ -121,7 +122,7 @@ export class OrderService implements OnApplicationBootstrap {
       const customerId=await this.customers.linkOrder(manager,{email:dto.customerEmail,name:dto.customerName,phone:dto.customerPhone,totalPesewas:subtotalPesewas+designFeePesewas});
       const savedOrder=await orders.save(orders.create({orderNumber,source,customerId,requestKey:dto.requestKey||null,salesperson:dto.salesperson||'',deliveryFeePesewas:dto.deliveryFeePesewas||0,customerName:dto.customerName.trim(),customerEmail:dto.customerEmail.trim().toLowerCase(),customerPhone:dto.customerPhone||'',status:requiresReview?'pending_review':'awaiting_payment',paymentStatus:requiresReview?'unpaid':'pending',subtotalPesewas,designFeePesewas,totalPesewas,requiresReview,promisedDate:dto.requestedDate||'',customerNote:this.checkoutNote(dto)}));
       await items.save(lines.map(line=>items.create({...line,orderId:savedOrder.id})));
-      await history.save(history.create({orderId:savedOrder.id,status:savedOrder.status,actor:source,customerVisible:true,note:requiresReview?'We are reviewing the design requirement and final price.':'Your order is ready for payment.'}));
+      await history.save(history.create({orderId:savedOrder.id,status:savedOrder.status,actor:source,customerVisible:true,note:(requiresReview?'We are reviewing the design requirement and final price.':'Your order is ready for payment.')+(source==='online'?' Customer selected Mobile Money.':'')}));
       return savedOrder;
     });
     const payment=source==='online'?await this.payments.initializePaystack(order):null;
