@@ -94,7 +94,7 @@ export default function Contact() {
     }
 
     window.location.href = whatsappLink(
-      `Hello ${site.name},\n\n*QUOTE REQUEST*\n*Name:* ${fields.name.trim()}\n*Company:* ${fields.company.trim() || 'Not provided'}\n*Phone/WhatsApp:* ${fields.phone.trim()}\n*Email:* ${fields.email.trim() || 'Not provided'}\n*What I need:* ${fields.need}\n*Quantity:* ${fields.quantity.trim()}\n*Size:* ${fields.size.trim() || 'To be discussed'}\n*Material:* ${fields.material.trim() || 'Please advise'}\n*Deadline:* ${fields.deadline || 'Flexible'}\n*Delivery location:* ${fields.location.trim() || 'To be confirmed'}\n*Artwork:* ${artwork ? `${artwork.name} — I will attach it in this chat` : 'I need artwork/design support'}\n\n*Additional information:*\n${fields.message.trim() || 'None'}`,
+      `Hello ${site.name},\n\n*QUOTE REQUEST*\n*Name:* ${fields.name.trim()}\n*Company:* ${fields.company.trim() || 'Not provided'}\n*Phone/WhatsApp:* ${fields.phone.trim()}\n*Email:* ${fields.email.trim() || 'Not provided'}\n*What I need:* ${fields.need}\n*Quantity:* ${fields.quantity.trim()}\n*Size:* ${fields.size.trim() || 'To be discussed'}\n*Material:* ${fields.material.trim() || 'Please advise'}\n*Deadline:* ${fields.deadline || 'Flexible'}\n*Delivery location:* ${fields.location.trim() || 'To be confirmed'}\n*Artwork:* ${artwork ? `${artwork.name}, I will attach it in this chat` : 'I need artwork/design support'}\n\n*Additional information:*\n${fields.message.trim() || 'None'}`,
     );
   };
 

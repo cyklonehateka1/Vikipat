@@ -2,8 +2,9 @@ import { BadRequestException, Injectable, NotFoundException, OnApplicationBootst
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
-import { SavePricingDraftDto, TestPricingDraftDto } from './dto';
+import { SavePricingDraftDto, TestPricingDraftDto, UpdatePricingCopyDto } from './dto';
 import { AuditLog, PricingRuleDraft, ServicePriceRule, ServicePriceRuleVersion } from './entities';
+import { CANONICAL_MATERIALS } from './pricing-material-seed';
 
 @Injectable()
 export class PricingAdminService implements OnApplicationBootstrap {
@@ -15,12 +16,64 @@ export class PricingAdminService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    await this.seedCanonicalMaterials();
     const rules = await this.rules.find();
     for (const rule of rules) {
       if (!await this.versions.existsBy({ ruleId: rule.id, version: rule.version })) {
         await this.versions.save(this.versions.create(this.versionSnapshot(rule, 'system:initial-import')));
       }
     }
+  }
+
+  /**
+   * Ensures the storefront's canonical material catalogue exists in the database.
+   * A missing rule (fresh environment) is created outright with its seed rates.
+   * An existing rule (already priced by an admin) only has BLANK editorial copy
+   * fields backfilled, so a previously tuned rate or edited description is never
+   * overwritten.
+   */
+  private async seedCanonicalMaterials() {
+    for (const seed of CANONICAL_MATERIALS) {
+      const existing = await this.rules.findOneBy({ code: seed.code });
+      if (!existing) {
+        await this.rules.save(this.rules.create(seed));
+        continue;
+      }
+      const patch: Partial<ServicePriceRule> = {};
+      if (!existing.category || existing.category === 'finish') patch.category = seed.category;
+      if (!existing.description) patch.description = seed.description;
+      if (!existing.typicalUses) patch.typicalUses = seed.typicalUses;
+      if (!existing.badge && seed.badge) patch.badge = seed.badge;
+      if (!existing.outcomes) patch.outcomes = seed.outcomes;
+      if (!existing.imageUrl && seed.imageUrl) patch.imageUrl = seed.imageUrl;
+      if (!existing.sortOrder) patch.sortOrder = seed.sortOrder;
+      if (Object.keys(patch).length) await this.rules.save(Object.assign(existing, patch));
+    }
+  }
+
+  /** Public, customer-facing material list: active rules only, no internal price books. */
+  async publicMaterials() {
+    const rules = await this.rules.find({ where: { active: true }, order: { sortOrder: 'ASC', name: 'ASC' } });
+    return rules.map((rule) => ({
+      code: rule.code,
+      name: rule.name,
+      category: rule.category,
+      description: rule.description,
+      typicalUses: rule.typicalUses,
+      badge: rule.badge || undefined,
+      outcomes: rule.outcomes ? rule.outcomes.split(',').filter(Boolean) : [],
+      imageUrl: rule.imageUrl || undefined,
+      ratePesewasPerSqFt: rule.onlineRatePesewas,
+      designMinimumPesewas: rule.designMinimumPesewas,
+    }));
+  }
+
+  async updateCopy(id: string, dto: UpdatePricingCopyDto, actor: string) {
+    const rule = await this.rule(id);
+    Object.assign(rule, dto);
+    const saved = await this.rules.save(rule);
+    await this.audit(actor, 'update_copy', 'pricing_rule', id, dto);
+    return saved;
   }
 
   async list() {

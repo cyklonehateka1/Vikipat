@@ -1,6 +1,7 @@
 import { UniqueProductionOrderItem1720000005000 } from './migrations/1720000005000-UniqueProductionOrderItem';
 import { MultiItemOrders1720000006000 } from './migrations/1720000006000-MultiItemOrders';
 import { OrderLookupIndices1720000007000 } from './migrations/1720000007000-OrderLookupIndices';
+import { PricingRuleCopyFields1720000008000 } from './migrations/1720000008000-PricingRuleCopyFields';
 import { StaffAccessSchema1720000004000 } from './migrations/1720000004000-StaffAccessSchema';
 import { StaffController } from './staff.controller';
 import { StaffService } from './staff.service';
@@ -45,7 +46,7 @@ const database = process.env.DATABASE_DRIVER === 'sqlite'
       ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: true } : false,
       entities,
       synchronize: false,
-      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000],
+      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000, PricingRuleCopyFields1720000008000],
       migrationsRun: true,
     };
 

@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { ArrowRight, MessageCircle, RefreshCw } from "lucide-react";
 import { Layout } from "../components/Layout";
 import { ProductCard } from "../components/ProductCard";
-import { PrintEstimator } from "../components/PrintEstimator";
 import { useCatalog } from "../catalog";
+import { OUTCOMES } from "../outcomes";
 import { deptHref, whatsappLink } from "../lib/format";
 import { site } from "../site";
 import { useReveal, useTitle } from "../lib/useReveal";
@@ -24,16 +24,21 @@ export default function Home() {
 
   return (
     <Layout>
-      {/* --- 1. Hero: one clear message, one visual, two actions --- */}
+      {/* --- 1. Hero: asymmetric collage, one message, two actions --- */}
       <section className="hero-section">
+        <span className="hero-ghost" aria-hidden="true">
+          VIKIPAT
+        </span>
+
         <div className="hero-copy">
           <div className="hero-eyebrow">
-            <span>Accra’s Commercial Print &amp; Manufacturing Platform</span>
+            <i aria-hidden="true" />
+            <span>Accra's Print &amp; Branding Platform</span>
           </div>
 
           <h1>
             Print engineered for impact.{" "}
-            <span className="highlight">Instant prices, paid online.</span>
+            <span className="highlight">Priced instantly.</span>
           </h1>
 
           <p>
@@ -44,7 +49,7 @@ export default function Home() {
 
           <div className="hero-actions">
             <Link to="/print" className="btn btn-primary btn-lg">
-              <span>Instant Print Estimator</span>
+              <span>Open the Print Studio</span>
               <ArrowRight aria-hidden="true" />
             </Link>
 
@@ -55,45 +60,68 @@ export default function Home() {
 
           <p className="hero-facts">
             CMYK digital &amp; large-format UV printing · Free digital proof
-            before production · 1–3 day standard turnaround · Paystack and
+            before production · 1 to 3 day standard turnaround · Paystack and
             Mobile Money accepted
           </p>
         </div>
 
-        <div className="hero-visual" aria-label="Corporate branded apparel produced by Vikipat">
-          <img
-            src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
-            alt="Corporate branded apparel produced by Vikipat"
-            loading="eager"
-          />
+        <div className="hero-visual">
+          <div className="hero-visual-chip">
+            <strong>24-48h</strong>
+            <span>standard turnaround</span>
+          </div>
+          <div className="hero-visual-main">
+            <img
+              src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
+              alt="Corporate branded apparel produced by Vikipat"
+              loading="eager"
+            />
+          </div>
+          <div className="hero-visual-hex">
+            <img
+              src="https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=700&q=80"
+              alt="Large format banner in production"
+              loading="lazy"
+            />
+          </div>
         </div>
       </section>
 
-      {/* --- 2. Live Print Estimator --- */}
-      <section className="shell section-tight reveal" id="estimator">
-        <div
-          style={{
-            textAlign: "center",
-            maxWidth: "720px",
-            margin: "0 auto 32px",
-          }}
-        >
-          <span
-            className="label-micro"
-            style={{ color: "var(--brand-primary)", letterSpacing: "0.08em" }}
-          >
-            LIVE ESTIMATION ENGINE
-          </span>
-          <h2 className="h1" style={{ marginTop: "6px" }}>
-            Instant Pricing for Banners, Stickers &amp; Displays
-          </h2>
-          <p className="muted" style={{ marginTop: "8px" }}>
-            Adjust dimensions, pick materials, and see your exact job price
-            update in real-time. No waiting for email quotes.
-          </p>
-        </div>
+      {/* --- 2. Print Studio: the platform's signature feature, not a buried section --- */}
+      <section className="reveal">
+        <div className="studio-promo">
+          <div className="studio-promo-grid">
+            <div>
+              <span className="studio-promo-eyebrow">
+                <i aria-hidden="true" />
+                The Vikipat Print Studio
+              </span>
+              <h2>
+                Stop guessing. <em>Configure it, price it, order it.</em>
+              </h2>
+              <p>
+                Tell the Studio what you are making, size it against a real
+                reference, and get an authoritative cedi price before you
+                commit. Every material, every rate, one place.
+              </p>
+              <div className="studio-promo-actions">
+                <Link to="/print" className="btn btn-primary btn-lg">
+                  <span>Open the Print Studio</span>
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
 
-        <PrintEstimator compact={false} />
+            <nav className="studio-promo-list" aria-label="Start from a job">
+              {OUTCOMES.slice(0, 4).map((outcome) => (
+                <Link key={outcome.slug} to={`/print?need=${outcome.slug}`}>
+                  <span>{outcome.label}</span>
+                  <ArrowRight aria-hidden="true" size={16} />
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
       </section>
 
       {/* --- 3. Category Bento Showcase --- */}
@@ -227,14 +255,14 @@ export default function Home() {
           <h2>Have a bespoke project or high-volume order?</h2>
           <p className="sub">
             Whether you need 5,000 conference packs, complete vehicle branding,
-            architectural signage, or bespoke packaging—our senior production
+            architectural signage, or bespoke packaging, our senior production
             team is ready to assist.
           </p>
         </div>
 
         <div className="closing-banner-actions">
           <Link to="/print" className="btn btn-primary btn-lg">
-            <span>Launch Print Estimator</span>
+            <span>Open the Print Studio</span>
           </Link>
           <a href={heroQuoteLink} className="btn btn-whatsapp btn-lg">
             <MessageCircle aria-hidden="true" />

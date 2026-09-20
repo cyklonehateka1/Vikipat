@@ -25,6 +25,13 @@ export class ServicePriceRule {
   @Column('integer',{ default: 10000 }) designMinimumPesewas!: number;
   @Column({ default: 'nearest_cedi' }) roundingMode!: 'nearest_cedi'|'up_to_cedi'|'exact_pesewa';
   @Column({ default: true }) active!: boolean;
+  @Column({ default: 'finish' }) category!: 'banner'|'sticker'|'board'|'fabric'|'finish';
+  @Column({ type: 'text', default: '' }) description!: string;
+  @Column({ type: 'text', default: '' }) typicalUses!: string;
+  @Column({ default: '' }) badge!: string;
+  @Column({ type: 'text', default: '' }) outcomes!: string; // comma-separated outcome slugs, e.g. "shop-signage,events"
+  @Column({ default: '' }) imageUrl!: string;
+  @Column('integer', { default: 0 }) sortOrder!: number;
   @UpdateDateColumn() updatedAt!: Date;
 }
 

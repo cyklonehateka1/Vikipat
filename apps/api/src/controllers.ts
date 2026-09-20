@@ -6,6 +6,7 @@ import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
 import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
+import { PricingAdminService } from './pricing-admin.service';
 import { AdjustStockDto, ChangePasswordDto, CreateProductDto, CreateQuoteDto, LoginDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
 import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 const cookieSecure=process.env.COOKIE_SECURE==='true';
@@ -51,7 +52,8 @@ const mediaFilename=(_req:unknown,file:Express.Multer.File,callback:(error:Error
 }
 
 @Controller('catalog') export class CatalogController {
-  constructor(private admin:AdminService){}
+  constructor(private admin:AdminService,private pricing:PricingAdminService){}
   @Get() catalog(){return this.admin.publicCatalog()}
   @Get('products/:id') product(@Param('id') id:string){return this.admin.publicProduct(id)}
+  @Get('print-materials') printMaterials(){return this.pricing.publicMaterials()}
 }

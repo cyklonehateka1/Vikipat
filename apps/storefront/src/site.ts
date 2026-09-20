@@ -33,7 +33,7 @@ export const site = {
 /** Primary navigation, used by the header, mobile sheet, and footer. */
 export const nav = [
   { code: "01", label: "Home", to: "/" },
-  { code: "02", label: "Start Print Order", to: "/print" },
+  { code: "02", label: "Print Studio", to: "/print" },
   { code: "03", label: "Shop Products", to: "/shop" },
   { code: "04", label: "Track Order", to: "/track-order" },
   { code: "05", label: "Ordering & FAQ", to: "/faq" },

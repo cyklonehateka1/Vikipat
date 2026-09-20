@@ -404,7 +404,20 @@
   font-weight: 700;
 }
 
-.deptnav a.active::after {
+.deptnav a.studio-link {
+  padding: 6px 14px;
+  margin: 8px 4px 8px 0;
+  border-radius: var(--r-pill);
+  background: var(--brand-primary-deep);
+  color: #fff !important;
+  font-weight: 800;
+}
+
+.deptnav a.studio-link:hover {
+  background: var(--ink);
+}
+
+.deptnav a.active:not(.studio-link)::after {
   content: '';
   position: absolute;
   left: 0;

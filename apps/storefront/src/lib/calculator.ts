@@ -1,25 +1,15 @@
-import {
-  CalculatedEstimate,
-  DimensionUnit,
-  LARGE_FORMAT_MATERIALS,
-} from "../types/pricing";
-
-const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).replace(/\/$/, "");
+import { CalculatedEstimate, DimensionUnit, PrintMaterial } from "../types/pricing";
+import { API_BASE } from "./api";
 
 export function computeLocalEstimate(
-  serviceCode: string,
+  material: PrintMaterial,
   width: number,
   height: number,
   unit: DimensionUnit,
   quantity: number,
   needsDesign: boolean,
 ): CalculatedEstimate {
-  const material =
-    LARGE_FORMAT_MATERIALS.find((m) => m.code === serviceCode) ||
-    LARGE_FORMAT_MATERIALS[0];
-  const ratePesewas = material.walkInRatePesewas;
+  const ratePesewas = material.ratePesewasPerSqFt;
 
   const areaPerPieceSqFt =
     unit === "in" ? (width * height) / 144 : width * height;
@@ -30,8 +20,7 @@ export function computeLocalEstimate(
   // Nearest-cedi policy (rounds to nearest 100 pesewas)
   const basePesewas = Math.round(rawBasePesewas / 100) * 100;
 
-  // Design fee: minimum GH₵ 100 = 10,000 pesewas, triggers staff review for final approval
-  const designFeePesewas = needsDesign ? 10000 : 0;
+  const designFeePesewas = needsDesign ? material.designMinimumPesewas : 0;
   const totalPesewas = basePesewas + designFeePesewas;
 
   return {
@@ -50,13 +39,13 @@ export function computeLocalEstimate(
     requiresReview: needsDesign,
     reviewReasons: needsDesign ? ["design_fee_requires_review"] : [],
     designMessage: needsDesign
-      ? "Design work starts from GH₵100. Final fee is confirmed upon artwork brief review."
+      ? `Design work starts from GH₵${(material.designMinimumPesewas / 100).toFixed(0)}. Final fee is confirmed upon artwork brief review.`
       : null,
   };
 }
 
 export async function fetchServerEstimate(
-  serviceCode: string,
+  material: PrintMaterial,
   width: number,
   height: number,
   unit: DimensionUnit,
@@ -68,7 +57,7 @@ export async function fetchServerEstimate(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        serviceCode,
+        serviceCode: material.code,
         width,
         height,
         unit,
@@ -103,12 +92,5 @@ export async function fetchServerEstimate(
     console.warn("Using client-side pricing engine fallback", err);
   }
 
-  return computeLocalEstimate(
-    serviceCode,
-    width,
-    height,
-    unit,
-    quantity,
-    needsDesign,
-  );
+  return computeLocalEstimate(material, width, height, unit, quantity, needsDesign);
 }

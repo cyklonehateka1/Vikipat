@@ -1,38 +1,63 @@
-import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Layout, PageHead } from "../components/Layout";
+import { Layout } from "../components/Layout";
 import { Crumbs } from "../components/Primitives";
-import { PrintEstimator } from "../components/PrintEstimator";
-import { LARGE_FORMAT_MATERIALS } from "../types/pricing";
+import { PrintConfigurator } from "../components/PrintConfigurator";
+import { useMaterials } from "../lib/useMaterials";
 import { site } from "../site";
 import { useTitle } from "../lib/useReveal";
 
 export default function PrintServices() {
   const [params] = useSearchParams();
-  const initialMaterial = params.get("material") || "flexy-banner";
-  useTitle(`Commercial Print & Large Format Studio | ${site.fullName}`);
+  const initialOutcomeSlug = params.get("need") || undefined;
+  const initialMaterialCode = params.get("material") || undefined;
+  const { materials } = useMaterials();
+  useTitle(`Print Studio | ${site.fullName}`);
 
   return (
     <Layout>
-      <PageHead
-        title="Commercial Print &amp; Large Format Studio"
-        lede="Configure custom banners, stickers, signage, reflective vinyl, and rigid boards with real-time cedi pricing, automatic square footage calculations, and instant order release."
-        stats={[
-          { label: "Substrates", value: `${LARGE_FORMAT_MATERIALS.length}` },
-          { label: "Standard Turnaround", value: "24-48h" },
-        ]}
-      >
-        <Crumbs
-          trail={[
-            { label: "Home", to: "/" },
-            { label: "Commercial Print Studio" },
-          ]}
-        />
-      </PageHead>
+      <section className="studio-head">
+        <span className="studio-head-ghost" aria-hidden="true">
+          STUDIO
+        </span>
+        <div className="studio-head-inner">
+          <Crumbs
+            trail={[
+              { label: "Home", to: "/" },
+              { label: "Print Studio" },
+            ]}
+          />
+          <div className="studio-head-row">
+            <div>
+              <h1>The Print Studio.</h1>
+              <p>
+                Configure any commercial print job, get an authoritative
+                cedi price before you commit, and send it straight to
+                production. This is the whole platform in one place.
+              </p>
+            </div>
+            <dl className="studio-head-meta">
+              <div>
+                <dt>Materials</dt>
+                <dd>{materials.length || 13}</dd>
+              </div>
+              <div>
+                <dt>Turnaround</dt>
+                <dd>24-48h</dd>
+              </div>
+              <div>
+                <dt>Pricing</dt>
+                <dd>Live</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
 
       <section className="shell section-tight">
-        {/* Main Interactive Print Estimator Component */}
-        <PrintEstimator initialMaterial={initialMaterial} />
+        <PrintConfigurator
+          initialOutcomeSlug={initialOutcomeSlug}
+          initialMaterialCode={initialMaterialCode}
+        />
       </section>
 
       {/* Substrate Catalog & Technical Specs */}
@@ -60,7 +85,7 @@ export default function PrintServices() {
         </div>
 
         <div className="grid grid-2">
-          {LARGE_FORMAT_MATERIALS.map((mat) => (
+          {materials.map((mat) => (
             <div
               key={mat.code}
               style={{
@@ -102,7 +127,7 @@ export default function PrintServices() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    GH₵ {(mat.walkInRatePesewas / 100).toFixed(2)} / sq ft
+                    GH₵ {(mat.ratePesewasPerSqFt / 100).toFixed(2)} / sq ft
                   </span>
                 </div>
                 <p

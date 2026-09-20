@@ -99,6 +99,16 @@ export class SavePricingDraftDto {
   @IsString() @Length(3,300) changeNote!: string;
 }
 
+export class UpdatePricingCopyDto {
+  @IsOptional() @IsIn(['banner','sticker','board','fabric','finish']) category?: 'banner'|'sticker'|'board'|'fabric'|'finish';
+  @IsOptional() @IsString() @Length(0,600) description?: string;
+  @IsOptional() @IsString() @Length(0,300) typicalUses?: string;
+  @IsOptional() @IsString() @Length(0,40) badge?: string;
+  @IsOptional() @IsString() @Length(0,300) outcomes?: string;
+  @IsOptional() @IsUrl({require_protocol:true}) imageUrl?: string;
+  @IsOptional() @IsInt() @Min(0) @Max(1000) sortOrder?: number;
+}
+
 export class TestPricingDraftDto {
   @IsNumber() @Min(0.1) @Max(10000) width!: number;
   @IsNumber() @Min(0.1) @Max(10000) height!: number;

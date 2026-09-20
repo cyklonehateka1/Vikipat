@@ -195,7 +195,7 @@ function MenuSheet({ onClose }: { onClose: () => void }) {
               className="btn btn-primary btn-block"
               onClick={onClose}
             >
-              Start a Print Job
+              Open the Print Studio
             </Link>
           </div>
 
@@ -310,7 +310,7 @@ function Masthead() {
               to="/print"
               className="btn btn-primary btn-sm utility-hide-sm"
             >
-              <span>Start Print Order</span>
+              <span>Print Studio</span>
             </Link>
 
             <Link
@@ -356,8 +356,8 @@ function Masthead() {
       {/* Department Sub-Navigation Bar */}
       <nav className="deptnav" aria-label="Print Categories">
         <div className="deptnav-inner">
-          <NavLink to="/print">
-            <strong>Print Estimator</strong>
+          <NavLink to="/print" className="studio-link">
+            <strong>Print Studio</strong>
           </NavLink>
           <NavLink to="/shop" end>
             All Products
@@ -399,7 +399,7 @@ function Footer() {
           </p>
           <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
             <Link to="/print" className="btn btn-accent btn-sm">
-              Estimate Custom Job
+              Open the Print Studio
             </Link>
             <a className="btn btn-whatsapp btn-sm" href={greeting}>
               <MessageCircle aria-hidden="true" /> WhatsApp Counter
@@ -409,7 +409,7 @@ function Footer() {
 
         <div className="footer-col">
           <h2>Products &amp; Services</h2>
-          <Link to="/print">Large Format Calculator</Link>
+          <Link to="/print">Print Studio</Link>
           <Link to="/shop">View Full Catalogue</Link>
           {departments.map((department) => (
             <Link key={department.slug} to={deptHref(department.slug)}>

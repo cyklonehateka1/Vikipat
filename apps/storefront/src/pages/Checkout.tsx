@@ -2,31 +2,51 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  CheckCircle2,
   CreditCard,
   FileCheck,
-  FileUp,
   HelpCircle,
   Link as LinkIcon,
   Loader2,
-  Lock,
   MapPin,
-  MessageCircle,
   Package,
+  Pencil,
   ShieldCheck,
   Truck,
-  UploadCloud,
-  X,
 } from "lucide-react";
 import { Layout } from "../components/Layout";
 import { useOrder } from "../order";
 import { site } from "../site";
 import { useTitle } from "../lib/useReveal";
+import { API_BASE } from "../lib/api";
 import "../styles/checkout.css";
 
-const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).replace(/\/$/, "");
+/** One order-level artwork submission is derived from the per-job choices
+ * made in the configurator: design service wins (it needs studio review
+ * regardless of what else was attached), then an actual uploaded file,
+ * then a shared link, and "later" only if nothing else was given. */
+function deriveOrderArtwork(customJobs: ReturnType<typeof useOrder>["customJobs"]) {
+  const designJob = customJobs.find((j) => j.artworkOption === "design_service");
+  if (designJob) return { artworkOption: "design_service" as const, artworkUrl: "", artworkName: "", artworkLink: "" };
+  const uploadJob = customJobs.find((j) => j.artworkOption === "upload" && j.artworkUrl);
+  if (uploadJob) {
+    return {
+      artworkOption: "upload" as const,
+      artworkUrl: uploadJob.artworkUrl || "",
+      artworkName: uploadJob.artworkName || "",
+      artworkLink: "",
+    };
+  }
+  const linkJob = customJobs.find((j) => j.artworkOption === "link" && j.artworkLink);
+  if (linkJob) return { artworkOption: "link" as const, artworkUrl: "", artworkName: "", artworkLink: linkJob.artworkLink || "" };
+  return { artworkOption: "later" as const, artworkUrl: "", artworkName: "", artworkLink: "" };
+}
+
+const artworkSummary: Record<string, string> = {
+  upload: "File uploaded",
+  link: "Shared via cloud link",
+  design_service: "Vikipat studio will design this",
+  later: "Will be sent later via WhatsApp",
+};
 
 export default function Checkout() {
   useTitle(`Checkout & Complete Order | ${site.fullName}`);
@@ -48,54 +68,11 @@ export default function Checkout() {
   const [requestedDate, setRequestedDate] = useState("");
   const [customerNote, setCustomerNote] = useState("");
 
-  // Artwork Intake State
-  const [artworkOption, setArtworkOption] = useState<
-    "upload" | "link" | "design_service" | "later"
-  >("upload");
-  const [uploadedArtworkUrl, setUploadedArtworkUrl] = useState("");
-  const [uploadedArtworkName, setUploadedArtworkName] = useState("");
-  const [artworkLink, setArtworkLink] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-
   // Submission State
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   const isEmpty = items.length === 0 && customJobs.length === 0;
-
-  // Handle direct file upload to API
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadError("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch(`${API_BASE}/quotes/media`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error(
-          "Upload failed. Please upload a PDF, PNG, JPG or WebP file under 10MB.",
-        );
-      }
-
-      const data = await res.json();
-      setUploadedArtworkUrl(data.url);
-      setUploadedArtworkName(data.name || file.name);
-    } catch (err: any) {
-      setUploadError(err.message || "Could not upload artwork.");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +86,8 @@ export default function Checkout() {
     setSubmitError("");
 
     try {
+      const orderArtwork = deriveOrderArtwork(customJobs);
+
       const lineItems = [
         ...customJobs.map((job) => ({
           type: "large_format" as const,
@@ -121,7 +100,7 @@ export default function Checkout() {
           fingerprint: job.estimate.fingerprint,
           needsDesign:
             job.estimate.designFeePesewas > 0 ||
-            artworkOption === "design_service",
+            job.artworkOption === "design_service",
         })),
         ...items.map((item) => ({
           type: "product" as const,
@@ -130,15 +109,25 @@ export default function Checkout() {
         })),
       ];
 
+      const jobNotes = customJobs
+        .map((job) =>
+          [
+            `${job.estimate.serviceName} (${job.estimate.width}${job.estimate.unit}×${job.estimate.height}${job.estimate.unit}): ${artworkSummary[job.artworkOption]}`,
+            job.artworkUrl ? `  file: ${job.artworkUrl}` : "",
+            job.artworkLink ? `  link: ${job.artworkLink}` : "",
+            job.notes ? `  note: ${job.notes}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        )
+        .join("\n");
+
       const consolidatedNote = [
         customerNote.trim(),
         companyName ? `Company: ${companyName}` : "",
         `Fulfilment: ${fulfilmentMethod === "delivery" ? `Delivery to ${deliveryAddress} (${deliveryLandmark})` : `Pickup at ${site.address.line1}, ${site.address.line2}`}`,
         requestedDate ? `Deadline: ${requestedDate}` : "",
-        artworkOption === "link" ? `Artwork Link: ${artworkLink}` : "",
-        uploadedArtworkUrl
-          ? `Uploaded Artwork: ${uploadedArtworkUrl} (${uploadedArtworkName})`
-          : "",
+        jobNotes,
       ]
         .filter(Boolean)
         .join("\n");
@@ -157,10 +146,7 @@ export default function Checkout() {
           deliveryAddress,
           deliveryLandmark,
           requestedDate,
-          artworkOption,
-          artworkUrl: uploadedArtworkUrl,
-          artworkName: uploadedArtworkName,
-          artworkLink,
+          ...orderArtwork,
         }),
       });
 
@@ -256,197 +242,81 @@ export default function Checkout() {
         <form onSubmit={handleSubmitOrder} className="checkout-grid">
           {/* Main Checkout Flow (Left Column) */}
           <div className="checkout-main-flow">
-            {/* Step 1: Artwork Intake */}
-            <div className="checkout-step-card">
-              <div className="checkout-step-header">
-                <span className="checkout-step-num">1</span>
-                <div>
-                  <h2>Artwork &amp; Creative Files</h2>
-                  <span
-                    style={{
-                      fontSize: "var(--t-micro)",
-                      color: "var(--ink-subtle)",
-                    }}
-                  >
-                    Free pre-flight CMYK verification on all client uploads
-                  </span>
-                </div>
-              </div>
-
-              <div className="artwork-options-grid">
-                <button
-                  type="button"
-                  className={`artwork-option-btn ${artworkOption === "upload" ? "is-active" : ""}`}
-                  onClick={() => setArtworkOption("upload")}
-                >
-                  <FileUp
-                    aria-hidden="true"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: "var(--brand-primary)",
-                      marginBottom: 6,
-                    }}
-                  />
-                  <strong>Upload Files Directly</strong>
-                  <span>PDF, AI, EPS, or 300 DPI PNG/JPG</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`artwork-option-btn ${artworkOption === "link" ? "is-active" : ""}`}
-                  onClick={() => setArtworkOption("link")}
-                >
-                  <LinkIcon
-                    aria-hidden="true"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: "var(--brand-primary)",
-                      marginBottom: 6,
-                    }}
-                  />
-                  <strong>Cloud Storage Link</strong>
-                  <span>Google Drive, WeTransfer, Dropbox</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`artwork-option-btn ${artworkOption === "design_service" ? "is-active" : ""}`}
-                  onClick={() => setArtworkOption("design_service")}
-                >
-                  <HelpCircle
-                    aria-hidden="true"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: "var(--brand-primary)",
-                      marginBottom: 6,
-                    }}
-                  />
-                  <strong>Design from Scratch</strong>
-                  <span>Our designers create it (+GH₵100 min)</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`artwork-option-btn ${artworkOption === "later" ? "is-active" : ""}`}
-                  onClick={() => setArtworkOption("later")}
-                >
-                  <CheckCircle2
-                    aria-hidden="true"
-                    style={{
-                      width: 20,
-                      height: 20,
-                      color: "var(--brand-primary)",
-                      marginBottom: 6,
-                    }}
-                  />
-                  <strong>Send via WhatsApp Later</strong>
-                  <span>Attach in chat after ordering</span>
-                </button>
-              </div>
-
-              {/* Upload Input Area */}
-              {artworkOption === "upload" && (
-                <div>
-                  <label
-                    htmlFor="artwork-file"
-                    className="artwork-dropzone"
-                    style={{ display: "block" }}
-                  >
-                    <UploadCloud aria-hidden="true" />
-                    <p
-                      style={{ fontWeight: 700, color: "var(--brand-primary)" }}
-                    >
-                      {uploading
-                        ? "Uploading your artwork..."
-                        : "Click to select or drag & drop artwork file"}
-                    </p>
+            {/* Step 1: Artwork summary (captured per job in the configurator) */}
+            {customJobs.length > 0 && (
+              <div className="checkout-step-card">
+                <div className="checkout-step-header">
+                  <span className="checkout-step-num">1</span>
+                  <div>
+                    <h2>Artwork &amp; Creative Files</h2>
                     <span
                       style={{
                         fontSize: "var(--t-micro)",
                         color: "var(--ink-subtle)",
                       }}
                     >
-                      Supports PDF, JPG, PNG, WebP up to 10MB
+                      Free pre-flight CMYK verification on all uploads
                     </span>
-                    <input
-                      id="artwork-file"
-                      type="file"
-                      style={{ display: "none" }}
-                      accept=".pdf,.jpg,.jpeg,.png,.webp"
-                      onChange={handleFileUpload}
-                      disabled={uploading}
-                    />
-                  </label>
+                  </div>
+                </div>
 
-                  {uploadedArtworkName && (
-                    <div
+                {customJobs.map((job) => (
+                  <div
+                    key={job.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "12px 0",
+                      borderTop: "1px solid var(--line)",
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: "var(--t-small)" }}>
+                        {job.estimate.serviceName}
+                      </strong>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginTop: 4,
+                          fontSize: "var(--t-micro)",
+                          color: "var(--ink-subtle)",
+                        }}
+                      >
+                        {job.artworkOption === "upload" ? (
+                          <FileCheck size={13} aria-hidden="true" />
+                        ) : job.artworkOption === "link" ? (
+                          <LinkIcon size={13} aria-hidden="true" />
+                        ) : (
+                          <HelpCircle size={13} aria-hidden="true" />
+                        )}
+                        <span>
+                          {artworkSummary[job.artworkOption]}
+                          {job.artworkName ? ` (${job.artworkName})` : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <Link
+                      to="/print"
+                      className="label-micro"
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
-                        marginTop: "10px",
-                        background: "var(--success-soft)",
-                        padding: "8px 14px",
-                        borderRadius: "var(--r-md)",
-                        color: "var(--success-deep)",
+                        gap: 4,
+                        color: "var(--brand-primary)",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      <FileCheck
-                        aria-hidden="true"
-                        style={{ width: 16, height: 16 }}
-                      />
-                      <span
-                        style={{ fontSize: "var(--t-small)", fontWeight: 600 }}
-                      >
-                        Attached: {uploadedArtworkName}
-                      </span>
-                    </div>
-                  )}
-
-                  {uploadError && (
-                    <p
-                      style={{
-                        color: "var(--danger)",
-                        fontSize: "var(--t-small)",
-                        marginTop: "8px",
-                      }}
-                    >
-                      {uploadError}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {artworkOption === "link" && (
-                <div style={{ marginTop: "12px" }}>
-                  <label htmlFor="artwork-link" className="label-micro">
-                    Paste Public Shareable Link
-                  </label>
-                  <input
-                    id="artwork-link"
-                    type="url"
-                    className="input"
-                    placeholder="https://drive.google.com/..."
-                    value={artworkLink}
-                    onChange={(e) => setArtworkLink(e.target.value)}
-                  />
-                  <span
-                    style={{
-                      fontSize: "var(--t-micro)",
-                      color: "var(--ink-subtle)",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    Make sure link permissions are set to “Anyone with the link
-                    can view”.
-                  </span>
-                </div>
-              )}
-            </div>
+                      <Pencil size={12} aria-hidden="true" />
+                      Edit
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Step 2: Contact Information */}
             <div className="checkout-step-card">
@@ -819,7 +689,7 @@ export default function Checkout() {
               type="submit"
               className="btn btn-primary btn-lg btn-block"
               style={{ marginTop: "20px" }}
-              disabled={submitting || uploading}
+              disabled={submitting}
             >
               {submitting ? (
                 <>
