@@ -273,22 +273,44 @@
   object-fit: cover;
 }
 
-.hero-visual-hex {
+/* A rubber-stamp mark, ink-rough and slightly askew, the way a production
+   floor stamps a proof sheet. A hand-made detail that isn't the ghost type. */
+.hero-visual-stamp {
   position: absolute;
-  left: 0;
-  bottom: 4%;
-  width: 46%;
-  aspect-ratio: 1;
-  clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  border: 4px solid var(--surface);
+  left: -4%;
+  bottom: 2%;
+  width: 132px;
+  height: 132px;
+  color: var(--brand-primary);
+  transform: rotate(-14deg);
+  filter: drop-shadow(0 6px 14px rgba(243, 132, 50, 0.25));
+  mix-blend-mode: multiply;
 }
 
-.hero-visual-hex img {
+.hero-visual-stamp svg {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  fill: none;
+  stroke: currentColor;
+}
+
+.hero-visual-stamp circle {
+  stroke-width: 2.5;
+  stroke-dasharray: 3 2.5;
+}
+
+.hero-visual-stamp text {
+  fill: currentColor;
+  stroke: none;
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.hero-visual-stamp .stamp-mark {
+  font-size: 26px;
+  letter-spacing: 0.02em;
 }
 
 .hero-visual-chip {
@@ -472,6 +494,496 @@
   .studio-promo-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- Home: shared section lede ------------------------------------ */
+
+.home-lede {
+  text-align: center;
+  max-width: 620px;
+  margin: 0 auto clamp(40px, 6vw, 64px);
+}
+
+.home-lede h2 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.home-lede p {
+  margin-top: var(--s3);
+  font-size: var(--t-body-lg);
+  color: var(--ink-muted);
+}
+
+/* --- Home: the proof ------------------------------------------------
+   What actually leaves the press: one real product photo, marked up
+   the way a proof sheet is before it goes to plate, crop marks, a
+   CMYK bar, measured callouts, and the same ink-stamp language as the
+   hero and the docket, so the page reads as one system, not a demo. */
+
+.proof-section {
+  padding: clamp(56px, 7vw, 96px) var(--gutter);
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.proof-sheet {
+  position: relative;
+  padding: 34px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.proof-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.proof-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.05);
+}
+
+/* Printer's crop marks at each corner */
+.proof-crop {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  z-index: 2;
+}
+
+.proof-crop::before,
+.proof-crop::after {
+  content: "";
+  position: absolute;
+  background: var(--ink);
+}
+
+.proof-crop::before { width: 100%; height: 1.5px; top: 50%; transform: translateY(-50%); }
+.proof-crop::after { height: 100%; width: 1.5px; left: 50%; transform: translateX(-50%); }
+
+.proof-crop.tl { top: -11px; left: -11px; }
+.proof-crop.tr { top: -11px; right: -11px; }
+.proof-crop.bl { bottom: -11px; left: -11px; }
+.proof-crop.br { bottom: -11px; right: -11px; }
+
+/* CMYK registration bar, the way a real plate proof carries one */
+.proof-colorbar {
+  display: flex;
+  margin-top: 14px;
+  height: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.proof-colorbar span { flex: 1; }
+.proof-colorbar span:nth-child(1) { background: #00aeef; }
+.proof-colorbar span:nth-child(2) { background: #ec008c; }
+.proof-colorbar span:nth-child(3) { background: #fff200; }
+.proof-colorbar span:nth-child(4) { background: #101010; }
+.proof-colorbar span:nth-child(5) { background: var(--line-2); }
+.proof-colorbar span:nth-child(6) { background: var(--ink-faint); }
+
+/* Measured dimension callout, technical drafting style */
+.proof-dimension {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-left: 2px;
+}
+
+.proof-dimension i {
+  flex: 1;
+  height: 1px;
+  background: var(--line-2);
+  position: relative;
+}
+
+.proof-dimension i::before,
+.proof-dimension i::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 1px;
+  height: 7px;
+  background: var(--line-2);
+}
+
+.proof-dimension i::before { left: 0; }
+.proof-dimension i::after { right: 0; }
+
+.proof-dimension span {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+/* The same rotated ink stamp used in the hero, this time "approved" */
+.proof-stamp {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 3;
+  width: 108px;
+  height: 108px;
+  color: var(--brand-primary);
+  transform: rotate(-10deg);
+  filter: drop-shadow(0 6px 14px rgba(243, 132, 50, 0.3));
+  mix-blend-mode: multiply;
+}
+
+.proof-stamp svg { width: 100%; height: 100%; fill: none; stroke: currentColor; }
+.proof-stamp circle { stroke-width: 2.5; stroke-dasharray: 3 2.5; }
+.proof-stamp text { fill: currentColor; stroke: none; font-family: var(--mono); font-weight: 800; }
+.proof-stamp .proof-stamp-mark { font-size: 15px; letter-spacing: 0.01em; }
+.proof-stamp .proof-stamp-arc { font-size: 7.5px; letter-spacing: 0.12em; }
+
+.proof-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.proof-caption-item dt {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.proof-caption-item dd {
+  margin-top: 3px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (max-width: 620px) {
+  .proof-sheet { padding: 20px; }
+  .proof-stamp { width: 84px; height: 84px; right: 12px; bottom: 12px; }
+}
+
+/* --- Home: the docket trail -----------------------------------------
+   A print shop's real paperwork: a job docket travels stage to stage,
+   each stub torn from the last, stamped, never floating in mid-air. */
+
+.docket-section {
+  position: relative;
+  padding: clamp(64px, 8vw, 104px) var(--gutter);
+  background: var(--surface-2);
+}
+
+.docket-trail {
+  max-width: 1040px;
+  margin: clamp(40px, 6vw, 64px) auto 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.docket {
+  position: relative;
+  width: 232px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  margin: 0 -1px 28px;
+}
+
+.docket::before,
+.docket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.docket::before { left: -8px; }
+.docket::after { right: -8px; }
+
+.docket-stub {
+  flex-shrink: 0;
+  width: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1.5px dashed var(--line-2);
+  padding: 14px 0;
+}
+
+.docket-stamp {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px dashed currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-primary);
+  transform: rotate(-14deg);
+  mix-blend-mode: multiply;
+}
+
+.docket-stamp span {
+  font-family: var(--mono);
+  font-weight: 900;
+  font-size: 0.56rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.docket-body {
+  flex: 1;
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.docket-eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.docket-body strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.docket-body span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  color: var(--ink-subtle);
+}
+
+.docket-connector {
+  align-self: center;
+  color: var(--line-2);
+  margin: 0 -2px 28px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .docket-connector { display: none; }
+  .docket-trail { flex-direction: column; align-items: center; }
+  .docket { margin-bottom: 16px; }
+}
+
+/* --- Home: the swatch fan -------------------------------------------
+   Every job the Studio prices, fanned out like the material sample
+   deck on the counter, not a grid of logo tiles. */
+
+.fan-section {
+  padding: clamp(64px, 8vw, 104px) var(--gutter) clamp(96px, 10vw, 140px);
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.fan {
+  position: relative;
+  height: 330px;
+  display: flex;
+  justify-content: center;
+  padding-top: 30px;
+}
+
+.fan-card {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 172px;
+  height: 254px;
+  margin-left: -86px;
+  transform-origin: 50% 100%;
+}
+
+.fan-card-link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgba(13, 18, 58, 0.08);
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--mid) var(--ease), box-shadow var(--mid) var(--ease);
+}
+
+.fan-card:hover .fan-card-link,
+.fan-card-link:focus-visible {
+  transform: translateY(-30px) scale(1.04);
+  box-shadow: var(--shadow-xl);
+}
+
+.fan-card:hover { z-index: 20 !important; }
+
+/* The colour block half, like a paint-chip or fabric swatch head */
+.fan-card-swatch {
+  position: relative;
+  flex: 0 0 58%;
+  display: flex;
+  align-items: flex-start;
+  padding: 14px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1.2px);
+  background-size: 9px 9px;
+}
+
+.fan-card-swatch::after {
+  /* punch hole, the way a sample deck hangs on a ring */
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 1px 2px rgba(13, 18, 58, 0.18);
+}
+
+.fan-card-code {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(13, 18, 58, 0.55);
+}
+
+.fan-card-info {
+  flex: 1;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-top: 1px solid var(--line);
+}
+
+.fan-card-info strong {
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.fan-card-info em {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+
+.fan-card-info span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.66rem;
+  color: var(--ink-subtle);
+}
+
+@media (max-width: 720px) {
+  .fan { display: none; }
+  .fan-list { display: flex !important; }
+}
+
+.fan-list {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.fan-list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* --- Home: scrolling capability marquee ---------------------------- */
+
+.marquee {
+  overflow: hidden;
+  border-top: 1px solid var(--brand-dark-border);
+  border-bottom: 1px solid var(--brand-dark-border);
+  background: var(--ink);
+  padding: 18px 0;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 48px;
+  animation: marquee-scroll 32s linear infinite;
+}
+
+.marquee-track span {
+  display: inline-flex;
+  align-items: center;
+  gap: 48px;
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-inverse-muted);
+  white-space: nowrap;
+}
+
+.marquee-track span i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
 }
 
 /* --- Category Bento Showcase ------------------------------------- */

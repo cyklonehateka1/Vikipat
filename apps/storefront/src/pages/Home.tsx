@@ -1,4 +1,6 @@
+import { Fragment } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { ArrowRight, MessageCircle, RefreshCw } from "lucide-react";
 import { Layout } from "../components/Layout";
 import { ProductCard } from "../components/ProductCard";
@@ -7,9 +9,19 @@ import { OUTCOMES } from "../outcomes";
 import { deptHref, whatsappLink } from "../lib/format";
 import { site } from "../site";
 import { useReveal, useTitle } from "../lib/useReveal";
+import { useMaterials } from "../lib/useMaterials";
+
+const SWATCH_TINTS = [
+  "var(--brand-primary)",
+  "var(--brand-blue)",
+  "var(--brand-green)",
+  "var(--brand-magenta)",
+  "var(--accent-amber)",
+];
 
 export default function Home() {
   const { products, departments, loading, error, retry } = useCatalog();
+  const { materials } = useMaterials();
   useTitle(`${site.fullName} | Commercial Printing & Custom Branding Platform`);
   useReveal([loading, departments.length]);
 
@@ -58,11 +70,6 @@ export default function Home() {
             </Link>
           </div>
 
-          <p className="hero-facts">
-            CMYK digital &amp; large-format UV printing · Free digital proof
-            before production · 1 to 3 day standard turnaround · Paystack and
-            Mobile Money accepted
-          </p>
         </div>
 
         <div className="hero-visual">
@@ -77,12 +84,25 @@ export default function Home() {
               loading="eager"
             />
           </div>
-          <div className="hero-visual-hex">
-            <img
-              src="https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=700&q=80"
-              alt="Large format banner in production"
-              loading="lazy"
-            />
+          <div className="hero-visual-stamp" aria-hidden="true">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" />
+              <path id="stamp-arc-top" d="M 12,60 A 48,48 0 0 1 108,60" fill="none" />
+              <path id="stamp-arc-bottom" d="M 12,60 A 48,48 0 0 0 108,60" fill="none" />
+              <text>
+                <textPath href="#stamp-arc-top" startOffset="50%" textAnchor="middle">
+                  ACCRA · GHANA
+                </textPath>
+              </text>
+              <text>
+                <textPath href="#stamp-arc-bottom" startOffset="50%" textAnchor="middle">
+                  PRODUCTION FLOOR
+                </textPath>
+              </text>
+              <text x="60" y="67" textAnchor="middle" className="stamp-mark">
+                VP
+              </text>
+            </svg>
           </div>
         </div>
       </section>
@@ -124,7 +144,215 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- 3. Category Bento Showcase --- */}
+      {/* --- Scrolling capability marquee --- */}
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {[0, 1].map((rep) => (
+            <span key={rep}>
+              {[
+                "Large Format Banners",
+                "Vinyl Stickers",
+                "Corporate Apparel",
+                "Rigid Board Signage",
+                "Vehicle Branding",
+                "Packaging & Labels",
+                "Event Backdrops",
+                "Embroidery",
+              ].map((item) => (
+                <span key={item}>
+                  <i /> {item}
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* --- The proof: what actually leaves the press --- */}
+      <section className="proof-section reveal">
+        <div className="home-lede">
+          <h2>What you approve is what prints.</h2>
+          <p>
+            Every job gets marked up like a real proof before it goes to
+            plate, so there is nothing between your approval and the piece
+            that comes off the press.
+          </p>
+        </div>
+
+        <motion.div
+          className="proof-sheet"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="proof-frame">
+            <span className="proof-crop tl" aria-hidden="true" />
+            <span className="proof-crop tr" aria-hidden="true" />
+            <span className="proof-crop bl" aria-hidden="true" />
+            <span className="proof-crop br" aria-hidden="true" />
+            <img
+              src="https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=1400&q=85"
+              alt="Custom printed apparel proof ready for production"
+              loading="lazy"
+            />
+            <div className="proof-stamp" aria-hidden="true">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" />
+                <path id="proof-arc-top" d="M 12,60 A 48,48 0 0 1 108,60" fill="none" />
+                <path id="proof-arc-bottom" d="M 12,60 A 48,48 0 0 0 108,60" fill="none" />
+                <text>
+                  <textPath href="#proof-arc-top" startOffset="50%" textAnchor="middle" className="proof-stamp-arc">
+                    APPROVED FOR
+                  </textPath>
+                </text>
+                <text>
+                  <textPath href="#proof-arc-bottom" startOffset="50%" textAnchor="middle" className="proof-stamp-arc">
+                    PRODUCTION
+                  </textPath>
+                </text>
+                <text x="60" y="67" textAnchor="middle" className="proof-stamp-mark">
+                  VIKIPAT
+                </text>
+              </svg>
+            </div>
+          </div>
+
+          <div className="proof-colorbar" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+
+          <div className="proof-dimension" aria-hidden="true">
+            <i />
+            <span>ADULT M · CHEST PRINT · 11IN × 14IN</span>
+            <i />
+          </div>
+
+          <dl className="proof-caption">
+            <div className="proof-caption-item">
+              <dt>Method</dt>
+              <dd>DTF Transfer</dd>
+            </div>
+            <div className="proof-caption-item">
+              <dt>Colour profile</dt>
+              <dd>CMYK, wash-durable</dd>
+            </div>
+            <div className="proof-caption-item">
+              <dt>Pre-flight</dt>
+              <dd>Passed</dd>
+            </div>
+            <div className="proof-caption-item">
+              <dt>Garment</dt>
+              <dd>180gsm cotton tee</dd>
+            </div>
+          </dl>
+        </motion.div>
+      </section>
+
+      {/* --- The docket trail: one job's paperwork, stage to stage --- */}
+      <section className="docket-section reveal">
+        <div className="home-lede">
+          <h2>One docket, stage to stage.</h2>
+          <p>
+            The same job record follows the order from quote to delivery.
+            Nothing is re-typed, re-quoted, or lost in a different system.
+          </p>
+        </div>
+
+        <div className="docket-trail">
+          {[
+            { stamp: "PAID", eyebrow: "Payment", title: "Paystack confirmed", detail: "MTN MoMo · GH₵83.00" },
+            { stamp: "OK'D", eyebrow: "Artwork", title: "Design approved", detail: "Pre-flight passed, CMYK" },
+            { stamp: "PRESS", eyebrow: "Production", title: "Job VP-8821", detail: "In production, East Legon" },
+            { stamp: "READY", eyebrow: "Delivery", title: "Ready for pickup", detail: "Mallam-Gbawe Road" },
+          ].map((job, index, arr) => (
+            <Fragment key={job.title}>
+              <motion.div
+                className="docket"
+                initial={{ opacity: 0, y: 20, rotate: index % 2 === 0 ? -2 : 2 }}
+                whileInView={{ opacity: 1, y: 0, rotate: index % 2 === 0 ? -2 : 2 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.45, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="docket-stub">
+                  <div className="docket-stamp">
+                    <span>{job.stamp}</span>
+                  </div>
+                </div>
+                <div className="docket-body">
+                  <span className="docket-eyebrow">{job.eyebrow}</span>
+                  <strong>{job.title}</strong>
+                  <span>{job.detail}</span>
+                </div>
+              </motion.div>
+              {index < arr.length - 1 && (
+                <ArrowRight className="docket-connector" size={18} aria-hidden="true" />
+              )}
+            </Fragment>
+          ))}
+        </div>
+      </section>
+
+      {/* --- The swatch fan: every job the Studio prices --- */}
+      <section className="fan-section reveal">
+        <div className="home-lede">
+          <h2>Five jobs. One sample deck.</h2>
+          <p>Every outcome the Print Studio configures, fanned out like the material deck on the counter.</p>
+        </div>
+
+        <div className="fan">
+          {OUTCOMES.map((outcome, index) => {
+            const mid = (OUTCOMES.length - 1) / 2;
+            const angle = (index - mid) * 13;
+            const tint = SWATCH_TINTS[index % SWATCH_TINTS.length];
+            const material =
+              materials.find((m) => m.outcomes.includes(outcome.slug) && m.badge) ||
+              materials.find((m) => m.outcomes.includes(outcome.slug));
+            return (
+              <motion.div
+                key={outcome.slug}
+                className="fan-card"
+                initial={{ opacity: 0, y: 30, rotate: 0 }}
+                whileInView={{ opacity: 1, y: 0, rotate: angle }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                style={{ zIndex: 10 - Math.abs(index - mid) }}
+              >
+                <Link to={`/print?need=${outcome.slug}`} className="fan-card-link">
+                  <div className="fan-card-swatch" style={{ background: tint }}>
+                    <span className="fan-card-code" style={{ color: "rgba(255,255,255,0.75)" }}>
+                      NO.{String(index + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <div className="fan-card-info">
+                    <strong>{outcome.label}</strong>
+                    {material && <em>{material.name}</em>}
+                    <span>
+                      {material ? `from GH₵${(material.ratePesewasPerSqFt / 100).toFixed(2)}/sq ft` : outcome.presets[0].label}
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <nav className="fan-list" aria-label="Every outcome the Print Studio configures">
+          {OUTCOMES.map((outcome) => (
+            <Link key={outcome.slug} to={`/print?need=${outcome.slug}`}>
+              <span>{outcome.label}</span>
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          ))}
+        </nav>
+      </section>
+
+      {/* --- Category Bento Showcase --- */}
       <section className="categories-section reveal">
         <div className="categories-header">
           <p>What We Produce</p>
