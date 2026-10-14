@@ -17,8 +17,7 @@ export function computePay(employee:Employee, days:number, minutes:number, overt
     for(let d=new Date(begin);d<=stop;d.setUTCDate(d.getUTCDate()+1)){const daysInMonth=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();base+=employee.payRatePesewas/daysInMonth;}
   }else base=employee.payType==='daily'?employee.payRatePesewas*days:minutes/60*hourly;
   const overtime=overtimeMinutes/60*hourly*(employee.payType==='hourly'?policy.overtimeMultiplier-1:policy.overtimeMultiplier);
-  // Pay is always a whole number of cedis.
-  return {basePesewas:Math.round(base/100)*100,overtimePesewas:Math.round(overtime/100)*100};
+  return {basePesewas:Math.round(base),overtimePesewas:Math.round(overtime)};
 }
 @Injectable()
 export class PeopleService {

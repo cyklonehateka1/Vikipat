@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min, IsDivisibleBy } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
 import { Request } from 'express';
 import { AuditLog, BusinessPolicy, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatusHistory, PaymentTransaction, ProductionJob, ProductionJobActivity, QuoteRequest } from './entities';
 import { lockedFindOne } from './db';
@@ -25,7 +25,7 @@ export class PolicyDto {
 }
 export class RecordPaymentDto {
   @IsUUID() requestKey!: string;
-  @IsInt() @IsDivisibleBy(100,{message:'$property must be a whole number of cedis'}) @Min(100) @Max(100000000) amountPesewas!: number;
+  @IsInt() @Min(1) @Max(100000000) amountPesewas!: number;
   @IsIn(['cash','momo','bank_transfer']) method!: 'cash'|'momo'|'bank_transfer';
   @IsString() @Length(1,150) externalReference!: string;
   @IsISO8601({strict:true}) occurredAt!: string;

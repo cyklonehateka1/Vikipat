@@ -55,18 +55,14 @@ export class PricingAdminService implements OnApplicationBootstrap {
   }
 
   /**
-   * Every amount is a whole cedi. Older data could hold part-cedi product
-   * prices, part-cedi design minimums or the removed "exact pesewa" rounding;
-   * bring it in line. Safe to run on every start: it only touches rows that
-   * are still out of line.
+   * Print job totals are whole cedis, so the removed "exact pesewa" rounding
+   * falls back to the nearest cedi. Safe to run on every start: it only
+   * touches rows that are still out of line.
    */
   private async normaliseToWholeCedis() {
     const run = (sql: string) => this.dataSource.query(sql);
     await run(`UPDATE "service_price_rules" SET "roundingMode" = 'nearest_cedi' WHERE "roundingMode" NOT IN ('nearest_cedi', 'up_to_cedi')`);
     await run(`UPDATE "pricing_rule_drafts" SET "roundingMode" = 'nearest_cedi' WHERE "roundingMode" NOT IN ('nearest_cedi', 'up_to_cedi')`);
-    await run(`UPDATE "service_price_rules" SET "designMinimumPesewas" = CAST(ROUND("designMinimumPesewas" / 100.0) AS INTEGER) * 100 WHERE "designMinimumPesewas" % 100 <> 0`);
-    await run(`UPDATE "pricing_rule_drafts" SET "designMinimumPesewas" = CAST(ROUND("designMinimumPesewas" / 100.0) AS INTEGER) * 100 WHERE "designMinimumPesewas" % 100 <> 0`);
-    await run(`UPDATE "products" SET "price" = CAST(ROUND("price") AS INTEGER) WHERE "price" <> ROUND("price")`);
   }
 
   /**
