@@ -13,6 +13,7 @@ import { PaymentService } from './payment.service';
 import { CustomerService } from './customer.service';
 import { hasPermission, priceBookForSource, type OrderSource, type PriceBookCode } from '@vikipat/domain';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
+import { matchesFixedSize, parseFixedSizes } from './material-sizes';
 
 const RATE_SEED=[
   ['sav-sticker','SAV / Sticker',210,220,240],['flexy-banner','Flexy / Banner',230,240,260],['oneway-vision','Oneway Vision',590,605,630],
@@ -30,6 +31,8 @@ export class OrderService implements OnApplicationBootstrap {
   listRules(){return this.rules.find({where:{active:true},order:{name:'ASC'}})}
   async estimate(dto:LargeFormatEstimateDto,context:{priceBook:PriceBookCode;allowConfirmedDesignFee:boolean}={priceBook:'online',allowConfirmedDesignFee:false}){
     const rule=await this.rules.findOneBy({code:dto.serviceCode,active:true}); if(!rule)throw new NotFoundException('Service is unavailable');
+    // Materials sold in set sizes only accept one of their listed sizes.
+    if(rule.allowCustomSize===false){const sizes=parseFixedSizes(rule.fixedSizes);if(!matchesFixedSize(sizes,dto.width,dto.height,dto.unit))throw new BadRequestException(`${rule.name} only comes in these sizes: ${sizes.map(s=>`${s.label} (${s.width} × ${s.height} ${s.unit})`).join(', ')}.`);}
     const quote=calculateLargeFormat({
       serviceCode:rule.code,
       serviceName:rule.name,

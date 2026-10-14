@@ -18,7 +18,7 @@ export interface CanonicalMaterialSeed {
   walkInRatePesewas: number;
   onlineRatePesewas: number;
   designMinimumPesewas: number;
-  roundingMode: 'nearest_cedi' | 'up_to_cedi' | 'exact_pesewa';
+  roundingMode: 'nearest_cedi' | 'up_to_cedi';
   active: boolean;
   description: string;
   typicalUses: string;

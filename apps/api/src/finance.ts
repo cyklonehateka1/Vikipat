@@ -1,4 +1,6 @@
 import { Order, PaymentTransaction } from './entities';
+/** An amount for people to read: whole cedis, e.g. "GHS 1,250". */
+export const ghs = (pesewas: number) => `GHS ${Math.round(pesewas / 100).toLocaleString('en-GH')}`;
 export const successfulPayment = (p: PaymentTransaction) => ['paid', 'refunded'].includes(p.status);
 export function collectedFor(order: Order, payments: PaymentTransaction[]) {
   return payments.filter(p => p.orderId === order.id && successfulPayment(p)).reduce((s,p) => s+p.amountPesewas,0);

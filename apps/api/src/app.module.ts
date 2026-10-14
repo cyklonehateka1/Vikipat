@@ -1,5 +1,7 @@
 import { CommerceIntegrity1720000010000 } from './migrations/1720000010000-CommerceIntegrity';
 import { CustomerPhoneIdentity1720000011000 } from './migrations/1720000011000-CustomerPhoneIdentity';
+import { MaterialSizeLimits1720000012000 } from './migrations/1720000012000-MaterialSizeLimits';
+import { WholeCediAmounts1720000013000 } from './migrations/1720000013000-WholeCediAmounts';
 import { CommerceController, CommerceService } from './commerce.service';
 import { UniqueProductionOrderItem1720000005000 } from './migrations/1720000005000-UniqueProductionOrderItem';
 import { MultiItemOrders1720000006000 } from './migrations/1720000006000-MultiItemOrders';
@@ -58,7 +60,7 @@ const database = process.env.DATABASE_DRIVER === 'sqlite'
       ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: true } : false,
       entities,
       synchronize: false,
-      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000, PricingRuleCopyFields1720000008000, CustomersPeopleAndRefunds1720000009000, CommerceIntegrity1720000010000, CustomerPhoneIdentity1720000011000],
+      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000, PricingRuleCopyFields1720000008000, CustomersPeopleAndRefunds1720000009000, CommerceIntegrity1720000010000, CustomerPhoneIdentity1720000011000, MaterialSizeLimits1720000012000, WholeCediAmounts1720000013000],
       migrationsRun: true,
     };
 

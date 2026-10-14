@@ -5,6 +5,7 @@ import { calculateLargeFormat } from '@vikipat/pricing-engine';
 import { SavePricingDraftDto, TestPricingDraftDto, UpdatePricingCopyDto } from './dto';
 import { AuditLog, PricingRuleDraft, ServicePriceRule, ServicePriceRuleVersion } from './entities';
 import { CANONICAL_MATERIALS } from './pricing-material-seed';
+import { PHOTOPAPER_SIZES, parseFixedSizes } from './material-sizes';
 
 @Injectable()
 export class PricingAdminService implements OnApplicationBootstrap {
@@ -17,6 +18,8 @@ export class PricingAdminService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     await this.seedCanonicalMaterials();
+    await this.seedSizeLimitExample();
+    await this.normaliseToWholeCedis();
     const rules = await this.rules.find();
     for (const rule of rules) {
       if (!await this.versions.existsBy({ ruleId: rule.id, version: rule.version })) {
@@ -51,6 +54,36 @@ export class PricingAdminService implements OnApplicationBootstrap {
     }
   }
 
+  /**
+   * Every amount is a whole cedi. Older data could hold part-cedi product
+   * prices, part-cedi design minimums or the removed "exact pesewa" rounding;
+   * bring it in line. Safe to run on every start: it only touches rows that
+   * are still out of line.
+   */
+  private async normaliseToWholeCedis() {
+    const run = (sql: string) => this.dataSource.query(sql);
+    await run(`UPDATE "service_price_rules" SET "roundingMode" = 'nearest_cedi' WHERE "roundingMode" NOT IN ('nearest_cedi', 'up_to_cedi')`);
+    await run(`UPDATE "pricing_rule_drafts" SET "roundingMode" = 'nearest_cedi' WHERE "roundingMode" NOT IN ('nearest_cedi', 'up_to_cedi')`);
+    await run(`UPDATE "service_price_rules" SET "designMinimumPesewas" = CAST(ROUND("designMinimumPesewas" / 100.0) AS INTEGER) * 100 WHERE "designMinimumPesewas" % 100 <> 0`);
+    await run(`UPDATE "pricing_rule_drafts" SET "designMinimumPesewas" = CAST(ROUND("designMinimumPesewas" / 100.0) AS INTEGER) * 100 WHERE "designMinimumPesewas" % 100 <> 0`);
+    await run(`UPDATE "products" SET "price" = CAST(ROUND("price") AS INTEGER) WHERE "price" <> ROUND("price")`);
+  }
+
+  /**
+   * Example data, applied once per database: photo paper is limited to A4–A1.
+   * An audit entry marks it done, so an admin who later changes or clears
+   * these sizes is never overridden on the next restart.
+   */
+  private async seedSizeLimitExample() {
+    const audit = this.dataSource.getRepository(AuditLog);
+    if (await audit.existsBy({ action: 'seed_size_limits', entity: 'pricing_rule' })) return;
+    const photopaper = await this.rules.findOneBy({ code: 'photopaper' });
+    if (photopaper && !parseFixedSizes(photopaper.fixedSizes).length) {
+      await this.rules.save(Object.assign(photopaper, { allowCustomSize: false, fixedSizes: JSON.stringify(PHOTOPAPER_SIZES) }));
+    }
+    await audit.save({ action: 'seed_size_limits', entity: 'pricing_rule', entityId: photopaper?.id ?? '', actorEmail: 'system:seed', details: JSON.stringify({ code: 'photopaper' }) });
+  }
+
   /** Public, customer-facing material list: active rules only, no internal price books. */
   async publicMaterials() {
     const rules = await this.rules.find({ where: { active: true }, order: { sortOrder: 'ASC', name: 'ASC' } });
@@ -65,12 +98,19 @@ export class PricingAdminService implements OnApplicationBootstrap {
       imageUrl: rule.imageUrl || undefined,
       ratePesewasPerSqFt: rule.onlineRatePesewas,
       designMinimumPesewas: rule.designMinimumPesewas,
+      allowCustomSize: rule.allowCustomSize !== false,
+      fixedSizes: parseFixedSizes(rule.fixedSizes),
     }));
   }
 
   async updateCopy(id: string, dto: UpdatePricingCopyDto, actor: string) {
     const rule = await this.rule(id);
-    Object.assign(rule, dto);
+    const { fixedSizes, ...copy } = dto;
+    Object.assign(rule, copy);
+    if (fixedSizes) rule.fixedSizes = JSON.stringify(fixedSizes.map(({ label, width, height, unit }) => ({ label: label.trim(), width, height, unit })));
+    if (rule.allowCustomSize === false && !parseFixedSizes(rule.fixedSizes).length) {
+      throw new BadRequestException('Add at least one size before turning off custom sizes.');
+    }
     const saved = await this.rules.save(rule);
     await this.audit(actor, 'update_copy', 'pricing_rule', id, dto);
     return saved;
@@ -80,7 +120,7 @@ export class PricingAdminService implements OnApplicationBootstrap {
     const rules = await this.rules.find({ order: { name: 'ASC' } });
     const openDrafts = await this.drafts.find({ where: { status: 'draft' } });
     const byRule = new Map(openDrafts.map((draft) => [draft.ruleId, draft]));
-    return rules.map((rule) => ({ ...rule, draft: byRule.get(rule.id) ?? null }));
+    return rules.map((rule) => ({ ...rule, fixedSizes: parseFixedSizes(rule.fixedSizes), draft: byRule.get(rule.id) ?? null }));
   }
 
   async history(ruleId: string) {
@@ -157,7 +197,7 @@ export class PricingAdminService implements OnApplicationBootstrap {
       serviceCode: source.code, serviceName: source.name, version,
       ratesPesewasPerSqFt: { online: source.onlineRatePesewas, walk_in: source.walkInRatePesewas, marketer: source.marketerRatePesewas, employee: source.employeeRatePesewas },
       designMinimumPesewas: source.designMinimumPesewas,
-      roundingMode: source.roundingMode as 'nearest_cedi'|'up_to_cedi'|'exact_pesewa', roundingStage: 'line' as const,
+      roundingMode: source.roundingMode as 'nearest_cedi'|'up_to_cedi', roundingStage: 'line' as const,
     };
   }
 

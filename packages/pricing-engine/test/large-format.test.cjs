@@ -56,7 +56,7 @@ test('rejects invalid quantities and design fees below the minimum', () => {
     width: 3, height: 3, unit: 'ft', quantity: 0, priceBook: 'online', needsDesign: false,
   }), /Quantity/);
   assert.throws(() => calculateLargeFormat(rule(), {
-    width: 3, height: 3, unit: 'ft', quantity: 1, priceBook: 'online', needsDesign: true, confirmedDesignFeePesewas: 9999,
+    width: 3, height: 3, unit: 'ft', quantity: 1, priceBook: 'online', needsDesign: true, confirmedDesignFeePesewas: 9900,
   }), /minimum/);
 });
 
@@ -67,4 +67,24 @@ test('generates stable fingerprints and changes them when pricing inputs change'
   const changed = calculateLargeFormat(rule({ version: 2 }), input);
   assert.equal(first.fingerprint, second.fingerprint);
   assert.notEqual(first.fingerprint, changed.fingerprint);
+});
+
+test('every total is a whole number of cedis', () => {
+  for (const [width, height, unit, quantity] of [[3, 3, 'ft', 1], [3.5, 2, 'in', 100], [7.3, 2.9, 'ft', 3], [1, 1, 'in', 1]]) {
+    for (const roundingMode of ['nearest_cedi', 'up_to_cedi']) {
+      const result = calculateLargeFormat(rule({ roundingMode }), { width, height, unit, quantity, priceBook: 'online', needsDesign: true });
+      for (const amount of [result.basePesewas, result.designFeePesewas, result.totalPesewas]) {
+        assert.equal(amount % 100, 0, `${amount} pesewas is not a whole cedi`);
+      }
+    }
+  }
+});
+
+test('rejects part-cedi design fees and pesewa rounding', () => {
+  assert.throws(() => calculateLargeFormat(rule(), {
+    width: 3, height: 3, unit: 'ft', quantity: 1, priceBook: 'walk_in', needsDesign: true, confirmedDesignFeePesewas: 17550,
+  }), /whole number of cedis/);
+  assert.throws(() => calculateLargeFormat(rule({ roundingMode: 'exact_pesewa' }), {
+    width: 3, height: 3, unit: 'ft', quantity: 1, priceBook: 'online', needsDesign: false,
+  }), /whole cedi/);
 });

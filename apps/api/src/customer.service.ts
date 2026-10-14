@@ -187,7 +187,7 @@ export class CustomerService {
       // Cash actually received less refunds, matching the analytics basis, so
       // an unpaid order never inflates someone's apparent value.
       lifetimeValuePesewas: collected,
-      averageOrderPesewas: customer.orderCount ? Math.round(collected / customer.orderCount) : 0,
+      averageOrderPesewas: customer.orderCount ? Math.round(collected / customer.orderCount / 100) * 100 : 0,
       firstOrderAt: customer.firstOrderAt,
       lastOrderAt: customer.lastOrderAt,
     };

@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { DimensionUnit, EstimateDisposition, PriceBookCode } from '@vikipat/domain';
 
-export type RoundingMode = 'nearest_cedi' | 'up_to_cedi' | 'exact_pesewa';
+/** Every amount a customer pays is a whole cedi, so totals always round to one. */
+export type RoundingMode = 'nearest_cedi' | 'up_to_cedi';
 export type RoundingStage = 'line';
 
 export interface AreaRateBook {
@@ -57,11 +58,10 @@ export interface LargeFormatEstimate {
 
 const normalizeNumber = (value: number): number => Number(value.toFixed(6));
 
-const roundMoney = (rawPesewas: number, mode: RoundingMode): number => {
-  if (mode === 'nearest_cedi') return Math.round(rawPesewas / 100) * 100;
-  if (mode === 'up_to_cedi') return Math.ceil(rawPesewas / 100) * 100;
-  return Math.round(rawPesewas);
-};
+const roundMoney = (rawPesewas: number, mode: RoundingMode): number =>
+  mode === 'up_to_cedi' ? Math.ceil(rawPesewas / 100) * 100 : Math.round(rawPesewas / 100) * 100;
+
+const isWholeCedis = (pesewas: number) => Number.isSafeInteger(pesewas) && pesewas % 100 === 0;
 
 const validate = (rule: LargeFormatRule, input: LargeFormatInput): void => {
   if (!rule.serviceCode || !rule.serviceName) throw new RangeError('A service code and name are required');
@@ -71,8 +71,12 @@ const validate = (rule: LargeFormatRule, input: LargeFormatInput): void => {
   if (!Number.isSafeInteger(input.quantity) || input.quantity < 1) throw new RangeError('Quantity must be a positive integer');
   const rate = rule.ratesPesewasPerSqFt[input.priceBook];
   if (!Number.isSafeInteger(rate) || rate < 0) throw new RangeError('Rate must be a non-negative integer number of pesewas');
-  if (!Number.isSafeInteger(rule.designMinimumPesewas) || rule.designMinimumPesewas < 0) throw new RangeError('Design minimum must be non-negative pesewas');
-  if (input.confirmedDesignFeePesewas !== undefined && (!Number.isSafeInteger(input.confirmedDesignFeePesewas) || input.confirmedDesignFeePesewas < rule.designMinimumPesewas)) {
+  if (!isWholeCedis(rule.designMinimumPesewas) || rule.designMinimumPesewas < 0) throw new RangeError('Design minimum must be a whole number of cedis');
+  if (rule.roundingMode !== 'nearest_cedi' && rule.roundingMode !== 'up_to_cedi') throw new RangeError('Rounding must be to a whole cedi');
+  if (input.confirmedDesignFeePesewas !== undefined && !isWholeCedis(input.confirmedDesignFeePesewas)) {
+    throw new RangeError('Design fee must be a whole number of cedis');
+  }
+  if (input.confirmedDesignFeePesewas !== undefined && input.confirmedDesignFeePesewas < rule.designMinimumPesewas) {
     throw new RangeError('Confirmed design fee cannot be below the configured minimum');
   }
 };

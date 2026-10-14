@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 @Entity('users') export class User { @PrimaryGeneratedColumn('uuid') id!:string; @Column({unique:true}) email!:string; @Column() passwordHash!:string; @Column({default:true}) mustChangePassword!:boolean; @Column({default:'Admin'}) name!:string; @Column({default:'admin'}) role!:string; @Column({default:0}) tokenVersion!:number; @Column({default:true}) isActive!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
-@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('real') price!:number; @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
+@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('integer') price!:number; /* whole cedis */ @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('stock_activity') export class StockActivity { @PrimaryGeneratedColumn('uuid') id!:string; @Column() productId!:string; @Column() productName!:string; @Column('integer') previousStock!:number; @Column('integer') newStock!:number; @Column() reason!:string; @Column() actorEmail!:string; @CreateDateColumn() createdAt!:Date; }
 @Entity('store_settings') export class StoreSettings { @PrimaryGeneratedColumn('uuid') id!:string; @Column({default:'Vikipat'}) businessName!:string; @Column({default:'024 236 6523'}) phone!:string; @Column({default:'Mallam–Gbawe Road, opposite Zen Filling Station, Accra'}) location!:string; @Column({default:'GHS'}) currency!:string; @Column({default:'Printing press and branding solutions for businesses, events and everyday people.'}) description!:string; @Column({default:false}) whatsappNotificationsEnabled!:boolean; @Column({default:'233555110844'}) whatsappBusinessNumber!:string; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('audit_log') export class AuditLog { @PrimaryGeneratedColumn('uuid') id!:string; @Column() action!:string; @Column() entity!:string; @Column({default:''}) entityId!:string; @Column() actorEmail!:string; @Column({type:'text',default:'{}'}) details!:string; @CreateDateColumn() createdAt!:Date; }
@@ -23,7 +23,7 @@ export class ServicePriceRule {
   @Column('integer') onlineRatePesewas!: number;
   @Column('integer',{ default: 1 }) version!: number;
   @Column('integer',{ default: 10000 }) designMinimumPesewas!: number;
-  @Column({ default: 'nearest_cedi' }) roundingMode!: 'nearest_cedi'|'up_to_cedi'|'exact_pesewa';
+  @Column({ default: 'nearest_cedi' }) roundingMode!: 'nearest_cedi'|'up_to_cedi';
   @Column({ default: true }) active!: boolean;
   @Column({ default: 'finish' }) category!: 'banner'|'sticker'|'board'|'fabric'|'finish';
   @Column({ type: 'text', default: '' }) description!: string;
@@ -32,6 +32,9 @@ export class ServicePriceRule {
   @Column({ type: 'text', default: '' }) outcomes!: string; // comma-separated outcome slugs, e.g. "shop-signage,events"
   @Column({ default: '' }) imageUrl!: string;
   @Column('integer', { default: 0 }) sortOrder!: number;
+  /** Off for materials sold in set sizes only; then `fixedSizes` lists them. */
+  @Column({ default: true }) allowCustomSize!: boolean;
+  @Column({ type: 'text', default: '' }) fixedSizes!: string; // JSON MaterialSize[], see material-sizes.ts
   @UpdateDateColumn() updatedAt!: Date;
 }
 

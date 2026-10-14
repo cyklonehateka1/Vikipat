@@ -1,10 +1,10 @@
 import { BadRequestException, Body, Controller, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min, IsDivisibleBy } from 'class-validator';
 import { Request } from 'express';
 import { AuditLog, BusinessPolicy, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatusHistory, PaymentTransaction, ProductionJob, ProductionJobActivity, QuoteRequest } from './entities';
 import { lockedFindOne } from './db';
-import { balances, collectedFor, paymentState } from './finance';
+import { balances, collectedFor, paymentState, ghs } from './finance';
 import { NotificationService } from './notification.service';
 import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 
@@ -25,7 +25,7 @@ export class PolicyDto {
 }
 export class RecordPaymentDto {
   @IsUUID() requestKey!: string;
-  @IsInt() @Min(1) @Max(100000000) amountPesewas!: number;
+  @IsInt() @IsDivisibleBy(100,{message:'$property must be a whole number of cedis'}) @Min(100) @Max(100000000) amountPesewas!: number;
   @IsIn(['cash','momo','bank_transfer']) method!: 'cash'|'momo'|'bank_transfer';
   @IsString() @Length(1,150) externalReference!: string;
   @IsISO8601({strict:true}) occurredAt!: string;
@@ -71,8 +71,8 @@ export class CommerceService {
       if(order.paymentStatus==='paid'&&order.status==='awaiting_payment')order.status='paid';
       await m.getRepository(Order).save(order);
       await m.getRepository(AuditLog).save({actorEmail:actor,action:'payment_recorded',entity:'order',entityId:id,details:JSON.stringify(dto)});
-      await m.getRepository(OrderStatusHistory).save({orderId:id,status:order.status,actor,customerVisible:true,note:`Payment of GHS ${(dto.amountPesewas/100).toFixed(2)} received via ${dto.method}.`});
-      if(order.customerEmail)await m.getRepository(NotificationOutbox).save({orderId:id,channel:'email',recipient:order.customerEmail,template:'payment_received',payload:JSON.stringify({subject:`Receipt · ${order.orderNumber}`,text:`Hello ${order.customerName},\n\nWe received GHS ${(dto.amountPesewas/100).toFixed(2)} by ${dto.method}. Reference: ${dto.externalReference}.\nBalance: GHS ${((order.totalPesewas-collected-dto.amountPesewas)/100).toFixed(2)}.`})});
+      await m.getRepository(OrderStatusHistory).save({orderId:id,status:order.status,actor,customerVisible:true,note:`Payment of ${ghs(dto.amountPesewas)} received via ${dto.method}.`});
+      if(order.customerEmail)await m.getRepository(NotificationOutbox).save({orderId:id,channel:'email',recipient:order.customerEmail,template:'payment_received',payload:JSON.stringify({subject:`Receipt · ${order.orderNumber}`,text:`Hello ${order.customerName},\n\nWe received ${ghs(dto.amountPesewas)} by ${dto.method}. Reference: ${dto.externalReference}.\nBalance: ${ghs((order.totalPesewas-collected-dto.amountPesewas))}.`})});
       return payment;
     });
   }
@@ -96,8 +96,8 @@ export class CommerceService {
       }
       await m.getRepository(Order).save(order);
       await m.getRepository(AuditLog).save({actorEmail:actor,action:'external_refund_recorded',entity:'order',entityId:id,details:JSON.stringify(dto)});
-      await m.getRepository(OrderStatusHistory).save({orderId:id,status:order.status,actor,customerVisible:true,note:`Refund of GHS ${(dto.amountPesewas/100).toFixed(2)} recorded. ${dto.reason}`});
-      if(order.customerEmail)await m.getRepository(NotificationOutbox).save({orderId:id,channel:'email',recipient:order.customerEmail,template:'order_refunded',payload:JSON.stringify({subject:`Refund recorded · ${order.orderNumber}`,text:`Hello ${order.customerName},\n\nOur administrator recorded an external refund of GHS ${(dto.amountPesewas/100).toFixed(2)} via ${dto.method} on ${occurredAt.toISOString().slice(0,10)}. Reference: ${dto.externalReference}.\n\n${dto.reason}\n\nTotal refunded: GHS ${(order.refundedPesewas/100).toFixed(2)}.`})});
+      await m.getRepository(OrderStatusHistory).save({orderId:id,status:order.status,actor,customerVisible:true,note:`Refund of ${ghs(dto.amountPesewas)} recorded. ${dto.reason}`});
+      if(order.customerEmail)await m.getRepository(NotificationOutbox).save({orderId:id,channel:'email',recipient:order.customerEmail,template:'order_refunded',payload:JSON.stringify({subject:`Refund recorded · ${order.orderNumber}`,text:`Hello ${order.customerName},\n\nOur administrator recorded an external refund of ${ghs(dto.amountPesewas)} via ${dto.method} on ${occurredAt.toISOString().slice(0,10)}. Reference: ${dto.externalReference}.\n\n${dto.reason}\n\nTotal refunded: ${ghs(order.refundedPesewas)}.`})});
       return refund;
     });
   }

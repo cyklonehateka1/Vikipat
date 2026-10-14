@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, IsDivisibleBy } from 'class-validator';
 
 const PAY_TYPES = ['monthly', 'daily', 'hourly'] as const;
 const EMPLOYMENT_STATUSES = ['active', 'suspended', 'terminated'] as const;
@@ -15,7 +15,7 @@ export class CreateEmployeeDto {
   @IsOptional() @IsString() @Length(0, 80) jobTitle?: string;
   @IsOptional() @IsIn(DEPARTMENTS) department?: string;
   @IsIn(PAY_TYPES) payType!: 'monthly' | 'daily' | 'hourly';
-  @IsInt() @Min(0) @Max(100_000_000) payRatePesewas!: number;
+  @IsInt() @Min(0) @Max(100_000_000) @IsDivisibleBy(100, { message: '$property must be a whole number of cedis' }) payRatePesewas!: number;
   @IsOptional() @IsString() @Length(0, 80) bankName?: string;
   @IsOptional() @IsString() @Length(0, 40) bankAccount?: string;
   @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{0,24}$/) momoNumber?: string;
@@ -33,7 +33,7 @@ export class UpdateEmployeeDto {
   @IsOptional() @IsIn(DEPARTMENTS) department?: string;
   @IsOptional() @IsIn(EMPLOYMENT_STATUSES) employmentStatus?: 'active' | 'suspended' | 'terminated';
   @IsOptional() @IsIn(PAY_TYPES) payType?: 'monthly' | 'daily' | 'hourly';
-  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) payRatePesewas?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) @IsDivisibleBy(100, { message: '$property must be a whole number of cedis' }) payRatePesewas?: number;
   @IsOptional() @IsString() @Length(0, 80) bankName?: string;
   @IsOptional() @IsString() @Length(0, 40) bankAccount?: string;
   @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{0,24}$/) momoNumber?: string;
@@ -66,8 +66,8 @@ export class CreatePayrollRunDto {
 }
 
 export class UpdatePayslipDto {
-  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) bonusPesewas?: number;
-  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) deductionsPesewas?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) @IsDivisibleBy(100, { message: '$property must be a whole number of cedis' }) bonusPesewas?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(100_000_000) @IsDivisibleBy(100, { message: '$property must be a whole number of cedis' }) deductionsPesewas?: number;
   @IsOptional() @IsString() @Length(0, 300) note?: string;
 }
 
@@ -77,6 +77,6 @@ export class UpdatePayrollStatusDto {
 
 /** Admins settle refunds outside the app; this records what they did. */
 export class RefundOrderDto {
-  @IsInt() @Min(1) @Max(100_000_000) amountPesewas!: number;
+  @IsInt() @Min(100) @Max(100_000_000) @IsDivisibleBy(100, { message: '$property must be a whole number of cedis' }) amountPesewas!: number;
   @IsString() @Length(3, 300) reason!: string;
 }
