@@ -1,8 +1,5 @@
 @import './tokens.css';
 @import './base.css';
-@import './controls.css';
-@import './chrome.css';
-@import './product.css';
-@import './pages.css';
-@import './vikipat.css';
-@import './track-order.css';
+@import './motion.css';
+@import './components.css';
+@import './shell.css';

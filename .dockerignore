@@ -9,3 +9,4 @@ node_modules
 apps/api/data
 apps/api/uploads
 npm-debug.log*
+backups

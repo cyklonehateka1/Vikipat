@@ -1,199 +1,228 @@
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
-import { Layout, PageHead } from '../components/Layout';
-import { ProductGrid, NoResults } from '../components/ProductGrid';
-import { Crumbs } from '../components/Primitives';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Search as SearchIcon, SlidersHorizontal, X } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { NoResults, ProductGrid, StatusPanel } from '../components/ProductGrid';
+import { Sheet } from '../components/Sheet';
 import { matches, useCatalog } from '../catalog';
-import { isSort, sortProducts, sorts } from '../lib/sorting';
-import { pad } from '../lib/format';
+import { isSort, Sort, sortProducts, sorts } from '../lib/sorting';
+import { useTitle } from '../lib/useTitle';
 import { site } from '../site';
-import { useReveal, useTitle } from '../lib/useReveal';
+import '../styles/pages/shop.css';
 
-const ALL = 'all';
-
+/**
+ * One screen for the whole shop. It serves /shop, /department/:slug and
+ * /search, so every older link still lands somewhere sensible.
+ */
 export default function Shop() {
-  const { departments, products, loading } = useCatalog();
+  const { slug } = useParams();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { products, departments, loading, error } = useCatalog();
+  const [sortOpen, setSortOpen] = useState(false);
+  // Sheet choices are a draft until the sheet closes (see Sheet's afterClose).
+  const [draftSort, setDraftSort] = useState<Sort>('featured');
+  const [draftStock, setDraftStock] = useState(false);
 
-  const dept = params.get('dept') ?? ALL;
+  const deptSlug = slug ?? params.get('dept') ?? '';
   const query = params.get('q') ?? '';
-  const availability = params.get('stock') ?? 'any';
+  const inStockOnly = params.get('stock') === 'in';
   const sortParam = params.get('sort');
-  const sort = isSort(sortParam) ? sortParam : 'featured';
+  const sort: Sort = isSort(sortParam) ? sortParam : 'featured';
+  const [draft, setDraft] = useState(query);
 
-  useTitle(`All Products & Services | ${site.fullName}`);
+  useEffect(() => setDraft(query), [query]);
+
+  const department = departments.find((item) => item.slug === deptSlug);
+  const unknownDepartment = Boolean(deptSlug) && !loading && !error && !department;
 
   const visible = useMemo(() => {
-    const matched = products.filter((product) => {
-      const inDept = dept === ALL || product.departmentSlug === dept;
-      const stocked = availability === 'any' || product.availability !== 'out';
-      return inDept && stocked && matches(product, query);
-    });
+    const matched = products.filter(
+      (product) =>
+        (!deptSlug || product.departmentSlug === deptSlug) &&
+        (!inStockOnly || product.availability !== 'out') &&
+        matches(product, query),
+    );
     return sortProducts(matched, sort);
-  }, [products, dept, query, availability, sort]);
+  }, [products, deptSlug, inStockOnly, query, sort]);
 
-  useReveal([visible.length, loading]);
+  const draftCount = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          (!deptSlug || product.departmentSlug === deptSlug) &&
+          (!draftStock || product.availability !== 'out') &&
+          matches(product, query),
+      ).length,
+    [products, deptSlug, draftStock, query],
+  );
 
-  const update = (key: string, value: string | null) => {
-    const next = new URLSearchParams(params);
-    if (!value) next.delete(key);
-    else next.set(key, value);
-    setParams(next, { replace: true });
+  const heading = department?.name ?? (query ? `Results for “${query}”` : 'Shop');
+  useTitle(`${heading} | ${site.fullName}`);
+
+  /** Filters live in the URL so a shared link and the Back button both work. */
+  const go = (next: { dept?: string; q?: string; sort?: Sort; stock?: boolean }) => {
+    const search = new URLSearchParams();
+    const d = next.dept ?? deptSlug;
+    const q = next.q ?? query;
+    const s = next.sort ?? sort;
+    const st = next.stock ?? inStockOnly;
+    if (d) search.set('dept', d);
+    if (q.trim()) search.set('q', q.trim());
+    if (s !== 'featured') search.set('sort', s);
+    if (st) search.set('stock', 'in');
+    const qs = search.toString();
+    if (slug || !pathname.startsWith('/shop')) navigate(`/shop${qs ? `?${qs}` : ''}`, { replace: true });
+    else setParams(search, { replace: true });
   };
 
-  const filtered = dept !== ALL || availability !== 'any' || Boolean(query);
-  const clear = () => setParams({});
-  const activeDept = departments.find((item) => item.slug === dept);
+  const clearAll = () => navigate('/shop', { replace: true });
+  const filtered = Boolean(deptSlug || query || inStockOnly);
+  const sortLabel = sorts.find((option) => option.value === sort)?.label ?? 'Featured first';
 
   return (
-    <Layout>
-      <PageHead
-        title="Print &amp; Branding Catalogue"
-        lede="Explore our complete line of commercial printing, bespoke corporate apparel, promotional merchandise, and signage. Held in stock and customized with your artwork in Accra."
-        stats={[
-          { label: 'Categories', value: pad(departments.length) },
-          { label: 'Product Lines', value: pad(products.length) },
-        ]}
-      >
-        <Crumbs trail={[{ label: 'Home', to: '/' }, { label: 'All Products' }]} />
-      </PageHead>
+    <AppShell title={heading} back={filtered ? '/shop' : undefined}>
+      <div className="container shop">
+        <header className="page-intro shop-intro">
+          <h1 className="title">{heading}</h1>
+          {department?.blurb && <p>{department.blurb}</p>}
+        </header>
 
-      <section className="shell section-tight">
-        <div className="catalogue">
-          {/* Desktop Filter Sidebar */}
-          <aside className="rail" aria-label="Filter the catalogue">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h2 className="h3" style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <SlidersHorizontal aria-hidden="true" style={{ width: 16, height: 16, color: 'var(--brand-primary)' }} />
-                <span>Filters</span>
-              </h2>
-              {filtered && (
-                <button
-                  className="link"
-                  onClick={clear}
-                  style={{ fontSize: 'var(--t-micro)', textTransform: 'uppercase' }}
-                >
-                  Reset all
-                </button>
-              )}
-            </div>
-
-            <div className="rail-group">
-              <h3>Category</h3>
+        <form
+          className="search shop-search"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            go({ q: draft });
+          }}
+        >
+          <label className="search-field">
+            <SearchIcon aria-hidden="true" />
+            <span className="visually-hidden">Search the shop</span>
+            <input
+              type="search"
+              enterKeyHint="search"
+              placeholder="Search shirts, mugs, labels"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            {draft && (
               <button
-                className="rail-opt"
-                aria-pressed={dept === ALL}
-                onClick={() => update('dept', null)}
+                type="button"
+                className="icon-btn"
+                aria-label="Clear search"
+                onClick={() => {
+                  setDraft('');
+                  go({ q: '' });
+                }}
               >
-                <span>All Categories</span>
-                <span className="count">{pad(products.length)}</span>
-              </button>
-              {departments.map((item) => (
-                <button
-                  key={item.slug}
-                  className="rail-opt"
-                  aria-pressed={dept === item.slug}
-                  onClick={() => update('dept', item.slug)}
-                >
-                  <span>{item.name}</span>
-                  <span className="count">{pad(item.count)}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="rail-group">
-              <h3>Stock Status</h3>
-              <button
-                className="rail-opt"
-                aria-pressed={availability === 'any'}
-                onClick={() => update('stock', null)}
-              >
-                <span>Show All Items</span>
-              </button>
-              <button
-                className="rail-opt"
-                aria-pressed={availability === 'in'}
-                onClick={() => update('stock', 'in')}
-              >
-                <span>In Stock Only</span>
-              </button>
-            </div>
-
-            {filtered && (
-              <button className="btn btn-secondary btn-sm btn-block" onClick={clear}>
-                <X aria-hidden="true" style={{ width: 14, height: 14 }} />
-                <span>Clear All Filters</span>
+                <X aria-hidden="true" />
               </button>
             )}
-          </aside>
+          </label>
+        </form>
 
-          {/* Product Grid Area */}
-          <div>
-            {/* Mobile / Tablet Horizontal Category Filter Strip */}
-            <div className="filter-strip" role="group" aria-label="Filter by category">
+        {departments.length > 0 && (
+          <div className="chip-row shop-chips" role="group" aria-label="Category">
+            <button type="button" className="chip" aria-pressed={!deptSlug} onClick={() => go({ dept: '' })}>
+              All
+            </button>
+            {departments.map((item) => (
               <button
+                key={item.slug}
+                type="button"
                 className="chip"
-                aria-pressed={dept === ALL}
-                onClick={() => update('dept', null)}
+                aria-pressed={deptSlug === item.slug}
+                onClick={() => go({ dept: item.slug })}
               >
-                All
+                {item.name}
+                <span className="chip-count">{item.count}</span>
               </button>
-              {departments.map((item) => (
-                <button
-                  key={item.slug}
-                  className="chip"
-                  aria-pressed={dept === item.slug}
-                  onClick={() => update('dept', item.slug)}
-                >
-                  {item.short}
-                  <span className="count">{pad(item.count)}</span>
-                </button>
-              ))}
-            </div>
+            ))}
+          </div>
+        )}
 
-            <div className="toolbar">
-              <p className="toolbar-count" aria-live="polite">
-                Showing <strong>{pad(visible.length)}</strong> {visible.length === 1 ? 'line' : 'lines'}
-                {activeDept && ` in ${activeDept.name}`}
-                {query && ` matching “${query}”`}
+        {error ? (
+          <ProductGrid products={[]} empty={null} />
+        ) : unknownDepartment ? (
+          <StatusPanel title="We don't have that category" note="It may have been renamed. Everything we sell is in the shop.">
+            <Link className="btn btn-primary" to="/shop">
+              Browse the shop
+            </Link>
+          </StatusPanel>
+        ) : (
+          <>
+            <div className="shop-toolbar">
+              <p className="shop-count" aria-live="polite">
+                {loading ? 'Loading products' : `${visible.length} ${visible.length === 1 ? 'product' : 'products'}`}
               </p>
-
-              <div className="toolbar-end">
-                <label className="label-micro" htmlFor="sort">
-                  Sort By
-                </label>
-                <span className="select-wrap">
-                  <select
-                    id="sort"
-                    className="select select-sm"
-                    value={sort}
-                    onChange={(event) => update('sort', event.target.value)}
-                  >
-                    {sorts.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown aria-hidden="true" />
+              <button
+                type="button"
+                className="btn btn-secondary shop-sort"
+                onClick={() => {
+                  setDraftSort(sort);
+                  setDraftStock(inStockOnly);
+                  setSortOpen(true);
+                }}
+              >
+                <SlidersHorizontal aria-hidden="true" />
+                <span>
+                  Sort<span className="shop-sort-current">: {sortLabel}</span>
                 </span>
-              </div>
+              </button>
             </div>
 
             <ProductGrid
               products={visible}
+              variant="feature"
               empty={
                 <NoResults
-                  title="No items found matching your filter"
-                  note="Try changing your search terms or clearing your filters to view all available print products."
-                  onClear={filtered ? clear : undefined}
+                  title={query ? `No products match “${query}”` : 'Nothing here right now'}
+                  onClear={filtered ? clearAll : undefined}
                 />
               }
             />
-          </div>
-        </div>
-      </section>
-    </Layout>
+          </>
+        )}
+      </div>
+
+      {sortOpen && (
+        <Sheet
+          title="Sort and filter"
+          onClose={() => setSortOpen(false)}
+          afterClose={() => go({ sort: draftSort, stock: draftStock })}
+          footer={
+            <button type="button" className="btn btn-primary btn-block btn-lg" onClick={() => setSortOpen(false)}>
+              Show {draftCount} {draftCount === 1 ? 'product' : 'products'}
+            </button>
+          }
+        >
+          <fieldset className="shop-sheet-group">
+            <legend className="field-label">Sort by</legend>
+            <div className="choice-grid">
+              {sorts.map((option) => (
+                <label className="choice" key={option.value}>
+                  <input
+                    type="radio"
+                    name="sort"
+                    checked={draftSort === option.value}
+                    onChange={() => setDraftSort(option.value)}
+                  />
+                  <span className="choice-title">{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="switch shop-sheet-group">
+            <span className="choice-body">
+              <span className="choice-title">In stock only</span>
+              <span className="choice-note">Hide products that are sold out</span>
+            </span>
+            <input type="checkbox" checked={draftStock} onChange={(event) => setDraftStock(event.target.checked)} />
+          </label>
+        </Sheet>
+      )}
+    </AppShell>
   );
 }

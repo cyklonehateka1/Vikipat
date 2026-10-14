@@ -2,7 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {Plus,Trash2,ArrowLeft,Printer,Search,RefreshCw} from 'lucide-react';
 import {api} from './api';
 import type {PricingRule} from './PricingStudio';
-const money=(p:number)=>'GH₵ '+(p/100).toFixed(2);
+const money=(p:number)=>'GH₵ '+(p/100).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const errorText=(e:unknown)=>e instanceof Error?e.message:'Unable to complete this action';
 const key=()=>crypto.randomUUID();
 type Product={id:string;name:string;price:number;stock:number;status:string};

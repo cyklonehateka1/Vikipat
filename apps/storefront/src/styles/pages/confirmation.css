@@ -1,0 +1,350 @@
+/* =======================================================================
+   Order received, in the same language as checkout: a plain white page, one
+   calm centred column, a soft green check, quiet grey cards, numbered next
+   steps, and black / outlined pill buttons.
+   ======================================================================= */
+body:has(.cf) {
+  background: var(--bg);
+}
+
+.cf {
+  --cf-bg: #f5f4f0;
+  --cf-line: #f0efeb;
+  --cf-ink: #1b1b1b;
+  --cf-muted: #6b675f;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+  padding-top: 20px;
+  padding-bottom: 48px;
+}
+
+.cf-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 8px;
+  text-align: center;
+}
+
+.cf-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  animation: pop 520ms var(--spring);
+}
+
+.cf-mark svg {
+  width: 32px;
+  height: 32px;
+}
+
+.cf-hero h1 {
+  color: var(--cf-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.cf-hero p {
+  max-width: 40ch;
+  color: var(--cf-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.cf-hero b {
+  color: var(--cf-ink);
+  font-weight: 600;
+}
+
+.cf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--cf-line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.cf-number {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 14px;
+  background: var(--cf-bg);
+}
+
+.cf-number-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cf-label {
+  color: var(--cf-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.cf-number-value {
+  color: var(--cf-ink);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cf-copy {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #e4e2dc;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cf-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cf-copy svg {
+  width: 15px;
+  height: 15px;
+}
+
+.cf-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--cf-bg);
+  color: var(--cf-ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.cf-status::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #a8a49b;
+}
+
+.cf-status.is-paid {
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.cf-status.is-paid::before {
+  background: #16a34a;
+}
+
+.cf-status.is-pending {
+  background: #fffbeb;
+  color: #78350f;
+}
+
+.cf-status.is-pending::before {
+  background: #d97706;
+}
+
+.cf-status.is-checking::before {
+  display: none;
+}
+
+.cf-progress {
+  padding-top: 4px;
+}
+
+.cf-title {
+  color: var(--cf-ink);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.cf-steps {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.cf-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--cf-bg);
+}
+
+.cf-step-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--cf-ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgb(27 27 27 / 0.08);
+}
+
+.cf-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.cf-step-body b {
+  color: var(--cf-ink);
+  font-weight: 600;
+}
+
+.cf-step-body span {
+  color: var(--cf-muted);
+}
+
+.cf-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.cf-btn {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  padding-inline: 22px;
+  border: 1px solid #d9d7d0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cf-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cf-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.cf-btn.is-primary {
+  border-color: #1b1b1b;
+  background: #1b1b1b;
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cf-btn:hover {
+    border-color: #1b1b1b;
+  }
+
+  .cf-btn.is-primary:hover {
+    background: #000;
+  }
+}
+
+@media (min-width: 640px) {
+  .cf {
+    padding-top: 40px;
+  }
+
+  .cf-card {
+    padding: 24px;
+  }
+
+  .cf-actions {
+    flex-direction: row;
+  }
+}
+
+/* Order progress, on this page only: small quiet dots that match the order
+   flow's steps — green check when done, black when current, grey ahead —
+   joined by a thin line instead of thick coloured bars. */
+.cf .progress-step {
+  gap: 8px;
+}
+
+.cf .progress-step + .progress-step::before {
+  top: 13px;
+  height: 2px;
+  background: #e4e2dc;
+}
+
+.cf .progress-step.is-done + .progress-step::before,
+.cf .progress-step.is-done + .progress-step.is-current::before {
+  background: #16a34a;
+}
+
+.cf .progress-dot {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid #d9d7d0;
+  background: #fff;
+  box-shadow: none;
+}
+
+.cf .progress-dot svg {
+  width: 15px;
+  height: 15px;
+  color: #fff;
+}
+
+.cf .progress-step.is-done .progress-dot {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.cf .progress-step.is-current .progress-dot {
+  border-color: #1b1b1b;
+  background: #1b1b1b;
+}
+
+.cf .progress-step.is-current .progress-dot::after {
+  inset: -5px;
+  border: 2px solid #1b1b1b;
+  opacity: 0.15;
+}
+
+.cf .progress-label {
+  color: #a8a49b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.cf .progress-step.is-done .progress-label,
+.cf .progress-step.is-current .progress-label {
+  color: #1b1b1b;
+  font-weight: 600;
+}

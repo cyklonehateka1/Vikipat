@@ -17,7 +17,7 @@ type Report = {
   topCustomers: { id: string; name: string; email: string; orderCount: number; lifetimeValuePesewas: number }[];
 };
 
-const money = (p: number) => 'GH₵ ' + (p / 100).toFixed(2);
+const money = (p: number) => 'GH₵ ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const SEVERITY_ICON = { critical: <AlertTriangle />, warning: <AlertTriangle />, opportunity: <Lightbulb />, good: <CheckCircle2 /> };
 
 /** Bars are drawn relative to the busiest day, so a quiet week still reads. */

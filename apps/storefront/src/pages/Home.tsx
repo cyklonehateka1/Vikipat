@@ -1,526 +1,362 @@
-import { Fragment } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "motion/react";
-import { ArrowRight, MessageCircle, RefreshCw } from "lucide-react";
-import { Layout } from "../components/Layout";
-import { ProductCard } from "../components/ProductCard";
-import { useCatalog } from "../catalog";
-import { OUTCOMES } from "../outcomes";
-import { deptHref, whatsappLink } from "../lib/format";
-import { site } from "../site";
-import { useReveal, useTitle } from "../lib/useReveal";
-import { useMaterials } from "../lib/useMaterials";
+import type { ComponentType } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, Coffee, MessageCircle, MousePointer2, Package, Presentation } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import {
+  BrandCardArt,
+  InkDropsArt,
+  MugArt,
+  PrinterCardArt,
+  ShirtArt,
+  ShirtCardArt,
+  StickerArt,
+  SwatchFanArt,
+  TagArt,
+  TypeCardArt,
+} from '../components/HeroArt';
+import { ArtworkStepArt, OrderingArt, PayStepArt, SizeStepArt } from '../components/HomeArt';
+import { Words } from '../components/Motion';
+import { OurWork } from '../components/OurWork';
+import { ProductGrid } from '../components/ProductGrid';
+import { QuickPrice } from '../components/QuickPrice';
+import { Reassurance } from '../components/Reassurance';
+import { VisitPanel } from '../components/VisitPanel';
+import { useCatalog } from '../catalog';
+import { Service, services } from '../content/services';
+import { serviceImages } from '../content/serviceImages';
+import { cedis, deptHref, greetingLink } from '../lib/format';
+import { minPriceIn } from '../lib/priceHints';
+import { useMaterials } from '../lib/useMaterials';
+import { useTitle } from '../lib/useTitle';
+import { site } from '../site';
+import '../styles/pages/home.css';
+import '../styles/pages/home-quiet.css';
 
-const SWATCH_TINTS = [
-  "var(--brand-primary)",
-  "var(--brand-blue)",
-  "var(--brand-green)",
-  "var(--brand-magenta)",
-  "var(--accent-amber)",
-];
+const LEDE = 'Banners, shirts, stickers and mugs, made in Accra. See your price before you pay.';
 
-export default function Home() {
-  const { products, departments, loading, error, retry } = useCatalog();
-  const { materials } = useMaterials();
-  useTitle(`${site.fullName} | Commercial Printing & Custom Branding Platform`);
-  useReveal([loading, departments.length]);
+/** "From GH₵85" for whole cedis, "From GH₵2.60" for print rates. */
+const wholeCedis = (value: number) => (Number.isInteger(value) ? `GH₵${value.toLocaleString('en-GH')}` : cedis(value));
 
-  const featuredProducts = products
-    .filter((p) => p.featured)
-    .concat(products.filter((p) => !p.featured))
-    .slice(0, 8);
+function Hero() {
+  return (
+    <section className="hero" aria-labelledby="home-title">
+      <div className="container hero-inner">
+        <h1 className="hero-title words" id="home-title">
+          <span className="hero-line">
+            <Words text="Printing that" />
+            <span className="v-toggle" aria-hidden="true">
+              <span />
+            </span>
+          </span>
+          <span className="hero-line">
+            <Words text="makes brands" start={2} />
+          </span>
+          <span className="hero-line is-accent">
+            <Words text="stand out." start={4} />
+          </span>
+        </h1>
 
-  const heroQuoteLink = whatsappLink(
-    `Hello ${site.name}, I would like to get a quote for a custom print and branding project.`,
+        <div className="hero-objects" aria-hidden="true">
+          <div className="hero-fan">
+            <span className="hero-tray-back" />
+            <span className="hero-cards">
+              <span className="vcard v1">
+                <TypeCardArt />
+              </span>
+              <span className="vcard v2">
+                <BrandCardArt />
+              </span>
+              <span className="vcard v3">
+                <PrinterCardArt />
+              </span>
+              <span className="vcard v4">
+                <ShirtCardArt />
+              </span>
+            </span>
+            <span className="hero-tray" />
+            <span className="hero-cursor">
+              <MousePointer2 />
+            </span>
+          </div>
+          <span className="fl fl-swatch">
+            <SwatchFanArt />
+          </span>
+          <span className="fl fl-shirt">
+            <ShirtArt />
+          </span>
+          <span className="fl fl-sticker">
+            <StickerArt />
+          </span>
+          <div className="hero-tiles">
+            <span className="tile tile-dark">
+              <InkDropsArt />
+            </span>
+            <span className="tile tile-glass">
+              <TagArt />
+            </span>
+            <span className="tile tile-blue">
+              <MugArt />
+            </span>
+          </div>
+        </div>
+
+        <p className="hero-lede">{LEDE}</p>
+        <Link className="btn-tactile" to="/print" viewTransition>
+          Get a price
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** A card photo: two sizes so phones download the light one. */
+function ServicePhoto({ image }: { image: (typeof serviceImages)[string] }) {
+  return (
+    <img
+      src={image.lg}
+      srcSet={`${image.sm} 720w, ${image.lg} 1400w`}
+      sizes="(min-width: 1200px) 45vw, (min-width: 720px) 50vw, 100vw"
+      alt={image.alt}
+      width={image.width}
+      height={image.height}
+      loading="lazy"
+      decoding="async"
+      style={{ objectPosition: image.position }}
+    />
+  );
+}
+
+const serviceIcon: Record<string, ComponentType> = {
+  gifts: Coffee,
+  events: Presentation,
+};
+
+function ServiceTile({ service }: { service: Service }) {
+  const { products, departments, loading } = useCatalog();
+  const image = serviceImages[service.id];
+  const Icon = serviceIcon[service.id] ?? Package;
+
+  let to = '/shop';
+  let hint: string | null = null;
+  let pending = false;
+
+  if (service.kind === 'print') {
+    to = `/print?need=${service.outcome}`;
+    // Print jobs are priced by size; no per-sq-ft rate is shown.
+    pending = false;
+  } else {
+    const department = departments.find((item) => service.departments.includes(item.name));
+    if (department) to = deptHref(department.slug);
+    const price = minPriceIn(products, service.departments);
+    hint = price === null ? null : `From ${wholeCedis(price)}`;
+    pending = loading;
+  }
+
+  const copy = (
+    <span className="service-copy">
+      <span className="service-label">{service.label}</span>
+      <span className="service-blurb">{service.blurb}</span>
+      {pending ? (
+        <span className="skeleton service-skeleton" aria-hidden="true" />
+      ) : (
+        hint && <span className="service-hint">{hint}</span>
+      )}
+    </span>
   );
 
-  return (
-    <Layout>
-      {/* --- 1. Hero: asymmetric collage, one message, two actions --- */}
-      <section className="hero-section">
-        <span className="hero-ghost" aria-hidden="true">
-          VIKIPAT
+  if (service.feature) {
+    return (
+      <Link className="service is-feature" to={to} viewTransition>
+        {copy}
+        <span className="service-go" aria-hidden="true">
+          <ArrowUpRight />
         </span>
+        <span className="service-photo">
+          <ServicePhoto image={image} />
+        </span>
+      </Link>
+    );
+  }
 
-        <div className="hero-copy">
-          <div className="hero-eyebrow">
-            <i aria-hidden="true" />
-            <span>Accra's Print &amp; Branding Platform</span>
-          </div>
+  return (
+    <Link className="service is-compact" to={to} viewTransition>
+      <span className="service-rail" aria-hidden="true">
+        <span className="service-icon">
+          <Icon />
+        </span>
+        <span className="service-go">
+          <ArrowUpRight />
+        </span>
+      </span>
+      {copy}
+      <span className="service-thumb">
+        <ServicePhoto image={image} />
+      </span>
+    </Link>
+  );
+}
 
-          <h1>
-            Print engineered for impact.{" "}
-            <span className="highlight">Priced instantly.</span>
-          </h1>
+export default function Home() {
+  useTitle(`${site.fullName} | Printing and branding in Accra`);
+  const { products } = useCatalog();
+  const { materials } = useMaterials();
 
-          <p>
-            Configure banners, apparel and packaging, get an authoritative
-            price in seconds, and send it straight to our Accra production
-            floor.
-          </p>
+  const featured = [...products]
+    .filter((product) => product.availability !== 'out')
+    .sort((a, b) => Number(b.featured) - Number(a.featured))
+    .slice(0, 8);
 
-          <div className="hero-actions">
-            <Link to="/print" className="btn btn-primary btn-lg">
-              <span>Open the Print Studio</span>
-              <ArrowRight aria-hidden="true" />
-            </Link>
+  const designFrom = materials.length
+    ? Math.round(Math.min(...materials.map((material) => material.designMinimumPesewas)) / 100)
+    : null;
 
-            <Link to="/track-order" className="btn btn-secondary btn-lg">
-              <span>Track Order</span>
-            </Link>
-          </div>
+  const steps = [
+    {
+      art: SizeStepArt,
+      title: 'Pick it and size it',
+      text: 'Choose what you need. The price changes as you change the size or quantity.',
+    },
+    {
+      art: ArtworkStepArt,
+      title: 'Send your artwork',
+      text: `Upload a file or share a link. No design yet? Our designers can make one${designFrom ? `, from ${wholeCedis(designFrom)}` : ''}.`,
+    },
+    { art: PayStepArt, title: 'Pay with Mobile Money', text: 'We check your file and print it. Collect it at the workshop or we deliver.' },
+  ];
 
-        </div>
+  return (
+    <AppShell>
+      <div className="home-quiet">
+      <Hero />
 
-        <div className="hero-visual">
-          <div className="hero-visual-chip">
-            <strong>24-48h</strong>
-            <span>standard turnaround</span>
-          </div>
-          <div className="hero-visual-main">
-            <img
-              src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1000&q=85"
-              alt="Corporate branded apparel produced by Vikipat"
-              loading="eager"
-            />
-          </div>
-          <div className="hero-visual-stamp" aria-hidden="true">
-            <svg viewBox="0 0 120 120">
-              <circle cx="60" cy="60" r="52" />
-              <path id="stamp-arc-top" d="M 12,60 A 48,48 0 0 1 108,60" fill="none" />
-              <path id="stamp-arc-bottom" d="M 12,60 A 48,48 0 0 0 108,60" fill="none" />
-              <text>
-                <textPath href="#stamp-arc-top" startOffset="50%" textAnchor="middle">
-                  ACCRA · GHANA
-                </textPath>
-              </text>
-              <text>
-                <textPath href="#stamp-arc-bottom" startOffset="50%" textAnchor="middle">
-                  PRODUCTION FLOOR
-                </textPath>
-              </text>
-              <text x="60" y="67" textAnchor="middle" className="stamp-mark">
-                VP
-              </text>
-            </svg>
-          </div>
-        </div>
-      </section>
-
-      {/* --- 2. Print Studio: the platform's signature feature, not a buried section --- */}
-      <section className="reveal">
-        <div className="studio-promo">
-          <div className="studio-promo-grid">
-            <div>
-              <span className="studio-promo-eyebrow">
-                <i aria-hidden="true" />
-                The Vikipat Print Studio
-              </span>
-              <h2>
-                Stop guessing. <em>Configure it, price it, order it.</em>
+      <section className="band on-dark home-services" aria-labelledby="services-title">
+        <div className="container">
+          <div className="services-panel">
+            <header className="services-head">
+              <h2 className="title-poster" id="services-title">
+                What are we <span className="accent">printing?</span>
               </h2>
-              <p>
-                Tell the Studio what you are making, size it against a real
-                reference, and get an authoritative cedi price before you
-                commit. Every material, every rate, one place.
-              </p>
-              <div className="studio-promo-actions">
-                <Link to="/print" className="btn btn-primary btn-lg">
-                  <span>Open the Print Studio</span>
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-              </div>
-            </div>
-
-            <nav className="studio-promo-list" aria-label="Start from a job">
-              {OUTCOMES.slice(0, 4).map((outcome) => (
-                <Link key={outcome.slug} to={`/print?need=${outcome.slug}`}>
-                  <span>{outcome.label}</span>
-                  <ArrowRight aria-hidden="true" size={16} />
-                </Link>
+              <p>Pick a job, choose a size and see your price before you pay.</p>
+            </header>
+            <ul className="services">
+              {services.map((service) => (
+                <li
+                  key={service.id}
+                  className={service.feature ? 'service-item is-feature' : 'service-item is-compact'}
+                  data-reveal="pop"
+                >
+                  <ServiceTile service={service} />
+                </li>
               ))}
-            </nav>
+            </ul>
           </div>
         </div>
       </section>
 
-      {/* --- Scrolling capability marquee --- */}
-      <div className="marquee" aria-hidden="true">
-        <div className="marquee-track">
-          {[0, 1].map((rep) => (
-            <span key={rep}>
-              {[
-                "Large Format Banners",
-                "Vinyl Stickers",
-                "Corporate Apparel",
-                "Rigid Board Signage",
-                "Vehicle Branding",
-                "Packaging & Labels",
-                "Event Backdrops",
-                "Embroidery",
-              ].map((item) => (
-                <span key={item}>
-                  <i /> {item}
-                </span>
+      <QuickPrice />
+
+      <section className="band on-dark home-how" aria-labelledby="how-title">
+        <div className="container how-grid">
+          <div className="how-intro" data-reveal="">
+            <h2 id="how-title">
+              How ordering <span className="how-accent">works</span>.
+            </h2>
+            <p>Size it, send the artwork, pay when it's ready. That's the whole order, start to finish.</p>
+            <div className="how-art-card">
+              <span className="how-art" aria-hidden="true">
+                <OrderingArt />
+              </span>
+            </div>
+          </div>
+
+          <div className="how-body">
+            {/* A true circular arc, drawn 1:1 with real pixels — the viewBox
+                is sized to the column's actual rendered height (measured,
+                not guessed), so there is no non-uniform stretch bending the
+                circle out of shape near the ends. Phones and desktop have
+                different real heights, so each gets its own arc; each one is
+                still a single genuine circle (extend it and it closes into
+                one), just calibrated to its own height. If the copy here
+                changes enough to shift these heights a lot, these two arcs
+                should be recalibrated the same way. */}
+            <svg className="how-rail is-tight" viewBox="0 0 120 1182" aria-hidden="true">
+              <path
+                d="M12,0 A2223,2223 0 0,1 12,1182"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <svg className="how-rail is-wide" viewBox="0 0 180 648" aria-hidden="true">
+              <path
+                d="M16,0 A444.9,444.9 0 0,1 16,648"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            <ol className="how-steps">
+              {steps.map((step, index) => (
+                <li key={step.title} className={`how-step how-step-${index + 1}`} data-reveal="pop">
+                  <span className="how-num" aria-hidden="true">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="how-copy">
+                    <strong>{step.title}</strong>
+                    <span>{step.text}</span>
+                  </span>
+                </li>
               ))}
-            </span>
-          ))}
+            </ol>
+          </div>
         </div>
+      </section>
+
+      <section className="container section home-featured" aria-labelledby="featured-title">
+        <div className="section-head is-plain">
+          <h2 id="featured-title">
+            Ready to <span className="section-head-accent">order</span>
+          </h2>
+          <Link className="text-link" to="/shop" viewTransition>
+            See all
+          </Link>
+        </div>
+        <ProductGrid products={featured} skeletons={4} empty={null} variant="feature" />
+      </section>
+
+      <OurWork />
+
+      <Reassurance />
+
+      <div className="container home-quick">
+        <Link className="quick" to="/track-order" viewTransition data-reveal="">
+          <span className="quick-icon" aria-hidden="true">
+            <Package />
+          </span>
+          <span>
+            <b>Track an order</b>
+            <small>Order number and email, that is all</small>
+          </span>
+        </Link>
+        <a className="quick" href={greetingLink} target="_blank" rel="noreferrer" data-reveal="">
+          <span className="quick-icon is-wa" aria-hidden="true">
+            <MessageCircle />
+          </span>
+          <span>
+            <b>Chat on WhatsApp</b>
+            <small>{site.whatsappDisplay}, we reply in working hours</small>
+          </span>
+        </a>
       </div>
 
-      {/* --- The proof: what actually leaves the press --- */}
-      <section className="proof-section reveal">
-        <div className="home-lede">
-          <h2>What you approve is what prints.</h2>
-          <p>
-            Every job gets marked up like a real proof before it goes to
-            plate, so there is nothing between your approval and the piece
-            that comes off the press.
-          </p>
-        </div>
-
-        <motion.div
-          className="proof-sheet"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <div className="proof-frame">
-            <span className="proof-crop tl" aria-hidden="true" />
-            <span className="proof-crop tr" aria-hidden="true" />
-            <span className="proof-crop bl" aria-hidden="true" />
-            <span className="proof-crop br" aria-hidden="true" />
-            <img
-              src="https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=1400&q=85"
-              alt="Custom printed apparel proof ready for production"
-              loading="lazy"
-            />
-            <div className="proof-stamp" aria-hidden="true">
-              <svg viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="52" />
-                <path id="proof-arc-top" d="M 12,60 A 48,48 0 0 1 108,60" fill="none" />
-                <path id="proof-arc-bottom" d="M 12,60 A 48,48 0 0 0 108,60" fill="none" />
-                <text>
-                  <textPath href="#proof-arc-top" startOffset="50%" textAnchor="middle" className="proof-stamp-arc">
-                    APPROVED FOR
-                  </textPath>
-                </text>
-                <text>
-                  <textPath href="#proof-arc-bottom" startOffset="50%" textAnchor="middle" className="proof-stamp-arc">
-                    PRODUCTION
-                  </textPath>
-                </text>
-                <text x="60" y="67" textAnchor="middle" className="proof-stamp-mark">
-                  VIKIPAT
-                </text>
-              </svg>
-            </div>
-          </div>
-
-          <div className="proof-colorbar" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-
-          <div className="proof-dimension" aria-hidden="true">
-            <i />
-            <span>ADULT M · CHEST PRINT · 11IN × 14IN</span>
-            <i />
-          </div>
-
-          <dl className="proof-caption">
-            <div className="proof-caption-item">
-              <dt>Method</dt>
-              <dd>DTF Transfer</dd>
-            </div>
-            <div className="proof-caption-item">
-              <dt>Colour profile</dt>
-              <dd>CMYK, wash-durable</dd>
-            </div>
-            <div className="proof-caption-item">
-              <dt>Pre-flight</dt>
-              <dd>Passed</dd>
-            </div>
-            <div className="proof-caption-item">
-              <dt>Garment</dt>
-              <dd>180gsm cotton tee</dd>
-            </div>
-          </dl>
-        </motion.div>
-      </section>
-
-      {/* --- The docket trail: one job's paperwork, stage to stage --- */}
-      <section className="docket-section reveal">
-        <div className="home-lede">
-          <h2>One docket, stage to stage.</h2>
-          <p>
-            The same job record follows the order from quote to delivery.
-            Nothing is re-typed, re-quoted, or lost in a different system.
-          </p>
-        </div>
-
-        <div className="docket-trail">
-          {[
-            { stamp: "PAID", eyebrow: "Payment", title: "Paystack confirmed", detail: "MTN MoMo · GH₵83.00" },
-            { stamp: "OK'D", eyebrow: "Artwork", title: "Design approved", detail: "Pre-flight passed, CMYK" },
-            { stamp: "PRESS", eyebrow: "Production", title: "Job VP-8821", detail: "In production, East Legon" },
-            { stamp: "READY", eyebrow: "Delivery", title: "Ready for pickup", detail: "Mallam-Gbawe Road" },
-          ].map((job, index, arr) => (
-            <Fragment key={job.title}>
-              <motion.div
-                className="docket"
-                initial={{ opacity: 0, y: 20, rotate: index % 2 === 0 ? -2 : 2 }}
-                whileInView={{ opacity: 1, y: 0, rotate: index % 2 === 0 ? -2 : 2 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.45, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="docket-stub">
-                  <div className="docket-stamp">
-                    <span>{job.stamp}</span>
-                  </div>
-                </div>
-                <div className="docket-body">
-                  <span className="docket-eyebrow">{job.eyebrow}</span>
-                  <strong>{job.title}</strong>
-                  <span>{job.detail}</span>
-                </div>
-              </motion.div>
-              {index < arr.length - 1 && (
-                <ArrowRight className="docket-connector" size={18} aria-hidden="true" />
-              )}
-            </Fragment>
-          ))}
+      <section className="container section home-visit" aria-labelledby="visit-title">
+        <div data-reveal="">
+          <VisitPanel />
         </div>
       </section>
-
-      {/* --- The swatch fan: every job the Studio prices --- */}
-      <section className="fan-section reveal">
-        <div className="home-lede">
-          <h2>Five jobs. One sample deck.</h2>
-          <p>Every outcome the Print Studio configures, fanned out like the material deck on the counter.</p>
-        </div>
-
-        <div className="fan">
-          {OUTCOMES.map((outcome, index) => {
-            const mid = (OUTCOMES.length - 1) / 2;
-            const angle = (index - mid) * 13;
-            const tint = SWATCH_TINTS[index % SWATCH_TINTS.length];
-            const material =
-              materials.find((m) => m.outcomes.includes(outcome.slug) && m.badge) ||
-              materials.find((m) => m.outcomes.includes(outcome.slug));
-            return (
-              <motion.div
-                key={outcome.slug}
-                className="fan-card"
-                initial={{ opacity: 0, y: 30, rotate: 0 }}
-                whileInView={{ opacity: 1, y: 0, rotate: angle }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                style={{ zIndex: 10 - Math.abs(index - mid) }}
-              >
-                <Link to={`/print?need=${outcome.slug}`} className="fan-card-link">
-                  <div className="fan-card-swatch" style={{ background: tint }}>
-                    <span className="fan-card-code" style={{ color: "rgba(255,255,255,0.75)" }}>
-                      NO.{String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div className="fan-card-info">
-                    <strong>{outcome.label}</strong>
-                    {material && <em>{material.name}</em>}
-                    <span>
-                      {material ? `from GH₵${(material.ratePesewasPerSqFt / 100).toFixed(2)}/sq ft` : outcome.presets[0].label}
-                    </span>
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        <nav className="fan-list" aria-label="Every outcome the Print Studio configures">
-          {OUTCOMES.map((outcome) => (
-            <Link key={outcome.slug} to={`/print?need=${outcome.slug}`}>
-              <span>{outcome.label}</span>
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          ))}
-        </nav>
-      </section>
-
-      {/* --- Category Bento Showcase --- */}
-      <section className="categories-section reveal">
-        <div className="categories-header">
-          <p>What We Produce</p>
-          <h2>Explore Print &amp; Branding Categories</h2>
-        </div>
-
-        {error && (
-          <div className="state" style={{ margin: "0 auto" }}>
-            <h2 className="h3">We could not load the catalogue</h2>
-            <p>{error}</p>
-            <div className="state-actions">
-              <button className="btn btn-primary" onClick={retry}>
-                <RefreshCw aria-hidden="true" /> Try again
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="categories-grid">
-          {departments.map((department) => (
-            <Link
-              className="category-card"
-              to={deptHref(department.slug)}
-              key={department.slug}
-            >
-              <div className="category-card-media">
-                <img
-                  src={department.image}
-                  alt={department.imageAlt}
-                  loading="lazy"
-                />
-              </div>
-              <div className="category-card-content">
-                <h3>{department.name}</h3>
-                <p>{department.blurb}</p>
-                <div className="category-card-link">
-                  <span>View collection</span>
-                  <ArrowRight aria-hidden="true" />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* --- 6. Featured / Best Sellers Showcase --- */}
-      <section className="shell section-tight reveal">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "20px",
-            marginBottom: "32px",
-          }}
-        >
-          <div>
-            <p
-              className="label-micro"
-              style={{ color: "var(--brand-primary)", marginBottom: "4px" }}
-            >
-              Best Sellers in Accra
-            </p>
-            <h2 className="h1">Popular Print &amp; Branding Items</h2>
-          </div>
-          <Link to="/shop" className="btn btn-secondary">
-            <span>View All Products</span>
-            <ArrowRight aria-hidden="true" style={{ width: 16, height: 16 }} />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-products">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div className="card-skeleton" key={i}>
-                <div className="skeleton sk-media" />
-                <div className="skeleton sk-line" style={{ width: "60%" }} />
-                <div className="skeleton sk-line" style={{ width: "40%" }} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-products">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Corporate Capabilities */}
-      <section className="corporate-section reveal">
-        <div className="corporate-head">
-          <div className="corporate-copy">
-            <span className="eyebrow">
-              <i aria-hidden="true" />
-              Corporate accounts
-            </span>
-            <h2>
-              Printing <em>under contract</em>, not one job at a time.
-            </h2>
-          </div>
-          <dl className="corporate-terms">
-            <dt>Account terms</dt>
-            <dd>Net 30 on approval</dd>
-          </dl>
-        </div>
-
-        <div className="ledger">
-          <div className="ledger-row ledger-row-head">
-            <span>Item</span>
-            <span>Line</span>
-            <span>Minimum order</span>
-            <span>Status</span>
-          </div>
-          {[
-            { code: "01", item: "Large Format Signage", qty: "10+ units" },
-            { code: "02", item: "Corporate Uniforms & Tees", qty: "50+ pieces" },
-            { code: "03", item: "Die-Cut Packaging & Labels", qty: "500+ pieces" },
-            { code: "04", item: "Vehicle Fleet Graphics", qty: "Per vehicle" },
-            { code: "05", item: "Trade Show Banners", qty: "5+ sets" },
-            { code: "06", item: "Corporate Identity Kits", qty: "20+ kits" },
-          ].map((row) => (
-            <div className="ledger-row" key={row.code}>
-              <span className="ledger-code">{row.code}</span>
-              <span className="ledger-item">{row.item}</span>
-              <span className="ledger-qty">{row.qty}</span>
-              <span className="ledger-status">
-                <i /> Open account
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="corporate-foot">
-          <p>
-            Reliable print manufacturing support for businesses, marketing
-            agencies, schools and NGOs across West Africa.
-          </p>
-          <Link className="btn btn-primary btn-lg" to="/contact">
-            Request a corporate quote <ArrowRight aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      {/* --- 6. Closing CTA --- */}
-      <section className="closing-banner reveal">
-        <div className="closing-banner-copy">
-          <p className="eyebrow">Custom Solutions &amp; Corporate Supply</p>
-          <h2>Have a bespoke project or high-volume order?</h2>
-          <p className="sub">
-            Whether you need 5,000 conference packs, complete vehicle branding,
-            architectural signage, or bespoke packaging, our senior production
-            team is ready to assist.
-          </p>
-        </div>
-
-        <div className="closing-banner-actions">
-          <Link to="/print" className="btn btn-primary btn-lg">
-            <span>Open the Print Studio</span>
-          </Link>
-          <a href={heroQuoteLink} className="btn btn-whatsapp btn-lg">
-            <MessageCircle aria-hidden="true" />
-            <span>Chat on WhatsApp</span>
-          </a>
-        </div>
-      </section>
-    </Layout>
+      </div>
+    </AppShell>
   );
 }

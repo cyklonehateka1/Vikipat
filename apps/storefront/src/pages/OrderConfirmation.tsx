@@ -1,41 +1,27 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Copy,
-  FileText,
-  MessageCircle,
-  PackageCheck,
-  Phone,
-  ShieldCheck,
-  Truck,
-} from "lucide-react";
-import { Layout } from "../components/Layout";
-import { site } from "../site";
-import { telLink, whatsappLink } from "../lib/format";
-import { useTitle } from "../lib/useReveal";
-import "../styles/checkout.css";
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, Copy, MessageCircle, Package } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Loader, OrderProgress } from '../components/Dots';
+import { StatusPanel } from '../components/ProductGrid';
+import { useToast } from '../components/Toast';
+import { API_BASE } from '../lib/api';
+import { whatsappLink } from '../lib/format';
+import { useTitle } from '../lib/useTitle';
+import { site } from '../site';
+import '../styles/pages/confirmation.css';
 
-const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).replace(/\/$/, "");
+type PaymentStatus = 'none' | 'checking' | 'paid' | 'pending';
 
 export default function OrderConfirmation() {
   const [params] = useSearchParams();
-  const orderNumber = params.get("orderNumber") || "VP-EXAMPLE";
-  const email = params.get("email") || "";
-  const paymentReference = params.get("payment") || params.get("reference") || "";
-  const [paymentStatus, setPaymentStatus] = useState<"idle" | "checking" | "paid" | "pending" | "failed">(
-    paymentReference ? "checking" : "idle",
-  );
+  const orderNumber = params.get('orderNumber') || '';
+  const email = params.get('email') || '';
+  const paymentReference = params.get('payment') || params.get('reference') || '';
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(paymentReference ? 'checking' : 'none');
+  const { show } = useToast();
 
-  useTitle(`Order Confirmed: ${orderNumber} | ${site.fullName}`);
-
-  const handleCopyOrderNumber = () => {
-    navigator.clipboard.writeText(orderNumber);
-    alert(`Order Number ${orderNumber} copied to clipboard!`);
-  };
+  useTitle(orderNumber ? `Order ${orderNumber} received | ${site.fullName}` : `Order received | ${site.fullName}`);
 
   useEffect(() => {
     if (!paymentReference) return;
@@ -43,202 +29,134 @@ export default function OrderConfirmation() {
     fetch(`${API_BASE}/payments/paystack/verify/${encodeURIComponent(paymentReference)}`)
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || "Payment is not confirmed yet.");
-        if (!cancelled) setPaymentStatus(data.paid ? "paid" : "pending");
+        if (!response.ok) throw new Error(data.message || 'Payment is not confirmed yet.');
+        if (!cancelled) setPaymentStatus(data.paid ? 'paid' : 'pending');
       })
       .catch(() => {
-        if (!cancelled) setPaymentStatus("pending");
+        if (!cancelled) setPaymentStatus('pending');
       });
     return () => {
       cancelled = true;
     };
   }, [paymentReference]);
 
+  if (!orderNumber) {
+    return (
+      <AppShell title="Order" back="/">
+        <div className="container section">
+          <StatusPanel title="No order to show here" note="Your order number is in the email we sent you. Use it to track your order.">
+            <Link className="btn btn-primary" to="/track-order">
+              Track an order
+            </Link>
+          </StatusPanel>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(orderNumber);
+      show(`Order number ${orderNumber} copied`);
+    } catch {
+      show(`Write this down: ${orderNumber}`);
+    }
+  };
+
+  const progressStatus =
+    paymentStatus === 'paid' ? 'Payment received' : paymentStatus === 'none' ? 'Under review' : 'Awaiting payment';
+  const trackHref = `/track-order?order=${encodeURIComponent(orderNumber)}${email ? `&email=${encodeURIComponent(email)}` : ''}`;
+
+  const steps = [
+    { title: 'Receipt', text: `We email your receipt${email ? ` to ${email}` : ''}.` },
+    { title: 'Artwork check', text: 'We check your artwork and send a proof if something needs your approval.' },
+    { title: 'Print and hand-over', text: 'We print, then message you when it is ready for pickup or on its way.' },
+  ];
+
   return (
-    <Layout>
-      <div className="checkout-shell">
-        <div className="confirmation-hero">
-          <div className="confirmation-check">
-            <CheckCircle2
-              aria-hidden="true"
-              style={{ width: 38, height: 38 }}
-            />
+    <AppShell title="Order received" back="/">
+      <div className="container cf">
+        <section className="cf-hero" aria-labelledby="confirm-title">
+          <span className="cf-mark" aria-hidden="true">
+            <CheckCircle2 />
+          </span>
+          <h1 id="confirm-title">Thank you, we have your order</h1>
+          <p>
+            {email ? (
+              <>
+                Your receipt is on its way to <b>{email}</b>.
+              </>
+            ) : (
+              'Keep your order number to track it.'
+            )}
+          </p>
+        </section>
+
+        <section className="cf-card" aria-label="Order details">
+          <div className="cf-number">
+            <span className="cf-number-text">
+              <span className="cf-label">Order number</span>
+              <span className="cf-number-value num">{orderNumber}</span>
+            </span>
+            <button type="button" className="cf-copy" onClick={copy}>
+              <Copy aria-hidden="true" />
+              Copy
+            </button>
           </div>
 
-          <span
-            className="label-micro"
-            style={{ color: "var(--brand-primary)", letterSpacing: "0.1em" }}
-          >
-            ORDER TRANSMITTED TO PRODUCTION DESK
-          </span>
-          <h1 className="h1" style={{ marginTop: "8px" }}>
-            Thank You for Printing with Vikipat!
-          </h1>
-          <p
-            className="muted"
-            style={{ maxWidth: "48ch", margin: "8px auto 0" }}
-          >
-            Your job specifications have entered our live operational queue. Our
-            pre-flight team will inspect the file parameters and notify you.
+          <p className={`cf-status is-${paymentStatus}`} role="status">
+            {paymentStatus === 'checking' && (
+              <>
+                <Loader label="Checking payment" />
+                Checking your payment with Paystack
+              </>
+            )}
+            {paymentStatus === 'paid' && 'Payment received. Your order is going to production review.'}
+            {paymentStatus === 'pending' &&
+              'Payment not confirmed yet. If you approved it on your phone, this updates by itself once Paystack tells us.'}
+            {paymentStatus === 'none' && 'We will confirm the price with you before you pay.'}
           </p>
 
-          <div style={{ margin: "24px 0" }}>
-            <span
-              style={{
-                fontSize: "var(--t-small)",
-                color: "var(--ink-subtle)",
-                display: "block",
-              }}
-            >
-              Your Unique Order Reference Number
-            </span>
-            <div className="confirmation-order-tag">{orderNumber}</div>
-            <div
-              style={{ display: "flex", justifyContent: "center", gap: "8px" }}
-            >
-              <button
-                type="button"
-                className="btn btn-quiet btn-sm"
-                onClick={handleCopyOrderNumber}
-              >
-                <Copy aria-hidden="true" style={{ width: 14, height: 14 }} />
-                <span>Copy Order Number</span>
-              </button>
-            </div>
-            {paymentReference && (
-              <p
-                style={{
-                  marginTop: "10px",
-                  fontSize: "var(--t-micro)",
-                  color: "var(--ink-subtle)",
-                }}
-              >
-                Payment reference reserved: <strong>{paymentReference}</strong>
-              </p>
-            )}
-            {paymentReference && (
-              <div className={`payment-confirmation-status is-${paymentStatus}`}>
-                <ShieldCheck aria-hidden="true" />
-                <span>
-                  {paymentStatus === "checking"
-                    ? "Checking payment confirmation..."
-                    : paymentStatus === "paid"
-                      ? "Payment confirmed. Your job is ready for production review."
-                      : "Payment is pending. If you have paid, confirmation will update automatically once Paystack notifies us."}
-                </span>
-              </div>
-            )}
+          <div className="cf-progress">
+            <OrderProgress status={progressStatus} />
           </div>
+        </section>
 
-          <div
-            style={{
-              background: "var(--surface-2)",
-              padding: "20px",
-              borderRadius: "var(--r-xl)",
-              textAlign: "left",
-              border: "1px solid var(--line)",
-              margin: "24px 0",
-            }}
+        <section className="cf-card" aria-labelledby="next-title">
+          <h2 className="cf-title" id="next-title">
+            What happens next
+          </h2>
+          <ol className="cf-steps">
+            {steps.map((step, index) => (
+              <li key={step.title}>
+                <span className="cf-step-num" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <span className="cf-step-body">
+                  <b>{step.title}</b>
+                  <span>{step.text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <div className="cf-actions">
+          <Link className="cf-btn is-primary" to={trackHref}>
+            <Package aria-hidden="true" />
+            Track this order
+          </Link>
+          <a
+            className="cf-btn"
+            href={whatsappLink(`Hello ${site.name}, I just placed order ${orderNumber}. Can you confirm you received it?`)}
+            target="_blank"
+            rel="noreferrer"
           >
-            <h3
-              style={{
-                fontFamily: "var(--display)",
-                fontSize: "1rem",
-                fontWeight: 800,
-                marginBottom: "10px",
-              }}
-            >
-              Next Steps for Your Order
-            </h3>
-            <ul
-              style={{
-                display: "grid",
-                gap: "10px",
-                fontSize: "var(--t-small)",
-                color: "var(--ink-muted)",
-              }}
-            >
-              <li style={{ display: "flex", gap: "8px" }}>
-                <CheckCircle2
-                  aria-hidden="true"
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: "var(--brand-primary)",
-                    flex: "none",
-                    marginTop: 2,
-                  }}
-                />
-                <span>
-                  <strong>Email Confirmation:</strong> We sent your initial
-                  confirmation receipt to{" "}
-                  <strong>{email || "your email"}</strong>.
-                </span>
-              </li>
-              <li style={{ display: "flex", gap: "8px" }}>
-                <CheckCircle2
-                  aria-hidden="true"
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: "var(--brand-primary)",
-                    flex: "none",
-                    marginTop: 2,
-                  }}
-                />
-                <span>
-                  <strong>Pre-Flight &amp; Digital Proof:</strong> If design or
-                  proofing was requested, our graphics team will share a digital
-                  mock-up before pressing.
-                </span>
-              </li>
-              <li style={{ display: "flex", gap: "8px" }}>
-                <CheckCircle2
-                  aria-hidden="true"
-                  style={{
-                    width: 16,
-                    height: 16,
-                    color: "var(--brand-primary)",
-                    flex: "none",
-                    marginTop: 2,
-                  }}
-                />
-                <span>
-                  <strong>Live Tracking:</strong> Track exact production stages
-                  (pre-flight, printing, QC, dispatch) on our tracking portal
-                  anytime using your email.
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px",
-              justifyContent: "center",
-              marginTop: "28px",
-            }}
-          >
-            <Link to="/track-order" className="btn btn-primary btn-lg">
-              <PackageCheck aria-hidden="true" />
-              <span>Track Live Order Status</span>
-              <ArrowRight aria-hidden="true" />
-            </Link>
-
-            <a
-              href={whatsappLink(
-                `Hello Vikipat, I just placed order ${orderNumber}. Can you confirm you received it?`,
-              )}
-              className="btn btn-whatsapp btn-lg"
-            >
-              <MessageCircle aria-hidden="true" />
-              <span>Chat with Production on WhatsApp</span>
-            </a>
-          </div>
+            <MessageCircle className="wa" aria-hidden="true" />
+            Message us on WhatsApp
+          </a>
         </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }

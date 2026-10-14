@@ -1,0 +1,1202 @@
+.print-step {
+  padding-bottom: 40px;
+}
+
+@media (min-width: 1024px) {
+  .print-size,
+  .print-artwork {
+    max-width: 800px;
+    margin-inline: auto;
+  }
+}
+
+/* ---------- Step 2: size ---------- */
+.print-size .page-intro,
+.print-artwork .page-intro {
+  padding-bottom: 16px;
+}
+
+.print-material {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px 14px 14px;
+  border-radius: var(--r-lg);
+  background: var(--sun-tint);
+}
+
+.print-material-swatch {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--sun);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+}
+
+.print-material-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.print-material-name {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.print-material-note {
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.print-material-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.print-material-rate {
+  font-size: var(--t-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-badge {
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--chalk);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.print-show-all {
+  margin-top: 14px;
+}
+
+.print-fieldset {
+  min-width: 0;
+  margin: 28px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.print-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.print-preset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-height: 76px;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  cursor: pointer;
+  transition:
+    background-color var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.print-preset:active {
+  transform: scale(0.97);
+}
+
+.print-preset input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.print-preset:has(input:checked) {
+  background: var(--ink);
+  color: var(--chalk);
+  box-shadow: none;
+}
+
+.print-preset:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.print-preset-name {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.print-preset-dims {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+@media (min-width: 640px) {
+  .print-presets {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.print-custom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin-top: 18px;
+  animation: rise 360ms var(--ease);
+}
+
+.print-times {
+  padding-bottom: 16px;
+  color: var(--muted);
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.print-unit {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--cell);
+}
+
+.print-unit button {
+  min-width: 68px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  transition:
+    background-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.print-unit button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--chalk);
+}
+
+.print-custom-error {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+  .print-custom {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  }
+
+  .print-unit {
+    grid-column: auto;
+    align-self: end;
+    margin-bottom: 4px;
+  }
+}
+
+/* The size preview: a cutting mat with a person for scale. */
+.print-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px 18px 22px;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(rgb(27 27 27 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(27 27 27 / 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.print-preview figcaption {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.print-preview-stage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 20px;
+  min-height: 150px;
+}
+
+.print-preview-person {
+  flex: none;
+  fill: var(--ink);
+  opacity: 0.3;
+}
+
+.print-preview-job {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 6px;
+  background: var(--sun);
+  color: #fff;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 10px 18px -8px rgb(27 27 27 / 0.3);
+  transition:
+    width 520ms var(--spring),
+    height 520ms var(--spring);
+}
+
+.print-qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.print-qty-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.print-qty-note {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-too-small {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+/* ---------- Step 3: artwork ---------- */
+.print-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 18px;
+  border-radius: var(--r-md);
+  background: var(--sun-tint);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-upload,
+.print-link,
+.print-notes {
+  margin-top: 20px;
+}
+
+.print-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise 360ms var(--ease);
+}
+
+.print-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 160px;
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' fill='none' rx='28' ry='28' stroke='%2398a493' stroke-width='3' stroke-dasharray='10 10' stroke-linecap='round'/%3E%3C/svg%3E");
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.print-drop:hover {
+  background-color: var(--sun-tint);
+  transform: translateY(-2px);
+}
+
+.print-drop:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.print-drop.is-busy {
+  cursor: progress;
+}
+
+.print-drop svg {
+  width: 32px;
+  height: 32px;
+}
+
+.print-drop-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.print-drop-note {
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.print-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 18px;
+  border-radius: var(--r-md);
+  background: var(--success-bg);
+  color: var(--success);
+  animation: pop 500ms var(--spring);
+}
+
+.print-file svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.print-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.print-file .btn:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.print-link {
+  animation: rise 360ms var(--ease);
+}
+
+/* =======================================================================
+   Order flow, after the "Service Request Flow" reference: a plain white
+   page, a medium heading with one grey line, light-grey option rows (icon
+   circle, title, one line, radio on the right; the chosen row turns white
+   with a thin dark outline), chips for sizes, grey cards for quantity, and
+   a white bottom area with green check steps and pill Back / Next buttons.
+   ======================================================================= */
+body:has(.print-flow) {
+  background: var(--bg);
+}
+
+.print-flow {
+  --opt-bg: #f5f4f0;
+  --opt-line: #e4e2dc;
+  --opt-ink: #1b1b1b;
+  --opt-muted: #6b675f;
+  padding-top: 8px;
+}
+
+.print-head {
+  display: grid;
+  gap: 8px;
+  padding: 8px 0 24px;
+}
+
+.print-head h1 {
+  color: var(--opt-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.375rem, 1.2rem + 0.8vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.print-head p {
+  max-width: 46ch;
+  color: var(--opt-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.print-group {
+  margin-top: 28px;
+}
+
+.print-flow .print-group-title {
+  margin-bottom: 12px;
+  padding: 0;
+  color: var(--opt-ink);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+/* ---------- Option rows ---------- */
+.opt-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
+.opt-list li {
+  display: flex;
+}
+
+.opt {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 16px 18px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: var(--opt-bg);
+  color: var(--opt-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.opt.is-static {
+  cursor: default;
+}
+
+.opt:not(.is-static):active {
+  transform: scale(0.985);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .opt:not(.is-static):hover {
+    border-color: var(--opt-line);
+    background: #fff;
+  }
+}
+
+.opt-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.opt:has(.opt-input:checked) {
+  border-color: var(--opt-ink);
+  background: #fff;
+}
+
+.opt:has(.opt-input:focus-visible),
+.opt:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.opt-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  color: #1b1b1b;
+  box-shadow: 0 1px 2px rgb(27 27 27 / 0.06);
+}
+
+.opt-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.opt-icon-letter {
+  color: var(--opt-ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.opt-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.opt-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.opt-note {
+  color: var(--opt-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.opt-meta {
+  margin-top: 2px;
+  color: var(--opt-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.opt-skeleton {
+  width: 45%;
+  height: 12px;
+  margin-top: 4px;
+}
+
+.opt-radio {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #a8a49b;
+  border-radius: 50%;
+  background: #fff;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.opt-radio::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--opt-ink);
+  transform: scale(0);
+  transition: transform 220ms var(--spring);
+}
+
+.opt:has(.opt-input:checked) .opt-radio {
+  border-color: var(--opt-ink);
+}
+
+.opt:has(.opt-input:checked) .opt-radio::after {
+  transform: scale(1);
+}
+
+.opt-link {
+  flex: none;
+  min-height: 44px;
+  padding: 0 4px 0 12px;
+  border: 0;
+  background: none;
+  color: var(--opt-ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.print-job-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 28px;
+}
+
+.print-flow .print-job-more .btn-secondary {
+  border: 1px solid var(--opt-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--opt-ink);
+}
+
+/* ---------- Size chips, after the reference's "Business Type" chips ---------- */
+.print-flow .print-fieldset {
+  margin-top: 28px;
+}
+
+.print-flow .print-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.print-flow .print-preset {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 46px;
+  padding: 11px 18px;
+  border: 1px solid var(--opt-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--opt-ink);
+  box-shadow: none;
+}
+
+.print-flow .print-preset-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.print-flow .print-preset-dims {
+  color: var(--opt-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  opacity: 1;
+}
+
+.print-flow .print-preset:has(input:checked) {
+  border-color: var(--opt-ink);
+  background: var(--opt-ink);
+  color: #fff;
+}
+
+.print-flow .print-preset:has(input:checked) .print-preset-dims {
+  color: rgb(255 255 255 / 0.7);
+}
+
+/* Custom size inputs and unit switch, in the same quiet greys */
+.print-flow .print-unit {
+  border: 1px solid var(--opt-line);
+  background: #fff;
+}
+
+.print-flow .print-unit button[aria-pressed='true'] {
+  background: var(--opt-ink);
+  color: #fff;
+}
+
+/* Size preview: a grey card like the reference's "Team Size" card */
+.print-flow .print-preview {
+  margin-top: 20px;
+  border-radius: 16px;
+  background-color: var(--opt-bg);
+  background-image:
+    linear-gradient(rgb(27 27 27 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(27 27 27 / 0.05) 1px, transparent 1px);
+}
+
+.print-flow .print-preview-job {
+  background: var(--opt-ink);
+  color: #fff;
+  box-shadow: none;
+}
+
+.print-flow .print-qty {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--opt-bg);
+}
+
+.print-flow .print-qty-label {
+  color: var(--opt-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.print-flow .print-qty-note {
+  color: var(--opt-muted);
+  font-weight: 500;
+}
+
+/* ---------- Artwork ---------- */
+.print-flow .print-summary {
+  margin-bottom: 4px;
+}
+
+.print-flow .print-drop {
+  min-height: 140px;
+  border-radius: 16px;
+  background-color: var(--opt-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' fill='none' rx='16' ry='16' stroke='%23a1a1aa' stroke-width='2' stroke-dasharray='8 8' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+.print-flow .print-drop:hover {
+  background-color: #fff;
+}
+
+.print-flow .print-drop-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* =======================================================================
+   Step indicator: one quiet line at the top of the page — a green check for
+   done steps, a black number for the current one, grey for what's ahead.
+   ======================================================================= */
+.print-top {
+  padding-top: 8px;
+}
+
+.print-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+}
+
+.print-step-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.print-step-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f0efeb;
+  color: #6b675f;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.print-step-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.print-step-item.is-done .print-step-badge {
+  background: #16a34a;
+  color: #fff;
+}
+
+.print-step-item.is-current .print-step-badge {
+  background: #1b1b1b;
+  color: #fff;
+}
+
+.print-step-label {
+  color: #6b675f;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.print-step-item.is-done .print-step-label {
+  color: #4a463f;
+}
+
+.print-step-item.is-current .print-step-label {
+  color: #1b1b1b;
+  font-weight: 600;
+}
+
+.print-step-arrow {
+  width: 14px;
+  height: 14px;
+  color: #d9d7d0;
+}
+
+/* =======================================================================
+   Phone bar: one slim white row — price, a round Back, Next.
+   ======================================================================= */
+.action-bar:has(.print-bar) {
+  bottom: 0;
+  margin: 20px 0 0;
+  padding: 10px 16px calc(10px + var(--safe-b));
+  border-top: 1px solid #f0efeb;
+  border-radius: 0;
+  background: #fff;
+  color: #1b1b1b;
+  box-shadow: 0 -8px 20px -16px rgb(27 27 27 / 0.3);
+  animation: none;
+}
+
+.print-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.print-bar-price {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.print-bar .action-bar-figure {
+  gap: 2px;
+}
+
+.action-bar:has(.print-bar) .price-big {
+  color: #1b1b1b;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.action-bar:has(.print-bar) .action-bar-note {
+  overflow: hidden;
+  color: #6b675f;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.print-back-round {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #d9d7d0;
+  border-radius: 50%;
+  background: #fff;
+  color: #1b1b1b;
+  cursor: pointer;
+}
+
+.print-back-round svg {
+  width: 18px;
+  height: 18px;
+}
+
+.print-flow-next,
+.action-bar .print-next,
+.print-aside .print-next {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-inline: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #1b1b1b;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.action-bar .print-next svg,
+.print-aside .print-next svg {
+  width: 16px;
+  height: 16px;
+}
+
+.action-bar .print-next:disabled,
+.print-aside .print-next:disabled {
+  background: #e4e2dc;
+  color: #a8a49b;
+  opacity: 1;
+}
+
+/* =======================================================================
+   Layout: one column on phones; from 1024 px the form on the left and a
+   sticky summary card on the right, which replaces the phone bar.
+   ======================================================================= */
+.print-layout {
+  padding-bottom: 24px;
+}
+
+.print-aside {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .print-top {
+    max-width: 1080px;
+    padding-top: 16px;
+  }
+
+  .print-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+    gap: 48px;
+    max-width: 1080px;
+    padding-bottom: 64px;
+  }
+
+  .print-layout .print-size,
+  .print-layout .print-artwork {
+    max-width: none;
+    margin: 0;
+  }
+
+  .print-aside {
+    position: sticky;
+    top: 132px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 16px;
+    padding: 24px;
+    border: 1px solid #f0efeb;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 12px 32px -24px rgb(27 27 27 / 0.35);
+  }
+
+  .print-aside-kicker {
+    color: #6b675f;
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .print-aside-lines {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f0efeb;
+  }
+
+  .print-aside-lines div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 0.875rem;
+  }
+
+  .print-aside-lines dt {
+    color: #6b675f;
+  }
+
+  .print-aside-lines dd {
+    margin: 0;
+    color: #1b1b1b;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .print-aside-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .print-aside-price {
+    color: #1b1b1b;
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .print-aside-note {
+    color: #6b675f;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .print-aside-actions .print-next {
+    width: 100%;
+    min-height: 50px;
+  }
+
+  .print-aside-back {
+    display: inline-flex;
+    align-self: center;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    border: 0;
+    background: none;
+    color: #4a463f;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .print-aside-back svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  /* Stage 1: centred, narrower, the option rows in two columns */
+  .print-flow:not(.print-size):not(.print-artwork) {
+    max-width: 1080px;
+  }
+
+  .print-flow:not(.print-size):not(.print-artwork) .opt-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .print-flow .opt-list li .opt {
+    height: 100%;
+  }
+}
+
+/* Tighter rhythm between the heading and the first group */
+.print-flow .print-head {
+  padding-bottom: 4px;
+}
+
+.print-flow .print-group {
+  margin-top: 24px;
+}
+
+/* Chips wrap several to a row, like the reference: name on top, size under */
+.print-flow .print-preset {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 0;
+  padding: 10px 16px;
+}
+
+.print-flow .print-preset-name {
+  font-size: 0.875rem;
+}
+
+.print-flow .print-preset-dims {
+  font-size: 0.75rem;
+}
+
+/* Stage 2 on phones: a smaller size picture so the form isn't a long scroll */
+@media (max-width: 1023px) {
+  .print-flow .print-preview {
+    padding: 12px 14px 14px;
+  }
+
+  .print-flow .print-preview-stage {
+    min-height: 104px;
+  }
+}
+
+/* =======================================================================
+   Stage 2, second pass: size options fill the full width as an even grid
+   (2 across on phones, 4 on wider screens), and a tighter phone rhythm.
+   ======================================================================= */
+.print-flow .print-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.print-flow .print-preset {
+  width: 100%;
+  min-height: 64px;
+  justify-content: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.print-flow .print-preset-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.print-flow .print-preset-dims {
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 640px) {
+  .print-flow .print-presets {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Custom size row fills the width too */
+.print-flow .print-custom {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.print-flow .print-custom .input {
+  width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .print-flow .print-head {
+    gap: 4px;
+    padding: 4px 0 0;
+  }
+
+  .print-flow .print-head h1 {
+    font-size: 1.375rem;
+  }
+
+  .print-flow .print-head p {
+    font-size: 0.875rem;
+  }
+
+  .print-flow .print-group,
+  .print-flow .print-fieldset {
+    margin-top: 20px;
+  }
+
+  .print-flow .print-group-title {
+    margin-bottom: 10px;
+    font-size: 1rem;
+  }
+
+  /* Material: one compact row */
+  .print-size.print-flow .opt.is-static {
+    min-height: 0;
+    padding: 12px 12px 12px 14px;
+  }
+
+  .print-size.print-flow .opt-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .print-size.print-flow .opt-title {
+    font-size: 0.9375rem;
+  }
+
+  .print-size.print-flow .opt-note {
+    font-size: 0.8125rem;
+  }
+
+  /* Size picture: shorter, full width */
+  .print-flow .print-preview {
+    margin-top: 12px;
+    padding: 10px 14px 12px;
+  }
+
+  .print-flow .print-preview-stage {
+    min-height: 0;
+  }
+
+  .print-flow .print-qty {
+    margin-top: 12px;
+    padding: 12px 14px;
+  }
+}

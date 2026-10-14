@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { AlertCircle, ChevronDown, Clock, Mail, MapPin, MessageCircle, Phone, Send } from 'lucide-react';
-import { Layout, PageHead } from '../components/Layout';
-import { Crumbs, Label } from '../components/Primitives';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle2, Mail, MapPin, MessageCircle, Phone, Upload } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Loader } from '../components/Dots';
+import { API_BASE } from '../lib/api';
+import { greetingLink, mapsLink, telLink, whatsappLink } from '../lib/format';
+import { useTitle } from '../lib/useTitle';
 import { site } from '../site';
-import { telLink, whatsappLink } from '../lib/format';
-import { useTitle } from '../lib/useReveal';
+import '../styles/pages/content.css';
 
 type Fields = {
   name: string;
@@ -21,282 +23,316 @@ type Fields = {
 };
 type Errors = Partial<Record<keyof Fields, string>>;
 
-const empty: Fields = { name: '', company: '', phone: '', email: '', need: 'Labels', quantity: '', size: '', material: '', deadline: '', location: '', message: '' };
+/** Values are the API's catalogue categories; labels are how customers say it. */
+const needs: { value: string; label: string }[] = [
+  { value: 'Large Format', label: 'Banners and signs' },
+  { value: 'DTF', label: 'Shirt printing (DTF)' },
+  { value: 'Corporate Branding', label: 'Uniforms and corporate branding' },
+  { value: 'Labels', label: 'Labels and stickers' },
+  { value: 'Souvenirs', label: 'Mugs and gifts' },
+  { value: 'Packaging', label: 'Packaging' },
+  { value: 'Events', label: 'Event printing' },
+];
 
-const subjects = ['Labels', 'Packaging', 'DTF', 'Large Format', 'Corporate Branding', 'Souvenirs', 'Events'];
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
+const empty: Fields = {
+  name: '',
+  company: '',
+  phone: '',
+  email: '',
+  need: 'Large Format',
+  quantity: '',
+  size: '',
+  material: '',
+  deadline: '',
+  location: '',
+  message: '',
+};
 
 function validate(fields: Fields): Errors {
   const errors: Errors = {};
-  if (fields.name.trim().length < 2)
-    errors.name = 'Please provide your name or business name.';
-  if (!/^[\d\s+()-]{9,}$/.test(fields.phone.trim()))
-    errors.phone = 'Please provide a valid phone or WhatsApp number.';
-  if (fields.email && !/^\S+@\S+\.\S+$/.test(fields.email)) errors.email = 'Please provide a valid email address.';
-  if (!fields.quantity.trim()) errors.quantity = 'Please tell us the quantity required.';
+  if (fields.name.trim().length < 2) errors.name = 'Enter your name or business name.';
+  if (!/^[+0-9 ()-]{8,24}$/.test(fields.phone.trim())) errors.phone = 'Enter a phone number we can reach, like 024 000 0000.';
+  if (fields.email && !/^\S+@\S+\.\S+$/.test(fields.email.trim())) errors.email = 'Check the email address.';
+  if (!fields.quantity.trim()) errors.quantity = 'Tell us roughly how many you need.';
   return errors;
 }
 
-export default function Contact() {
-  useTitle(`Contact Studio & Custom Quotes | ${site.fullName}`);
+const order: (keyof Fields)[] = ['name', 'phone', 'email', 'quantity'];
 
+export default function Contact() {
+  useTitle(`Contact and quotes | ${site.fullName}`);
   const [fields, setFields] = useState<Fields>(empty);
-  const [errors, setErrors] = useState<Errors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
   const [artwork, setArtwork] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [sent, setSent] = useState(false);
 
-  const set =
-    (key: keyof Fields) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const next = { ...fields, [key]: event.target.value };
-      setFields(next);
-      if (touched[key]) setErrors(validate(next));
-    };
+  const errors = validate(fields);
+  const shown = (key: keyof Fields) => (touched[key] ? errors[key] : undefined);
 
-  const blur = (key: keyof Fields) => () => {
-    setTouched((state) => ({ ...state, [key]: true }));
-    setErrors(validate(fields));
-  };
+  const set = (key: keyof Fields) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setFields((current) => ({ ...current, [key]: event.target.value }));
 
-  const submit = async (event: React.FormEvent) => {
+  const props = (key: keyof Fields) => ({
+    id: `q-${key}`,
+    name: key,
+    value: fields[key],
+    onChange: set(key),
+    onBlur: () => setTouched((current) => ({ ...current, [key]: true })),
+    'aria-invalid': Boolean(shown(key)),
+    'aria-describedby': shown(key) ? `q-${key}-error` : undefined,
+  });
+
+  const error = (key: keyof Fields) =>
+    shown(key) ? (
+      <p className="field-error" id={`q-${key}-error`}>
+        <AlertCircle aria-hidden="true" />
+        {shown(key)}
+      </p>
+    ) : null;
+
+  const needLabel = needs.find((item) => item.value === fields.need)?.label ?? fields.need;
+  const summary = `Hello ${site.name}, I just sent a quote request on your website.\n\nName: ${fields.name.trim()}\nWhat I need: ${needLabel}\nQuantity: ${fields.quantity.trim()}${fields.size.trim() ? `\nSize: ${fields.size.trim()}` : ''}${fields.deadline ? `\nNeeded by: ${fields.deadline}` : ''}${artwork ? `\nArtwork: ${artwork.name}` : ''}`;
+
+  const submit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const found = validate(fields);
-    setErrors(found);
-    setTouched(Object.fromEntries(Object.keys(fields).map((key) => [key, true])) as Record<keyof Fields, boolean>);
-
-    const firstInvalid = (Object.keys(found) as (keyof Fields)[])[0];
-    if (firstInvalid) {
-      document.getElementById(firstInvalid)?.focus();
+    setTouched({ name: true, phone: true, email: true, quantity: true });
+    const first = order.find((key) => found[key]);
+    if (first) {
+      document.getElementById(`q-${first}`)?.focus();
       return;
     }
 
     setBusy(true);
     setSubmitError('');
-    let artworkUrl = '';
     try {
+      let artworkUrl = '';
       if (artwork) {
+        if (artwork.size > 10 * 1024 * 1024) throw new Error('That file is over 10 MB. Send it on WhatsApp instead.');
         const body = new FormData();
         body.append('file', artwork);
-        const upload = await fetch(`${API_URL}/quotes/media`, { method: 'POST', body });
-        const uploaded = await upload.json();
-        if (!upload.ok) throw new Error(Array.isArray(uploaded.message) ? uploaded.message.join('. ') : uploaded.message || 'Artwork upload failed.');
+        const upload = await fetch(`${API_BASE}/quotes/media`, { method: 'POST', body });
+        const uploaded = await upload.json().catch(() => ({}));
+        if (!upload.ok)
+          throw new Error(
+            Array.isArray(uploaded.message) ? uploaded.message.join('. ') : uploaded.message || 'The file did not upload.',
+          );
         artworkUrl = uploaded.url;
       }
-      const response = await fetch(`${API_URL}/quotes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...fields, email: fields.email || undefined, artworkUrl: artworkUrl || undefined, artworkName: artwork?.name || '', website: '' }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join('. ') : result.message || 'Quote request could not be saved.');
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Quote request could not be saved. Please try again.');
+      const response = await fetch(`${API_BASE}/quotes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...fields,
+          email: fields.email || undefined,
+          artworkUrl: artworkUrl || undefined,
+          artworkName: artwork?.name || '',
+          website: '',
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok)
+        throw new Error(
+          Array.isArray(result.message) ? result.message.join('. ') : result.message || 'Your request was not saved.',
+        );
+      setSent(true);
+      window.scrollTo({ top: 0 });
+    } catch (thrown) {
+      setSubmitError(
+        thrown instanceof TypeError
+          ? 'We could not reach Vikipat. Check your connection and try again.'
+          : thrown instanceof Error
+            ? thrown.message
+            : 'Your request was not saved. Please try again.',
+      );
+    } finally {
       setBusy(false);
-      return;
     }
-
-    window.location.href = whatsappLink(
-      `Hello ${site.name},\n\n*QUOTE REQUEST*\n*Name:* ${fields.name.trim()}\n*Company:* ${fields.company.trim() || 'Not provided'}\n*Phone/WhatsApp:* ${fields.phone.trim()}\n*Email:* ${fields.email.trim() || 'Not provided'}\n*What I need:* ${fields.need}\n*Quantity:* ${fields.quantity.trim()}\n*Size:* ${fields.size.trim() || 'To be discussed'}\n*Material:* ${fields.material.trim() || 'Please advise'}\n*Deadline:* ${fields.deadline || 'Flexible'}\n*Delivery location:* ${fields.location.trim() || 'To be confirmed'}\n*Artwork:* ${artwork ? `${artwork.name}, I will attach it in this chat` : 'I need artwork/design support'}\n\n*Additional information:*\n${fields.message.trim() || 'None'}`,
-    );
   };
 
-  const fieldProps = (key: keyof Fields) => ({
-    id: key,
-    name: key,
-    value: fields[key],
-    onChange: set(key),
-    onBlur: blur(key),
-    'aria-invalid': Boolean(errors[key] && touched[key]),
-    'aria-describedby': errors[key] && touched[key] ? `${key}-error` : undefined,
-  });
-
-  const showError = (key: keyof Fields) =>
-    errors[key] && touched[key] ? (
-      <p className="field-error" id={`${key}-error`} role="alert">
-        <AlertCircle aria-hidden="true" />
-        {errors[key]}
-      </p>
-    ) : null;
-
   return (
-    <Layout>
-      <PageHead
-        title="Contact Our Studio &amp; Request a Quote"
-        lede="Have a question or custom design specifications? Connect directly with our Accra production engineers via WhatsApp, phone call, or send your project brief below."
-      >
-        <Crumbs trail={[{ label: 'Home', to: '/' }, { label: 'Contact & Quotes' }]} />
-      </PageHead>
+    <AppShell title="Contact" back="/">
+      <div className="container content">
+        <header className="page-intro">
+          <h1 className="title">Contact and quotes</h1>
+          <p>Ask us anything, or tell us about a job that is not on the site and we will price it for you.</p>
+        </header>
 
-      <section className="shell section-tight">
-        <div className="contact">
-          {/* Left Column: Direct Directory */}
-          <div className="stack-lg">
-            <div className="stack">
-              <Label micro>Studio Contact Directory</Label>
-              <div className="directory">
-                <div className="directory-row">
-                  <span>WhatsApp</span>
-                  <a href={whatsappLink(`Hello ${site.name}`)} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <MessageCircle aria-hidden="true" style={{ width: 15, height: 15, color: 'var(--whatsapp)' }} />
-                    <span>{site.whatsappDisplay}</span>
-                  </a>
-                </div>
-                <div className="directory-row">
-                  <span>Phone</span>
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <Phone aria-hidden="true" style={{ width: 15, height: 15 }} />
-                    <a href={telLink}>{site.phoneDisplay}</a>
-                    <span aria-hidden="true">/</span>
-                    <a href={`tel:${site.whatsappDial}`}>{site.whatsappDisplay}</a>
-                  </p>
-                </div>
-                <div className="directory-row">
-                  <span>Email</span>
-                  <a href={`mailto:${site.email}`} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Mail aria-hidden="true" style={{ width: 15, height: 15 }} />
-                    <span>{site.email}</span>
-                  </a>
-                </div>
-                <div className="directory-row">
-                  <span>Workshop</span>
-                  <p style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
-                    <MapPin aria-hidden="true" style={{ width: 16, height: 16, flex: 'none', color: 'var(--brand-primary)', marginTop: 2 }} />
-                    <span>
-                      {site.address.line1}, {site.address.line2}
-                    </span>
-                  </p>
-                </div>
-                <div className="directory-row">
-                  <span>Coverage</span>
-                  <p>{site.deliveryArea}</p>
-                </div>
-                <div className="directory-row">
-                  <span>Accepted</span>
-                  <p>{site.payment}</p>
-                </div>
-              </div>
-            </div>
+        <ul className="contact-ways">
+          <li>
+            <a className="contact-way is-primary" href={greetingLink} target="_blank" rel="noreferrer">
+              <MessageCircle aria-hidden="true" />
+              <span>
+                <strong>WhatsApp</strong>
+                <span>{site.whatsappDisplay}</span>
+              </span>
+            </a>
+          </li>
+          <li>
+            <a className="contact-way" href={telLink}>
+              <Phone aria-hidden="true" />
+              <span>
+                <strong>Call</strong>
+                <span>{site.phoneDisplay}</span>
+              </span>
+            </a>
+          </li>
+          <li>
+            <a className="contact-way" href={`mailto:${site.email}`}>
+              <Mail aria-hidden="true" />
+              <span>
+                <strong>Email</strong>
+                <span>{site.email}</span>
+              </span>
+            </a>
+          </li>
+          <li>
+            <a className="contact-way" href={mapsLink} target="_blank" rel="noreferrer">
+              <MapPin aria-hidden="true" />
+              <span>
+                <strong>Visit</strong>
+                <span>{site.address.line1}</span>
+              </span>
+            </a>
+          </li>
+        </ul>
 
-            <div className="stack">
-              <Label micro>Workshop &amp; Counter Hours</Label>
-              <div style={{ background: '#ffffff', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--brand-primary)', fontWeight: 700, fontSize: '0.85rem' }}>
-                  <Clock aria-hidden="true" style={{ width: 16, height: 16 }} />
-                  <span>Production Schedule</span>
-                </div>
-                {site.hours.map((row) => (
-                  <div className="hours-row" key={row.days}>
-                    <span>{row.days}</span>
-                    <span style={{ fontWeight: 600 }}>{row.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="row row-wrap" style={{ gap: '12px' }}>
-              <a className="btn btn-whatsapp" href={whatsappLink(`Hello ${site.name}`)}>
-                <MessageCircle aria-hidden="true" />
-                <span>Chat on WhatsApp</span>
-              </a>
-              <a className="btn btn-secondary" href={telLink}>
-                <Phone aria-hidden="true" />
-                <span>Call Studio</span>
+        <section className="section" aria-labelledby="quote-title">
+          {sent ? (
+            <div className="quote-sent" role="status">
+              <span className="confirm-mark" aria-hidden="true">
+                <CheckCircle2 />
+              </span>
+              <h2 className="title" id="quote-title">
+                Request sent
+              </h2>
+              <p>
+                Thank you, {fields.name.trim().split(' ')[0]}. We will get back to you on {fields.phone.trim()} with a
+                price.
+              </p>
+              <a className="btn btn-secondary" href={whatsappLink(summary)} target="_blank" rel="noreferrer">
+                <MessageCircle className="wa" aria-hidden="true" />
+                Also message us on WhatsApp
               </a>
             </div>
-          </div>
+          ) : (
+            <form className="quote-form" onSubmit={submit} noValidate>
+              <h2 className="title" id="quote-title">
+                Ask for a quote
+              </h2>
 
-          {/* Right Column: Interactive Brief Form */}
-          <div className="form-panel">
-            <Label micro>Request a Custom Quote</Label>
-            <h2 className="h2" style={{ marginTop: 'var(--s2)' }}>
-              Tell Us About Your Project
-            </h2>
-
-            <form onSubmit={submit} noValidate>
-              <div className="form-body">
-                <div className="form-grid-2">
-                  <div className="field">
-                    <label className="label-micro" htmlFor="name">
-                      Your Name <span className="field-req">*</span>
-                    </label>
-                    <input className="input" type="text" autoComplete="name" placeholder="e.g. Kwame Mensah" {...fieldProps('name')} />
-                    {showError('name')}
-                  </div>
-
-                  <div className="field">
-                    <label className="label-micro" htmlFor="company">Company Name</label>
-                    <input className="input" type="text" autoComplete="organization" placeholder="e.g. Apex Technologies" {...fieldProps('company')} />
-                  </div>
-
-                  <div className="field">
-                    <label className="label-micro" htmlFor="phone">
-                      WhatsApp or Phone Number <span className="field-req">*</span>
-                    </label>
-                    <input
-                      className="input"
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="054 000 0000"
-                      {...fieldProps('phone')}
-                    />
-                    {showError('phone')}
-                  </div>
-                </div>
-
-                <div className="form-grid-2">
-                  <div className="field">
-                    <label className="label-micro" htmlFor="email">Email Address</label>
-                    <input className="input" type="email" autoComplete="email" placeholder="name@company.com" {...fieldProps('email')} />
-                    {showError('email')}
-                  </div>
-                  <div className="field">
-                    <label className="label-micro" htmlFor="need">What Do You Need?</label>
-                    <span className="select-wrap"><select className="select" id="need" name="need" value={fields.need} onChange={set('need')}>{subjects.map((option) => <option key={option}>{option}</option>)}</select><ChevronDown aria-hidden="true" /></span>
-                  </div>
-                </div>
-
+              <div className="form-grid form-grid-2">
                 <div className="field">
-                  <div className="form-grid-2">
-                    <div className="field"><label className="label-micro" htmlFor="quantity">Quantity <span className="field-req">*</span></label><input className="input" placeholder="e.g. 500 pieces" {...fieldProps('quantity')} />{showError('quantity')}</div>
-                    <div className="field"><label className="label-micro" htmlFor="size">Size</label><input className="input" placeholder="e.g. A5 or 2m × 1m" {...fieldProps('size')} /></div>
-                  </div>
-                </div>
-
-                <div className="form-grid-2">
-                  <div className="field"><label className="label-micro" htmlFor="material">Material</label><input className="input" placeholder="e.g. Vinyl, kraft paper, cotton" {...fieldProps('material')} /></div>
-                  <div className="field"><label className="label-micro" htmlFor="deadline">Deadline</label><input className="input" type="date" {...fieldProps('deadline')} /></div>
-                </div>
-
-                <div className="field"><label className="label-micro" htmlFor="location">Delivery Location</label><input className="input" autoComplete="street-address" placeholder="Area, city or full delivery address" {...fieldProps('location')} /></div>
-
-                <div className="field"><label className="label-micro" htmlFor="artwork">Upload Artwork</label><label className="artwork-drop" htmlFor="artwork"><span>{artwork ? artwork.name : 'Choose your artwork or drag it here'}</span><small>PDF, PNG, JPG or WebP · maximum 10MB</small></label><input className="visually-hidden" id="artwork" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(event) => { const file = event.target.files?.[0] || null; if (file && file.size > 10 * 1024 * 1024) { window.alert('Artwork must be 10MB or smaller.'); event.target.value = ''; setArtwork(null); return; } setArtwork(file); }} /></div>
-
-                <div className="field">
-                  <label className="label-micro" htmlFor="message">
-                    Additional Information
+                  <label className="field-label" htmlFor="q-name">
+                    Name
                   </label>
-                  <textarea
-                    className="textarea"
-                    placeholder="Finishing preferences, colours, special instructions or anything else we should know..."
-                    {...fieldProps('message')}
-                  />
-                  <p className="field-help">
-                    Submitting opens WhatsApp with your complete brief. If you selected artwork, attach the named file in the WhatsApp conversation.
-                  </p>
+                  <input className="input" autoComplete="name" {...props('name')} />
+                  {error('name')}
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-company">
+                    Business or organisation <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" autoComplete="organization" {...props('company')} />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-phone">
+                    Phone or WhatsApp number
+                  </label>
+                  <input className="input" type="tel" inputMode="tel" autoComplete="tel" {...props('phone')} />
+                  {error('phone')}
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-email">
+                    Email <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" type="email" inputMode="email" autoComplete="email" {...props('email')} />
+                  {error('email')}
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-need">
+                    What do you need?
+                  </label>
+                  <select className="select" {...props('need')}>
+                    {needs.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-quantity">
+                    How many?
+                  </label>
+                  <input className="input" inputMode="numeric" placeholder="50 shirts, 2 banners" {...props('quantity')} />
+                  {error('quantity')}
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-size">
+                    Size <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" placeholder="8 × 4 ft, A5, adult sizes" {...props('size')} />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-deadline">
+                    Needed by <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" type="date" {...props('deadline')} />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-material">
+                    Material or finish <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" placeholder="Not sure? Leave it blank" {...props('material')} />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="q-location">
+                    Delivery area <span className="field-optional">(optional)</span>
+                  </label>
+                  <input className="input" placeholder="Pickup, or your area" {...props('location')} />
                 </div>
               </div>
 
-              <div className="form-foot">
-                {submitError && <p className="field-error" role="alert"><AlertCircle aria-hidden="true" />{submitError}</p>}
-                <p>We review inquiries promptly during studio hours (typically within 15–30 minutes).</p>
-                <button className="btn btn-whatsapp btn-lg" type="submit" disabled={busy}>
-                  <Send aria-hidden="true" style={{ width: 16, height: 16 }} />
-                  <span>{busy ? 'Saving Request…' : 'Submit Quote Request'}</span>
-                </button>
+              <div className="field">
+                <label className="field-label" htmlFor="q-message">
+                  Anything else? <span className="field-optional">(optional)</span>
+                </label>
+                <textarea className="textarea" placeholder="Colours, wording, where it will be used" {...props('message')} />
               </div>
+
+              <div className="field">
+                <span className="field-label">
+                  Artwork or photo <span className="field-optional">(optional)</span>
+                </span>
+                <label className="quote-file">
+                  <Upload aria-hidden="true" />
+                  <span>{artwork ? artwork.name : 'Choose a file (PDF, PNG, JPG or WebP, up to 10 MB)'}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="visually-hidden"
+                    onChange={(event) => setArtwork(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+
+              {submitError && (
+                <p className="form-alert" role="alert">
+                  <AlertCircle aria-hidden="true" />
+                  <span>{submitError}</span>
+                </p>
+              )}
+
+              <button className="btn btn-primary btn-lg quote-submit" disabled={busy}>
+                {busy ? <Loader label="Sending" /> : 'Send request'}
+              </button>
             </form>
-          </div>
-        </div>
-      </section>
-    </Layout>
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 }

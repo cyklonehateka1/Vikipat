@@ -5,18 +5,29 @@ import { CatalogProvider } from './catalog';
 import { OrderProvider } from './order';
 import './styles/index.css';
 
-// Opt into scroll reveals only when we know they can be undone again, so a
-// failed script leaves the page fully visible rather than blank.
+// Scroll reveals are only armed when motion is welcome, so a failed script or
+// a reduced-motion setting never leaves content hidden.
 if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  document.documentElement.classList.add('reveal-ready');
+  document.documentElement.classList.add('can-reveal');
 }
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <CatalogProvider>
-      <OrderProvider>
-        <App />
-      </OrderProvider>
-    </CatalogProvider>
-  </React.StrictMode>,
-);
+const render = () =>
+  createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <CatalogProvider>
+        <OrderProvider>
+          <App />
+        </OrderProvider>
+      </CatalogProvider>
+    </React.StrictMode>,
+  );
+
+// The demo build answers API calls inside the page, so it runs with no server.
+if (import.meta.env.VITE_DEMO === '1') {
+  import('./demo/mockApi').then(({ installDemoApi }) => {
+    installDemoApi();
+    render();
+  });
+} else {
+  render();
+}

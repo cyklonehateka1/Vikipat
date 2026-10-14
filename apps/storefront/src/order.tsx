@@ -1,3 +1,4 @@
+import { cedisFromPesewas } from './lib/format';
 import React, {
   createContext,
   useCallback,
@@ -272,11 +273,11 @@ export function buildOrderMessage(
       `[Custom Job #${index + 1}] ${job.estimate.serviceName}\n` +
         `   Dimensions: ${job.estimate.width} x ${job.estimate.height} ${job.estimate.unit} (${job.estimate.totalAreaSqFt} sq ft total)\n` +
         `   Quantity: ${job.estimate.quantity}\n` +
-        `   Printing Subtotal: GH₵ ${(job.estimate.basePesewas / 100).toFixed(2)}\n` +
+        `   Printing Subtotal: ${cedisFromPesewas(job.estimate.basePesewas)}\n` +
         (job.estimate.designFeePesewas > 0
-          ? `   Design Service (Provisional Min): GH₵ ${(job.estimate.designFeePesewas / 100).toFixed(2)}\n`
+          ? `   Design Service (Provisional Min): ${cedisFromPesewas(job.estimate.designFeePesewas)}\n`
           : "") +
-        `   Job Total: GH₵ ${(job.estimate.totalPesewas / 100).toFixed(2)}`,
+        `   Job Total: ${cedisFromPesewas(job.estimate.totalPesewas)}`,
     );
   });
 

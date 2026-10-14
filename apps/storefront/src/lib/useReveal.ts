@@ -1,55 +1,64 @@
-import { useEffect } from 'react';
+import { RefObject, useEffect } from 'react';
 
 /**
- * Reveals `.reveal` elements as they enter the viewport, staggered by their
- * order within a common parent. Elements are shown immediately when the
- * IntersectionObserver is unavailable or motion is reduced.
+ * Scroll reveals. Anything marked data-reveal inside the root fades and rises
+ * in as it enters the screen, siblings a beat apart. Once shown, the attribute
+ * is removed so the element's own hover and press transitions take over again.
+ * Does nothing unless main.tsx armed it (html.can-reveal: JS on, motion allowed).
  */
-export function useReveal(deps: unknown[] = []) {
+export function useReveal(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.reveal:not(.is-in)'));
-    if (!nodes.length) return;
+    const root = rootRef.current;
+    if (!root || !document.documentElement.classList.contains('can-reveal')) return;
 
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || !('IntersectionObserver' in window)) {
-      nodes.forEach((node) => node.classList.add('is-in'));
-      return;
-    }
+    // Remembered per effect run, not in the DOM. React's development mode runs
+    // effects twice; a marker left on the elements made the second run skip
+    // them, so they were never observed and stayed hidden.
+    const watched = new WeakSet<Element>();
+    const timers = new Set<number>();
+    const settle = (el: HTMLElement, delay: number) => {
+      const timer = window.setTimeout(() => {
+        el.removeAttribute('data-reveal');
+        el.style.removeProperty('--d');
+        timers.delete(timer);
+      }, 1100 + delay);
+      timers.add(timer);
+    };
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
-          const node = entry.target as HTMLElement;
-          const siblings = Array.from(node.parentElement?.children ?? []);
-          const index = Math.min(siblings.indexOf(node), 7);
-          node.style.setProperty('--reveal-delay', `${index * 45}ms`);
-          node.classList.add('is-in');
-          observer.unobserve(node);
+          const el = entry.target as HTMLElement;
+          el.classList.add('is-in');
+          observer.unobserve(el);
+          settle(el, parseInt(el.style.getPropertyValue('--d') || '0', 10));
         });
       },
-      { rootMargin: '0px 0px -10% 0px', threshold: 0.05 },
+      { rootMargin: '0px 0px -6% 0px', threshold: 0.08 },
     );
 
-    nodes.forEach((node) => observer.observe(node));
+    const scan = () => {
+      root.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+        if (watched.has(el)) return;
+        watched.add(el);
+        const siblings = el.parentElement
+          ? Array.from(el.parentElement.children).filter((child) => child.hasAttribute('data-reveal'))
+          : [el];
+        const index = Math.max(0, siblings.indexOf(el));
+        el.style.setProperty('--d', `${Math.min(index, 8) * 70}ms`);
+        observer.observe(el);
+      });
+    };
 
-    // If the observer never fires for a node (restored scroll position, a jump
-    // to an anchor), show it anyway rather than leaving it invisible.
-    const failsafe = window.setTimeout(() => {
-      nodes.forEach((node) => node.classList.add('is-in'));
-    }, 2000);
+    scan();
+    const mutations = new MutationObserver(scan);
+    mutations.observe(root, { childList: true, subtree: true });
 
     return () => {
-      window.clearTimeout(failsafe);
       observer.disconnect();
+      mutations.disconnect();
+      timers.forEach((timer) => window.clearTimeout(timer));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-}
-
-/** Sets the document title per page. */
-export function useTitle(title: string) {
-  useEffect(() => {
-    document.title = title;
-  }, [title]);
+  }, [rootRef]);
 }

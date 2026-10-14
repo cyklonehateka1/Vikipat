@@ -29,7 +29,7 @@ type Performance = {
   daysPresent: number; lateDays: number; hoursWorked: number; jobsTouched: number; stageMoves: number; movesPerDay: number;
 };
 
-const money = (pesewas: number) => 'GH₵ ' + (pesewas / 100).toFixed(2);
+const money = (pesewas: number) => 'GH₵ ' + (pesewas / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const hours = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 const today = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => today().slice(0, 8) + '01';

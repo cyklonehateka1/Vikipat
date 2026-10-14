@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { slugify } from "./lib/format";
+import { PhotoKey, departmentPhoto } from "./content/photos";
 
 /** Availability is derived from the stock count the admin keeps. */
 export type Availability = "in" | "low" | "out";
@@ -31,8 +32,8 @@ export type Department = {
   slug: string;
   short: string;
   blurb: string;
-  image: string;
-  imageAlt: string;
+  /** The photo slot that stands for this department, when one is defined. */
+  photo: PhotoKey | null;
   count: number;
 };
 
@@ -45,73 +46,21 @@ export type StoreSettings = {
 };
 
 /**
- * Departments carry editorial artwork the API does not hold. A department only
- * appears once it has products, so an empty one never renders.
+ * Short editorial copy per catalogue department. The API holds the products;
+ * a department only appears once it has at least one.
  */
-const departmentArt: Record<
-  string,
-  Omit<Department, "name" | "slug" | "count">
-> = {
-  Labels: {
-    short: "Labels",
-    blurb: "Product labels, stickers and precision-cut brand details.",
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Custom printed product labels",
-  },
-  Packaging: {
-    short: "Packaging",
-    blurb: "Boxes, sleeves, bags and packaging that completes the experience.",
-    image:
-      "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Premium product packaging",
-  },
-  DTF: {
-    short: "DTF",
-    blurb: "Vibrant, durable garment transfers for apparel of every scale.",
-    image:
-      "https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Custom printed apparel",
-  },
-  "Large Format": {
-    short: "Large format",
-    blurb: "Banners, signs and displays engineered to hold attention.",
-    image:
-      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Branded display materials in a modern studio",
-  },
-  "Corporate Branding": {
-    short: "Corporate",
-    blurb: "Consistent print, uniforms and marketing material for organisations.",
-    image:
-      "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Corporate branding and stationery",
-  },
-  Souvenirs: {
-    short: "Souvenirs",
-    blurb: "Mugs, totes, notebooks and gifts people remember.",
-    image:
-      "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Custom branded souvenirs",
-  },
-  Events: {
-    short: "Events",
-    blurb: "Invitations, backdrops, apparel and coordinated event branding.",
-    image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1400&q=88",
-    imageAlt: "Professionally branded event",
-  },
-};
-
-const fallbackArt = {
-  short: "Department",
-  blurb: "Selected lines held in this department.",
-  image:
-    "https://images.unsplash.com/photo-1543083477-4f785aeafaa9?auto=format&fit=crop&w=1400&q=88",
-  imageAlt: "A stocked shop aisle",
+const departmentCopy: Record<string, { short: string; blurb: string }> = {
+  DTF: { short: 'DTF', blurb: 'Full-colour prints on shirts and fabric.' },
+  'Corporate Branding': { short: 'Corporate', blurb: 'Polos, uniforms and brand starter kits.' },
+  Souvenirs: { short: 'Souvenirs', blurb: 'Mugs, totes and gifts with your print.' },
+  Labels: { short: 'Labels', blurb: 'Product labels cut to your shape.' },
+  Packaging: { short: 'Packaging', blurb: 'Branded boxes, sleeves and bags.' },
+  'Large Format': { short: 'Large format', blurb: 'Pull-up banners and ready-made signs.' },
+  Events: { short: 'Events', blurb: 'Flyers and printed pieces for launches and events.' },
 };
 
 const API_URL = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+  import.meta.env.VITE_API_URL || "https://vikipat.onrender.com/api"
 ).replace(/\/$/, "");
 
 const LOW_STOCK_AT = 10;
@@ -125,12 +74,12 @@ function availabilityOf(stock: number): Availability {
 export const availabilityLabel: Record<Availability, string> = {
   in: "In stock",
   low: "Low stock",
-  out: "Out of stock",
+  out: "Sold out",
 };
 
 /** Shown in place of a product photo when the catalogue entry has none yet. */
 export const FALLBACK_PRODUCT_IMAGE =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23F1F3F9'/%3E%3Cg fill='none' stroke='%23B7BEDA' stroke-width='10'%3E%3Crect x='140' y='170' width='320' height='260' rx='16'/%3E%3Ccircle cx='230' cy='250' r='28'/%3E%3Cpath d='M140 380l100-90 90 70 60-50 70 70'/%3E%3C/g%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Crect width='600' height='600' fill='%23F5F4F0'/%3E%3Cg fill='none' stroke='%23C9C6BE' stroke-width='10'%3E%3Crect x='140' y='170' width='320' height='260' rx='16'/%3E%3Ccircle cx='230' cy='250' r='28'/%3E%3Cpath d='M140 380l100-90 90 70 60-50 70 70'/%3E%3C/g%3E%3C/svg%3E";
 
 export function productImage(product: Pick<Product, "image">) {
   return product.image || FALLBACK_PRODUCT_IMAGE;
@@ -222,7 +171,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     const names = Array.from(
       new Set(products.map((product) => product.department)),
     );
-    const order = Object.keys(departmentArt);
+    const order = Object.keys(departmentCopy);
     names.sort((a, b) => {
       const rank = (name: string) => {
         const index = order.indexOf(name);
@@ -233,7 +182,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     return names.map((name) => ({
       name,
       slug: slugify(name),
-      ...(departmentArt[name] ?? fallbackArt),
+      short: departmentCopy[name]?.short ?? name,
+      blurb: departmentCopy[name]?.blurb ?? '',
+      photo: departmentPhoto[name] ?? null,
       count: products.filter((product) => product.department === name).length,
     }));
   }, [products]);

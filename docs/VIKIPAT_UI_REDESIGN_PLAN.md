@@ -1,4 +1,7 @@
 # Vikipat — Total UI Redesign Plan & AI Design-Tool Prompts
+
+> **Superseded for the storefront (25 Sep 2026).** The customer storefront was rebuilt to `docs/superpowers/specs/2026-09-25-storefront-redesign-design.md` and `design.md`. The staff and admin sections below are still drafts.
+
 **Status: DRAFT for owner review.** Three apps, three distinct custom design languages — no shared template, no inspiration pulled from existing print-shop/e-commerce platforms, nothing generic. Each app gets its own aesthetic direction, its own typography, its own motion language, and its own standalone prompt block that can be handed directly to Google Stitch, Midjourney/UI tools, v0, or another AI designer — with or without the rest of the project documents — and still produce the intended result.
 
 Companion to `VIKIPAT_PRICING_AND_SERVICE_SPEC_DRAFT.md` (business/pricing logic) and `docs/VIKIPAT_PLATFORM_BUILD_BLUEPRINT.md` (technical architecture). This document covers **visual and interaction design only**.

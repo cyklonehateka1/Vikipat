@@ -1,6 +1,7 @@
 node_modules
 apps/api/vikipat.sqlite
 dist
+dist-demo
 .env
 .env.production
 .DS_Store
@@ -9,3 +10,4 @@ dist
 apps/api/data/
 apps/api/uploads/
 apps/api/.test-runtime/
+backups

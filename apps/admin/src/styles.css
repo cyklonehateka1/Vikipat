@@ -332,6 +332,16 @@ textarea{min-height:96px;padding-top:8px;resize:vertical}
 .pricing-note{margin-top:16px}
 .pricing-note textarea{min-height:76px}
 .pricing-actions{margin-top:14px;display:flex;justify-content:flex-end;gap:8px}
+.pricing-sizes{margin-top:22px;padding:18px;display:grid;gap:12px;border:1px solid var(--color-line);border-radius:var(--radius-lg)}
+.pricing-sizes .sandbox-heading small{color:var(--color-subtle)}
+.pricing-sizes .sandbox-check{font-size:var(--text-sm);font-weight:600}
+.pricing-sizes .pricing-actions{margin-top:0}
+.pricing-sizes>.button{justify-self:start}
+.pricing-size-rows{display:grid;gap:8px}
+.pricing-size-row{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,1fr)) minmax(0,1fr) auto;align-items:end;gap:8px}
+.pricing-size-row label{display:grid;gap:5px;font-size:var(--text-xs);font-weight:600}
+.pricing-size-row input{font-variant-numeric:tabular-nums}
+.pricing-size-hint{margin:0;color:var(--color-subtle);font-size:var(--text-sm)}
 .pricing-sandbox{margin-top:22px;padding:18px;border-radius:var(--radius-lg);background:var(--color-navy);color:white}
 .sandbox-heading{display:flex;align-items:center;gap:10px}
 .sandbox-heading>svg{width:18px;color:var(--color-orange)}

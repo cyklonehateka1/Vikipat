@@ -1,0 +1,260 @@
+.content {
+  max-width: 920px;
+  padding-bottom: 40px;
+}
+
+/* ======================= FAQ ======================= */
+.faq-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 36px;
+}
+
+.faq-list {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--cell);
+}
+
+.faq + .faq {
+  border-top: 1px solid var(--line);
+}
+
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 16px 22px;
+  font-weight: 700;
+  line-height: 1.35;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color var(--fast) var(--ease);
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  transition: transform var(--mid) var(--spring);
+}
+
+.faq[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.faq summary:hover {
+  background: var(--chalk-3);
+}
+
+.faq p {
+  max-width: 68ch;
+  padding: 4px 22px 22px;
+  color: var(--text-2);
+  line-height: 1.65;
+  animation: rise 360ms var(--ease);
+}
+
+.content-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 44px;
+  padding: 32px 24px;
+  border-radius: var(--r-xl);
+  background: var(--sun-tint);
+}
+
+.content-cta p {
+  color: var(--text-2);
+}
+
+.content-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* ======================= About ======================= */
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 14px;
+  list-style: none;
+}
+
+.about-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-photo {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--placeholder);
+}
+
+.about-caption {
+  padding-inline: 4px;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .about-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.about-facts {
+  margin-top: 28px;
+  padding: 28px 24px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  font-size: var(--t-body);
+}
+
+/* ======================= Contact ======================= */
+.contact-ways {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--grid-gap);
+  list-style: none;
+}
+
+.contact-ways li {
+  display: flex;
+}
+
+.contact-way {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 124px;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--cell);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) var(--ease);
+}
+
+.contact-way:active {
+  transform: scale(0.97);
+}
+
+.contact-way svg {
+  width: 26px;
+  height: 26px;
+}
+
+.contact-way span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.contact-way span span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.contact-way.is-primary {
+  background: var(--sun);
+  color: #fff;
+}
+
+.contact-way.is-primary span span {
+  color: inherit;
+  opacity: 0.8;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .contact-way:hover:not(.is-primary) {
+    background: var(--chalk-3);
+  }
+}
+
+@media (min-width: 1024px) {
+  .contact-ways {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.quote-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 28px 22px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+}
+
+@media (min-width: 640px) {
+  .quote-form {
+    padding: 40px;
+  }
+}
+
+.quote-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 18px;
+  border-radius: var(--r-md);
+  background: var(--cell);
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quote-file:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.quote-file svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.quote-submit {
+  align-self: flex-start;
+  min-width: 220px;
+}
+
+.quote-sent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 32px 24px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  animation: rise 500ms var(--ease);
+}
+
+.quote-sent p {
+  color: var(--text-2);
+}

@@ -15,6 +15,16 @@ export interface PrintMaterial {
   imageUrl?: string;
   ratePesewasPerSqFt: number;
   designMinimumPesewas: number;
+  /** False for stock sold in set sizes only; then `fixedSizes` lists them. */
+  allowCustomSize?: boolean;
+  fixedSizes?: MaterialSize[];
+}
+
+export interface MaterialSize {
+  label: string;
+  width: number;
+  height: number;
+  unit: 'ft' | 'in';
 }
 
 export interface PrintJobSpec {

@@ -20,7 +20,8 @@ export function computeLocalEstimate(
   // Nearest-cedi policy (rounds to nearest 100 pesewas)
   const basePesewas = Math.round(rawBasePesewas / 100) * 100;
 
-  const designFeePesewas = needsDesign ? material.designMinimumPesewas : 0;
+  // Same as the API: the starting design fee is shown in whole cedis.
+  const designFeePesewas = needsDesign ? Math.round(material.designMinimumPesewas / 100) * 100 : 0;
   const totalPesewas = basePesewas + designFeePesewas;
 
   return {
@@ -39,7 +40,7 @@ export function computeLocalEstimate(
     requiresReview: needsDesign,
     reviewReasons: needsDesign ? ["design_fee_requires_review"] : [],
     designMessage: needsDesign
-      ? `Design work starts from GH₵${(material.designMinimumPesewas / 100).toFixed(0)}. Final fee is confirmed upon artwork brief review.`
+      ? `Design work starts from GH₵${Math.round(material.designMinimumPesewas / 100)}. Final fee is confirmed upon artwork brief review.`
       : null,
   };
 }

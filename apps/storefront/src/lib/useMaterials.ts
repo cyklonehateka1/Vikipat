@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { PrintMaterial } from "../types/pricing";
-import { API_BASE } from "./api";
+import { useEffect, useState } from 'react';
+import { PrintMaterial } from '../types/pricing';
+import { API_BASE } from './api';
 
 interface MaterialsState {
   materials: PrintMaterial[];
@@ -8,37 +8,58 @@ interface MaterialsState {
   error: string | null;
 }
 
-/** Fetches the print material catalogue (rates + copy) from the API. No local fallback data — the API is the only source of truth. */
-export function useMaterials(): MaterialsState {
-  const [materials, setMaterials] = useState<PrintMaterial[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// One request serves every component on the page (home tiles, the print flow),
+// and later visits reuse it. The API is the only source of rates and copy.
+let cached: PrintMaterial[] | null = null;
+let inflight: Promise<PrintMaterial[]> | null = null;
+
+function loadMaterials() {
+  if (cached) return Promise.resolve(cached);
+  inflight ??= fetch(`${API_BASE}/catalog/print-materials`)
+    .then((response) => {
+      if (!response.ok) throw new Error('Print prices are not available right now.');
+      return response.json();
+    })
+    .then((data) => {
+      cached = Array.isArray(data) ? data : [];
+      return cached;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
+
+/** The print material catalogue (rates and copy), with a retry for failures. */
+export function useMaterials(): MaterialsState & { retry: () => void } {
+  const [state, setState] = useState<MaterialsState>(() => ({
+    materials: cached ?? [],
+    loading: !cached,
+    error: null,
+  }));
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`${API_BASE}/catalog/print-materials`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("Materials are temporarily unavailable.");
-        const data = await response.json();
-        setMaterials(Array.isArray(data) ? data : []);
-      } catch (thrown) {
-        if ((thrown as Error).name !== "AbortError") {
-          setError(
-            thrown instanceof Error ? thrown.message : "Materials are temporarily unavailable.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
+    if (cached) {
+      setState({ materials: cached, loading: false, error: null });
+      return;
     }
-    load();
-    return () => controller.abort();
-  }, []);
+    let alive = true;
+    setState((current) => ({ ...current, loading: true, error: null }));
+    loadMaterials()
+      .then((materials) => alive && setState({ materials, loading: false, error: null }))
+      .catch((thrown: unknown) => {
+        if (!alive) return;
+        setState({
+          materials: [],
+          loading: false,
+          error: thrown instanceof Error ? thrown.message : 'Print prices are not available right now.',
+        });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [attempt]);
 
-  return { materials, loading, error };
+  return { ...state, retry: () => setAttempt((value) => value + 1) };
 }

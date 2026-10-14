@@ -11,7 +11,7 @@ type CustomerDetail = Customer & {
   orders: { id: string; orderNumber: string; source: string; status: string; paymentStatus: string; totalPesewas: number; refundedPesewas: number; createdAt: string }[];
 };
 
-const money = (p: number) => 'GH₵ ' + (p / 100).toFixed(2);
+const money = (p: number) => 'GH₵ ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const when = (v: string | null) => (v ? new Intl.DateTimeFormat('en-GH', { dateStyle: 'medium' }).format(new Date(v)) : '—');
 
 /**

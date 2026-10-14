@@ -1,10 +1,8 @@
 /**
- * Editorial content that does not belong to the API. Products, departments and
- * store settings all come from the catalogue endpoint; only the written
- * material lives here.
+ * Written help content that does not belong to the API. Keep every answer true
+ * to how the storefront and the workshop actually work.
  */
 export type Faq = {
-  code: string;
   group: string;
   question: string;
   answer: string;
@@ -12,73 +10,69 @@ export type Faq = {
 
 export const faqs: Faq[] = [
   {
-    code: '01',
-    group: 'Ordering & Quotes',
-    question: 'How do I place an order or request a quote?',
+    group: 'Ordering',
+    question: 'How do I order?',
     answer:
-      'Browse our catalogue, select your desired products and quantities, and click "Add to List". When you are ready, open your Order List and click "Send on WhatsApp". WhatsApp will open with your complete specifications, product refs, and estimated total already formatted. Our team will review your order, check stock/specs, and confirm within minutes.',
+      'Pick a job under Print (banners, signs, stickers and more) or a product in the Shop. You see the price as you choose the size and quantity. Add it to your cart, check out, and pay with Mobile Money. If you prefer, you can send the whole cart to us on WhatsApp instead.',
   },
   {
-    code: '02',
-    group: 'Ordering & Quotes',
-    question: 'Do I need to register or create an account?',
+    group: 'Ordering',
+    question: 'Do I need an account?',
     answer:
-      'No. We believe in frictionless commerce. Your quote list is saved locally on your device. You do not need to remember any passwords or fill in lengthy registration forms—you interact directly with our studio production team.',
+      'No. Your cart is saved on your phone. At checkout you give us your name, phone number and email, and you track your order with your order number and a code we email you.',
   },
   {
-    code: '03',
-    group: 'Ordering & Quotes',
-    question: 'Can I request customizations not listed on the website?',
+    group: 'Ordering',
+    question: 'Can you make something that is not on the site?',
     answer:
-      'Absolutely! Vikipat handles bespoke commercial projects every day. If you require custom dimensions, specialized paper stock, embossing, metallic foil stamping, or custom apparel cuts, simply reach out to us directly on WhatsApp or call our counter.',
+      'Yes. Send us the details through the quote form or on WhatsApp: what it is, the size, how many, and a photo or sketch if you have one.',
   },
   {
-    code: '04',
-    group: 'Artwork & Design',
-    question: 'What file formats do you accept for printing?',
+    group: 'Ordering',
+    question: 'Do you give prices for large orders?',
     answer:
-      'We accept vector files (PDF, AI, EPS, SVG) and high-resolution raster files (PNG, TIFF, PSD, JPG at 300 DPI or higher with CMYK color profile). If you have artwork with bleeds, please include 3mm bleed margins on all sides.',
+      'Yes. For large quantities, for example uniforms for a whole team, send us the item, the quantity and your deadline and we will quote you.',
   },
   {
-    code: '05',
-    group: 'Artwork & Design',
-    question: 'What if I don’t have print-ready artwork or need a design created?',
+    group: 'Artwork',
+    question: 'What files can I send?',
     answer:
-      'Our in-house creative design team can assist! From our "Logo Design Starter" package to production pre-flight checks and layout adjustments, we ensure your visual assets look crisp, vibrant, and aligned with your brand identity before we press print.',
+      'You can upload PDF, PNG, JPG or WebP files up to 10 MB. For AI, EPS or bigger files, share a Google Drive, WeTransfer or Dropbox link. Use high-resolution files (300 DPI at the printed size) and leave 3 mm of bleed on each side.',
   },
   {
-    code: '06',
-    group: 'Artwork & Design',
-    question: 'Do you provide a proof before final production?',
+    group: 'Artwork',
+    question: 'I do not have a design. Can you make one?',
     answer:
-      'Yes. For every customized print or branded order, we send a digital visual proof (mockup) for your approval before full production commences. For high-volume corporate contracts, physical sample proofs can also be prepared.',
+      'Yes. Choose "Design it for me" when you add a print job. The starting design price is shown there, and we confirm the final design price with you before you pay.',
   },
   {
-    code: '07',
-    group: 'Turnaround & Delivery',
-    question: 'What is your standard production turnaround time?',
+    group: 'Artwork',
+    question: 'Will I see the design before you print?',
     answer:
-      'Standard turnaround is typically 1 to 3 business days depending on order size and finishing options. Fast-track and same-day turnaround are available in Accra for select urgent business print and stationery jobs when requested early.',
+      'Yes. For custom and branded work we send you a digital proof to approve before we print anything.',
   },
   {
-    code: '08',
-    group: 'Turnaround & Delivery',
-    question: 'Where do you deliver, and can I pick up my order in person?',
+    group: 'Payment',
+    question: 'How do I pay?',
     answer:
-      'We deliver daily across Greater Accra via direct dispatch, and nationwide across Ghana via reliable regional courier services. You can also pick up your order from our workshop on Mallam–Gbawe Road, opposite Zen Filling Station.',
+      'At checkout you pay with Mobile Money (MTN, Telecel or AT) on Paystack’s secure page. If your order includes design work, we confirm the price with you first and you pay after that. Card payments are not available yet.',
   },
   {
-    code: '09',
-    group: 'Payment & Pricing',
-    question: 'How does payment work?',
+    group: 'Delivery and pickup',
+    question: 'How long does printing take?',
     answer:
-      'We accept Mobile Money (MTN, Telecel, AT), direct Ghanaian bank transfers, and cash upon counter pickup. Once your order specs, physical proof, and delivery terms are agreed on WhatsApp, we issue an invoice with our official payment details.',
+      'Most jobs are ready in 1 to 3 working days, depending on the size and finishing. If you have a deadline, add it at checkout and we will tell you if we can meet it.',
   },
   {
-    code: '10',
-    group: 'Payment & Pricing',
-    question: 'Do you offer bulk volume discounts for corporate clients?',
+    group: 'Delivery and pickup',
+    question: 'Can I pick up my order, or do you deliver?',
     answer:
-      'Yes. We regularly supply corporate organizations, churches, universities, event planners, NGOs, and startups. We provide attractive tiered pricing on high-volume apparel, stationery, mugs, and merchandise. Mention your target quantity for a custom volume quote.',
+      'Both. Pickup is free at our workshop on Mallam–Gbawe Road, opposite Zen Filling Station. We also deliver in Accra and across Ghana, and confirm the delivery fee with you before we send it.',
+  },
+  {
+    group: 'Delivery and pickup',
+    question: 'How do I track my order?',
+    answer:
+      'Open Track, enter the order number from your email and the email you ordered with, then type the code we send you.',
   },
 ];

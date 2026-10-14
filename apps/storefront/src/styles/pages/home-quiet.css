@@ -1,0 +1,1025 @@
+/* =======================================================================
+   Homepage, in the language of the order flow, cart and checkout: a plain
+   white page, light-grey cells, near-black text, black pill buttons, green
+   only for "done / good" signals, medium-weight headings instead of the
+   heavy poster face, and soft grey bands instead of navy ones.
+   Everything here is scoped to .home-quiet so other pages are untouched.
+   ======================================================================= */
+body:has(.home-quiet) {
+  background: #fff;
+}
+
+.home-quiet {
+  --q-bg: #fff;
+  --q-band: #f5f5f6;
+  --q-cell: #f5f5f6;
+  --q-line: #e4e4e7;
+  --q-ink: #18181b;
+  --q-muted: #63636b;
+
+  --bg: #fff;
+  --bg-2: #f5f5f6;
+  --surface: #fff;
+  --cell: #f5f5f6;
+  --text: #18181b;
+  --text-2: #3f3f46;
+  --muted: #63636b;
+  --faint: #a1a1aa;
+  --line: #e4e4e7;
+  --line-strong: #a1a1aa;
+  --link: #18181b;
+  --primary: #18181b;
+  --primary-press: #000;
+  --on-primary: #fff;
+  --focus: #18181b;
+  --orange-text: #18181b;
+  --sun: #18181b;
+  --sun-press: #000;
+  --sun-tint: #f4f4f5;
+  --leaf: #18181b;
+  --leaf-2: #18181b;
+  --leaf-tint: #f4f4f5;
+  --chalk: #f5f5f6;
+  --chalk-2: #f4f4f5;
+  --chalk-3: #e4e4e7;
+  --paper: #fff;
+  background: #fff;
+  color: #18181b;
+}
+
+/* The old navy bands become soft grey bands with dark text. */
+.home-quiet .on-dark {
+  --bg: #f5f5f6;
+  --surface: #fff;
+  --cell: #fff;
+  --text: #18181b;
+  --text-2: #3f3f46;
+  --muted: #63636b;
+  --line: #e4e4e7;
+  --line-strong: #a1a1aa;
+  --link: #18181b;
+  --focus: #18181b;
+  --leaf-deep: #f5f5f6;
+  background: #f5f5f6;
+  color: #18181b;
+}
+
+/* ---------- Headings: medium weight, sentence case, no coloured word ---------- */
+.home-quiet .title-poster,
+.home-quiet .section-head h2,
+.home-quiet .how-intro h2,
+.home-quiet .work-head h2,
+.home-quiet .reassure-head h2,
+.home-quiet .visit-body h2,
+.home-quiet .qp-head h2 {
+  color: #18181b;
+  font-family: var(--font-display);
+  font-size: clamp(1.625rem, 1.3rem + 1.4vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-transform: none;
+}
+
+.home-quiet .title-poster .accent,
+.home-quiet .accent,
+.home-quiet .how-accent,
+.home-quiet .visit-accent,
+.home-quiet .section-head-accent,
+.home-quiet .on-dark .accent,
+.home-quiet .on-dark .title-poster .accent {
+  color: inherit;
+}
+
+.home-quiet .text-link {
+  color: #18181b;
+  text-decoration-color: #18181b;
+}
+
+/* ---------- Buttons: black pills, outlined secondary ---------- */
+.home-quiet .btn-primary,
+.home-quiet .btn-dark {
+  border-radius: 999px;
+  background: #18181b;
+  color: #fff;
+  box-shadow: none;
+}
+
+.home-quiet .btn-secondary {
+  border: 1px solid #e4e4e7;
+  border-radius: 999px;
+  background: #fff;
+  color: #18181b;
+  box-shadow: none;
+}
+
+/* ---------- Hero: Montserrat instead of the poster face, a black pill ---------- */
+.home-quiet .hero-title {
+  color: #18181b;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 1rem + 5.4vw, 5.25rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+
+.home-quiet .hero-line.is-accent {
+  color: #18181b;
+}
+
+.home-quiet .hero-lede {
+  color: #63636b;
+  font-size: 1.0625rem;
+}
+
+.home-quiet .hero .btn-tactile {
+  width: auto;
+  min-height: 52px;
+  margin-top: 4px;
+  padding: 0 30px;
+  border-radius: 999px;
+  background: #18181b;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.home-quiet .btn-tactile::after {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .btn-tactile:hover {
+    background: #000;
+  }
+}
+
+/* ---------- What are we printing: white cards on the grey band ---------- */
+.home-quiet .services-panel {
+  --cell: #fff;
+}
+
+.home-quiet .service {
+  border: 1px solid #ececef;
+  background: #fff;
+}
+
+.home-quiet .service-label {
+  font-weight: 600;
+}
+
+.home-quiet .service-go {
+  border-color: #d4d4d8;
+  color: #18181b;
+}
+
+.home-quiet .service-icon {
+  background: #18181b;
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .service:hover {
+    border-color: #18181b;
+    background: #fff;
+  }
+
+  .home-quiet .service:hover .service-go {
+    border-color: #18181b;
+    background: #18181b;
+    color: #fff;
+  }
+}
+
+/* ---------- Quick price: neutral size picture ---------- */
+.home-quiet .qp-rect {
+  border-color: #18181b;
+  background: rgb(24 24 27 / 0.08);
+  color: #18181b;
+}
+
+.home-quiet .qp-person {
+  fill: #a1a1aa;
+}
+
+.home-quiet .qp-line::after,
+.home-quiet .qp-line.is-design::after {
+  background: #16a34a;
+}
+
+/* ---------- How ordering works: white card, green checks in the phone art ---------- */
+.home-quiet .how-art-card {
+  border-color: #ececef;
+  background: #fff;
+}
+
+.home-quiet .how-art circle[fill='#2563eb'] {
+  fill: #16a34a;
+}
+
+.home-quiet .how-num {
+  border-color: #d4d4d8;
+  background: #fff;
+}
+
+/* ---------- Ready to order: grey cells, like the cart rows ---------- */
+.home-quiet .product-grid.is-feature .product-card {
+  border: 0;
+  background: #f5f5f6;
+  box-shadow: none;
+}
+
+.home-quiet .product-card.is-feature .product-card-photo {
+  background: #fff;
+}
+
+.home-quiet .product-card-add.is-feature {
+  border-radius: 999px;
+  background: #18181b;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .product-card-add.is-feature:hover {
+    background: #000;
+  }
+}
+
+/* ---------- Our work: plain dark arrow ---------- */
+.home-quiet .work-go,
+.home-quiet .work-more {
+  background: #18181b;
+}
+
+.home-quiet .work-pill {
+  border-color: #d4d4d8;
+}
+
+/* ---------- Reassurance: grey cards, dark icons ---------- */
+.home-quiet .reassure-card,
+.home-quiet .reassure-item:nth-child(even) .reassure-card {
+  background: #f5f5f6;
+}
+
+.home-quiet .reassure-icon,
+.home-quiet .reassure-item:nth-child(even) .reassure-icon {
+  color: #18181b;
+}
+
+/* ---------- Quick links: a readable icon on the track card ---------- */
+.home-quiet .quick {
+  background: #f5f5f6;
+}
+
+.home-quiet .quick-icon:not(.is-wa) {
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  color: #18181b;
+}
+
+/* ---------- Visit: pill buttons ---------- */
+.home-quiet .visit .btn-dark,
+.home-quiet .visit .btn-secondary {
+  border-radius: 999px;
+}
+
+.home-quiet .visit .btn-secondary {
+  border: 1px solid #e4e4e7;
+  background: #fff;
+}
+
+/* =======================================================================
+   Like the cart page: the whole page is plain white, and grey (#f5f5f6)
+   lives only inside cards. No full-width grey bands.
+   ======================================================================= */
+.home-quiet .on-dark {
+  --bg: #fff;
+  --cell: #f5f5f6;
+  --leaf-deep: #fff;
+  background: #fff;
+}
+
+/* What are we printing: grey cards with no border, like cart rows */
+.home-quiet .services-panel {
+  --cell: #f5f5f6;
+}
+
+.home-quiet .service {
+  border: 1px solid transparent;
+  background: #f5f5f6;
+}
+
+.home-quiet .service-go {
+  border-color: #e4e4e7;
+  background: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .service:hover {
+    border-color: #18181b;
+    background: #fff;
+  }
+}
+
+/* How ordering works: the illustration sits in a grey card */
+.home-quiet .how-art-card {
+  border-color: transparent;
+  background: #f5f5f6;
+}
+
+/* Our work: the corner notch must match the now-white page */
+.home-quiet .work-notch {
+  background: #fff;
+}
+
+/* =======================================================================
+   Ready to order: product cards in the cart-row style.
+   ======================================================================= */
+.home-quiet .product-grid.is-feature {
+  gap: 12px;
+}
+
+.home-quiet .product-grid.is-feature .product-card {
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: #f5f5f6;
+  box-shadow: none;
+  transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease);
+}
+
+.home-quiet .product-card.is-feature .product-card-media {
+  padding: 0;
+}
+
+.home-quiet .product-card.is-feature .product-card-photo {
+  border-radius: 12px;
+  background: #fff;
+}
+
+.home-quiet .product-card.is-feature .product-card-flag {
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: #18181b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.home-quiet .product-card.is-feature .product-card-body {
+  gap: 2px;
+  padding: 12px 4px 2px;
+}
+
+.home-quiet .product-card-dept {
+  color: #63636b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.home-quiet .product-card.is-feature .product-card-name {
+  color: #18181b;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.home-quiet .product-card.is-feature .product-card-foot {
+  margin-top: 10px;
+}
+
+.home-quiet .product-card.is-feature .product-card-price .price {
+  color: #18181b;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.home-quiet .product-card.is-feature .price-unit {
+  color: #63636b;
+  font-size: 0.75rem;
+}
+
+.home-quiet .product-card-add.is-feature {
+  min-height: 40px;
+  padding-inline: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #18181b;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.home-quiet .product-card-add.is-feature.is-in {
+  border: 1px solid #e4e4e7;
+  background: #fff;
+  color: #18181b;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .product-grid.is-feature .product-card:hover {
+    border-color: #18181b;
+    background: #fff;
+  }
+}
+
+@media (min-width: 1100px) {
+  .home-quiet .product-grid.is-feature {
+    gap: 16px;
+  }
+}
+
+/* =======================================================================
+   Hero on phones and tablets: one simple block — headline, one line, one
+   button. The illustration stack and the toggle are desktop-only.
+   ======================================================================= */
+@media (max-width: 1023px) {
+  .home-quiet .hero-objects,
+  .home-quiet .v-toggle {
+    display: none;
+  }
+
+  .home-quiet .hero-inner {
+    align-items: flex-start;
+    padding-block: 28px 40px;
+    text-align: left;
+  }
+
+  .home-quiet .hero-title {
+    align-items: flex-start;
+    font-size: clamp(2.25rem, 1.4rem + 4.2vw, 3.25rem);
+    line-height: 1.08;
+  }
+
+  .home-quiet .hero-line {
+    white-space: normal;
+  }
+
+  .home-quiet .hero-lede {
+    max-width: 34ch;
+    margin-top: 16px;
+    font-size: 1rem;
+  }
+
+  .home-quiet .hero .btn-tactile {
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .home-quiet .hero {
+    padding-bottom: 0;
+  }
+
+  .home-quiet .hero-inner {
+    padding-bottom: 8px;
+  }
+
+  .home-quiet .hero + .home-services,
+  .home-quiet .home-services.band {
+    padding-top: 40px;
+  }
+}
+
+/* =======================================================================
+   Shades of black and white, after engineering.tappamart.com: a warm bone
+   page (#FAF9F5), stone cards (#F0EFEB) with a faint warm border, near-black
+   ink (#1B1B1B), warm grey secondary text (#6B675F), hairline dividers
+   (#D9D7D0), near-black buttons, and one deep #181818 band ("How ordering
+   works") for contrast, with white text and translucent inner cards.
+   ======================================================================= */
+body:has(.home-quiet),
+.home-quiet,
+.home-quiet .hero,
+.home-quiet .on-dark {
+  background: #faf9f5;
+}
+
+.home-quiet {
+  --bg: #faf9f5;
+  --surface: #faf9f5;
+  --cell: #f0efeb;
+  --text: #1b1b1b;
+  --text-2: #3d3a35;
+  --muted: #6b675f;
+  --faint: #b9b5ac;
+  --line: #d9d7d0;
+  --line-strong: #b9b5ac;
+  --ink: #1b1b1b;
+  --stone: #f0efeb;
+  --stone-line: rgb(190 187 178 / 0.45);
+  color: #1b1b1b;
+}
+
+.home-quiet .on-dark {
+  --bg: #faf9f5;
+  --cell: #f0efeb;
+  --leaf-deep: #faf9f5;
+}
+
+/* Headings: heavier and tighter, like the reference */
+.home-quiet .hero-title,
+.home-quiet .title-poster,
+.home-quiet .section-head h2,
+.home-quiet .how-intro h2,
+.home-quiet .work-head h2,
+.home-quiet .reassure-head h2,
+.home-quiet .visit-body h2,
+.home-quiet .qp-head h2 {
+  color: #1b1b1b;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.home-quiet .hero-lede,
+.home-quiet .services-head p,
+.home-quiet .work-head p,
+.home-quiet .reassure-head p,
+.home-quiet .qp-head p {
+  color: #6b675f;
+}
+
+/* Buttons: near-black primary, stone secondary */
+.home-quiet .hero .btn-tactile,
+.home-quiet .btn-primary,
+.home-quiet .btn-dark,
+.home-quiet .work-more,
+.home-quiet .product-card-add.is-feature,
+.home-quiet .visit .btn-dark {
+  background: #1b1b1b;
+  color: #fff;
+}
+
+.home-quiet .btn-secondary,
+.home-quiet .visit .btn-secondary {
+  border: 1px solid transparent;
+  background: #e9e8e4;
+  color: #1b1b1b;
+}
+
+/* Stone cards with a faint warm border, everywhere a card appears */
+.home-quiet .service,
+.home-quiet .product-grid.is-feature .product-card,
+.home-quiet .reassure-card,
+.home-quiet .reassure-item:nth-child(even) .reassure-card,
+.home-quiet .quick,
+.home-quiet .qp-step,
+.home-quiet .qp-result {
+  border: 1px solid var(--stone-line);
+  background: #f0efeb;
+}
+
+.home-quiet .qp-result {
+  border-top: 1px solid var(--stone-line);
+}
+
+.home-quiet .service-go,
+.home-quiet .reassure-icon,
+.home-quiet .quick-icon:not(.is-wa) {
+  border-color: var(--stone-line);
+  background: #faf9f5;
+  color: #1b1b1b;
+}
+
+.home-quiet .service-icon {
+  background: #1b1b1b;
+  color: #fff;
+}
+
+.home-quiet .product-card.is-feature .product-card-photo,
+.home-quiet .qp-job,
+.home-quiet .qp-chip,
+.home-quiet .qp-stepbox,
+.home-quiet .qp-seg,
+.home-quiet .qp-units {
+  background: #faf9f5;
+}
+
+.home-quiet .qp-job:has(input:checked),
+.home-quiet .qp-chip[aria-pressed='true'] {
+  border-color: #1b1b1b;
+  background: #faf9f5;
+}
+
+.home-quiet .qp-scale,
+.home-quiet .qp-line {
+  background-color: #faf9f5;
+}
+
+.home-quiet .visit {
+  border-color: var(--stone-line);
+  background: #f0efeb;
+  box-shadow: none;
+}
+
+.home-quiet .visit-hours,
+.home-quiet .visit-hours div {
+  border-color: #d9d7d0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-quiet .service:hover,
+  .home-quiet .product-grid.is-feature .product-card:hover {
+    border-color: #1b1b1b;
+    background: #f0efeb;
+  }
+}
+
+/* Hairline dividers between the light sections */
+.home-quiet .home-featured,
+.home-quiet .home-reassure,
+.home-quiet .home-work {
+  border-top: 1px solid #d9d7d0;
+}
+
+/* Our work: the corner notch matches the bone page */
+.home-quiet .work-notch {
+  background: #faf9f5;
+}
+
+.home-quiet .work-pill {
+  border-color: var(--stone-line);
+  background: #f0efeb;
+}
+
+/* ---------- The one deep band: How ordering works ---------- */
+.home-quiet .home-how.on-dark {
+  --bg: #181818;
+  --text: #fff;
+  --text-2: rgb(255 255 255 / 0.72);
+  --muted: rgb(255 255 255 / 0.62);
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.3);
+  background: #181818;
+  color: #fff;
+}
+
+.home-quiet .home-how .how-intro h2,
+.home-quiet .home-how .how-copy strong {
+  color: #fff;
+}
+
+.home-quiet .home-how .how-intro > p,
+.home-quiet .home-how .how-copy span {
+  color: rgb(255 255 255 / 0.62);
+}
+
+.home-quiet .home-how .how-art-card {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.05);
+}
+
+.home-quiet .home-how .how-art {
+  color: rgb(255 255 255 / 0.9);
+}
+
+.home-quiet .home-how .how-num {
+  border-color: rgb(255 255 255 / 0.3);
+  background: #181818;
+  color: #fff;
+}
+
+.home-quiet .home-how .how-rail {
+  color: rgb(255 255 255 / 0.24);
+}
+
+/* Footer on the homepage: the same near-black as the deep band, with a
+   large rounded top edge like the reference. */
+body:has(.home-quiet) .site-footer {
+  --bg: #1b1b1b;
+  --text: #fff;
+  --text-2: rgb(255 255 255 / 0.72);
+  --muted: rgb(255 255 255 / 0.6);
+  border-radius: 40px 40px 0 0;
+  background: #1b1b1b;
+}
+
+/* Phones: compact service cards put the photo across the top, then the
+   icon, arrow and text in one row — no squeezed text column. */
+@media (max-width: 719px) {
+  .home-quiet .service.is-compact {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 10px 10px 18px;
+  }
+
+  .home-quiet .service.is-compact .service-thumb {
+    order: -1;
+    flex: 0 0 100%;
+    width: 100%;
+    height: 150px;
+    border-radius: 12px;
+  }
+
+  .home-quiet .service.is-compact .service-rail {
+    padding-left: 8px;
+  }
+
+  .home-quiet .service.is-compact .service-copy {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  .home-quiet .service.is-compact .service-label {
+    font-size: 1.25rem;
+  }
+}
+
+/* =======================================================================
+   What are we printing? — a shorter section. Smaller titles and padding,
+   and shorter photos, so the tall left card and the two beside it shrink
+   together on desktop, and every card is compact on phones.
+   ======================================================================= */
+.home-quiet .home-services.band {
+  padding-block: 48px;
+}
+
+.home-quiet .services-head {
+  padding-bottom: 20px;
+}
+
+.home-quiet .service-label {
+  font-size: clamp(1.25rem, 1.05rem + 0.8vw, 1.625rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.home-quiet .service-blurb {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.home-quiet .service-copy {
+  gap: 6px;
+}
+
+/* Phones: big cards become short — text on top, a 140px photo strip below */
+.home-quiet .service.is-feature {
+  padding: 18px 18px 0;
+}
+
+.home-quiet .service.is-feature .service-go {
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+}
+
+.home-quiet .service.is-feature .service-copy {
+  padding-right: 44px;
+}
+
+.home-quiet .service.is-feature .service-photo {
+  height: 140px;
+  margin: 16px -18px 0;
+  aspect-ratio: auto;
+  border-radius: 14px 14px 0 0;
+}
+
+.home-quiet .services {
+  gap: 10px;
+}
+
+@media (max-width: 719px) {
+  .home-quiet .service.is-compact .service-thumb {
+    height: 120px;
+  }
+
+  .home-quiet .service.is-compact .service-label {
+    font-size: 1.125rem;
+  }
+}
+
+/* Tablet and up: two columns, tall card on the left, all photos shorter */
+@media (min-width: 720px) {
+  .home-quiet .service.is-feature {
+    padding: 22px 22px 0;
+  }
+
+  .home-quiet .service.is-feature .service-go {
+    top: 18px;
+    right: 18px;
+  }
+
+  .home-quiet .service.is-feature .service-photo {
+    height: 150px;
+    margin: 18px -22px 0;
+  }
+
+  .home-quiet .service-item.is-feature:first-child .service.is-feature .service-photo {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+
+  .home-quiet .service.is-compact {
+    padding: 16px 20px;
+  }
+
+  .home-quiet .service.is-compact .service-thumb {
+    width: 80px;
+    height: 80px;
+  }
+
+  .home-quiet .service.is-compact .service-label {
+    font-size: 1.125rem;
+  }
+
+  .home-quiet .services {
+    gap: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-quiet .home-services.band {
+    padding-block: 64px;
+  }
+
+  .home-quiet .service.is-feature .service-photo {
+    height: 170px;
+  }
+}
+
+/* =======================================================================
+   What are we printing? — compact layout.
+   Under 900 px: every card is one cart-style row (photo left, text right).
+   From 900 px: the three big cards side by side, the two small ones below.
+   ======================================================================= */
+@media (max-width: 899px) {
+  .home-quiet .services {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .home-quiet .service-item.is-feature:first-child {
+    grid-row: auto;
+  }
+
+  .home-quiet .service.is-feature,
+  .home-quiet .service.is-compact {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 14px;
+    min-height: 0;
+    padding: 10px 14px 10px 10px;
+  }
+
+  .home-quiet .service.is-feature .service-photo,
+  .home-quiet .service-item.is-feature:first-child .service.is-feature .service-photo,
+  .home-quiet .service.is-compact .service-thumb {
+    order: -1;
+    flex: none;
+    width: 96px;
+    height: 96px;
+    min-height: 0;
+    margin: 0;
+    aspect-ratio: auto;
+    border-radius: 12px;
+  }
+
+  .home-quiet .service .service-go,
+  .home-quiet .service .service-rail {
+    display: none;
+  }
+
+  .home-quiet .service .service-copy,
+  .home-quiet .service.is-feature .service-copy,
+  .home-quiet .service.is-compact .service-copy {
+    flex: 1 1 0;
+    gap: 3px;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .home-quiet .service .service-label,
+  .home-quiet .service.is-compact .service-label {
+    font-size: 1.0625rem;
+    line-height: 1.25;
+  }
+
+  .home-quiet .service .service-blurb {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-quiet .service-hint {
+    margin-top: 2px;
+    font-size: 0.75rem;
+  }
+
+  .home-quiet .home-services.band {
+    padding-block: 36px;
+  }
+}
+
+@media (min-width: 900px) {
+  .home-quiet .services {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .home-quiet .service-item.is-feature,
+  .home-quiet .service-item.is-feature:first-child {
+    grid-column: span 2;
+    grid-row: auto;
+  }
+
+  .home-quiet .service-item.is-compact {
+    grid-column: span 3;
+  }
+
+  .home-quiet .service.is-feature .service-photo,
+  .home-quiet .service-item.is-feature:first-child .service.is-feature .service-photo {
+    flex: none;
+    height: 160px;
+    min-height: 0;
+    margin-top: auto;
+    aspect-ratio: auto;
+  }
+
+  .home-quiet .service.is-feature .service-copy {
+    padding-bottom: 16px;
+  }
+
+  .home-quiet .service .service-blurb {
+    max-width: none;
+  }
+}
+
+/* Contact block on the homepage: no outer card, rows carry the styling */
+.home-quiet .visit {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* =======================================================================
+   Phone and tablet hero: the text sits on one stone card, and the desktop
+   card fan (just the fan, no floating objects) slides up out of its tray at
+   the bottom of the card. One picture, one moment of motion on load.
+   ======================================================================= */
+@media (max-width: 1023px) {
+  .home-quiet .hero {
+    padding-top: 8px;
+  }
+
+  .home-quiet .hero-inner {
+    width: calc(100% - var(--gutter) * 2);
+    max-width: 640px;
+    margin-inline: auto;
+    padding: 28px 24px 0;
+    overflow: hidden;
+    border: 1px solid rgb(190 187 178 / 0.45);
+    border-radius: 28px;
+    background: #f0efeb;
+  }
+
+  .home-quiet .hero-objects {
+    display: block;
+    order: 1;
+    align-self: center;
+    width: 100%;
+    max-width: 300px;
+    height: 150px;
+    margin: 4px 0 -2px;
+  }
+
+  .home-quiet .hero-objects .fl,
+  .home-quiet .hero-objects .hero-tiles,
+  .home-quiet .hero-objects .hero-cursor {
+    display: none;
+  }
+
+  .home-quiet .hero-fan {
+    inset: 0 14%;
+  }
+
+  .home-quiet .vcard {
+    border-radius: 12px;
+  }
+
+  .home-quiet .hero-tray-back {
+    height: 64px;
+    border-width: 6px;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+
+  .home-quiet .hero-tray {
+    display: none;
+  }
+
+  .home-quiet .hero-cards {
+    clip-path: inset(-300px -80px 0 -80px);
+  }
+}

@@ -1,0 +1,314 @@
+.track {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 680px;
+  padding-bottom: 40px;
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 26px 22px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  animation: rise 600ms var(--ease) both;
+}
+
+.track > .track-card:first-of-type {
+  margin-top: 14px;
+}
+
+.track > .page-intro + .track-card {
+  margin-top: 0;
+}
+
+.track-card:nth-of-type(2) {
+  animation-delay: 80ms;
+}
+
+.track-card:nth-of-type(3) {
+  animation-delay: 160ms;
+}
+
+.track-status {
+  background: var(--sun-tint);
+}
+
+@media (min-width: 640px) {
+  .track-card {
+    padding: 36px;
+  }
+}
+
+.track-form {
+  gap: 22px;
+}
+
+.track-code-field {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.track-otp {
+  max-width: 300px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4em;
+}
+
+.track-sub {
+  margin-top: 6px;
+  color: var(--text-2);
+}
+
+.track-notice {
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--cell);
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.track-trust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.track-trust svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--success);
+}
+
+.track-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.track-links .btn {
+  padding-inline: 8px;
+}
+
+.track-status .title {
+  margin-top: -6px;
+}
+
+.track-number {
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.track-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 2px dashed var(--line-strong);
+}
+
+.track-facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.track-facts dt {
+  color: var(--text-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.track-facts dd {
+  font-weight: 700;
+}
+
+.track-items {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  list-style: none;
+}
+
+.track-items li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.track-items li > span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.track-item-name {
+  font-weight: 700;
+}
+
+.track-item-meta {
+  color: var(--muted);
+  font-size: var(--t-xs);
+}
+
+.track-timeline {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.track-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 14px;
+  padding-bottom: 22px;
+}
+
+.track-timeline li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  bottom: 2px;
+  left: 11px;
+  width: 2px;
+  background: var(--line);
+}
+
+.track-timeline li:last-child {
+  padding-bottom: 0;
+}
+
+.track-timeline-dot {
+  width: 14px;
+  height: 14px;
+  margin: 5px;
+  border-radius: 50%;
+}
+
+.track-timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.track-timeline-status {
+  font-weight: 700;
+}
+
+.track-timeline-note {
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+
+.track-timeline time {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.track-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+/* ======================= Confirmation ======================= */
+.confirm-card {
+  align-items: flex-start;
+}
+
+.confirm-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 12px;
+  width: 100%;
+  padding: 16px 12px 16px 20px;
+  border-radius: var(--r-lg);
+  background: var(--sun-tint);
+}
+
+.confirm-number-label {
+  grid-column: 1;
+  grid-row: 1;
+  color: var(--text-2);
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.confirm-number-value {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.confirm-number .btn {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 48px;
+  padding-inline: 18px;
+}
+
+.confirm-payment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.confirm-payment.is-checking,
+.confirm-payment.is-none {
+  background: var(--cell);
+  color: var(--text-2);
+}
+
+.confirm-payment.is-paid {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.confirm-payment.is-pending {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.confirm-card .progress {
+  width: 100%;
+}
+
+.confirm-next {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 24px;
+  color: var(--text-2);
+}
+
+.confirm-next li::marker {
+  font-weight: 800;
+}

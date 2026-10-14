@@ -1,154 +1,82 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronRight, Minus, Plus } from 'lucide-react';
-import { Availability, availabilityLabel } from '../catalog';
-import { amount } from '../lib/format';
+import { useEffect, useState } from 'react';
+import { Check, Minus, Plus } from 'lucide-react';
+import { Product } from '../catalog';
+import { cedis } from '../lib/format';
 
-/** Small mono label used for eyebrows, data keys and codes. */
-export function Label({
-  children,
-  micro,
-  className = '',
-  as: Tag = 'p',
-}: {
-  children: React.ReactNode;
-  micro?: boolean;
-  className?: string;
-  as?: 'p' | 'span' | 'dt' | 'div' | 'h2';
-}) {
-  return (
-    <Tag className={`${micro ? 'label-micro' : 'label'} ${className}`.trim()}>{children}</Tag>
-  );
+/** A price in cedis with fixed-width figures, e.g. GH₵85.00. */
+export function Price({ value, className = '' }: { value: number; className?: string }) {
+  return <span className={`price ${className}`.trim()}>{cedis(value)}</span>;
 }
 
-/** Price with a subordinate currency mark and tabular figures. */
-export function Price({ value, large }: { value: number; large?: boolean }) {
+/** Stock in words, with the count when it is running low. */
+export function StockNote({ product }: { product: Product }) {
+  if (product.availability === 'out') return <span className="stock-note is-out">Sold out</span>;
+  if (product.availability === 'low')
+    return <span className="stock-note is-low">Only {product.stockCount} left</span>;
   return (
-    <span className={`price${large ? ' price-lg' : ''}`}>
-      <span className="cur">GH₵</span>
-      {amount(value)}
+    <span className="stock-note is-in">
+      <Check strokeWidth={2.6} aria-hidden="true" />
+      In stock
     </span>
   );
 }
 
-const badgeClass: Record<Availability, string> = {
-  in: 'badge badge-stock',
-  low: 'badge badge-low',
-  out: 'badge badge-out',
-};
-
-export function StockBadge({ value }: { value: Availability }) {
-  return <span className={badgeClass[value]}>{availabilityLabel[value]}</span>;
-}
-
-/** Ruled section head: title, optional note and a trailing action. */
-export function SectionHead({
-  eyebrow,
-  title,
-  note,
-  action,
-  id,
-  light,
-}: {
-  eyebrow?: string;
-  title: string;
-  note?: string;
-  action?: React.ReactNode;
-  id?: string;
-  /** Set on dark grounds, where the head sits on its own rule. */
-  light?: boolean;
-}) {
-  return (
-    <div className={light ? 'how-head' : 'head'}>
-      <div className="head-body">
-        {eyebrow && <Label micro>{eyebrow}</Label>}
-        <h2 className="h2" id={id}>
-          {title}
-        </h2>
-        {note && <p>{note}</p>}
-      </div>
-      {action && <div className="head-action">{action}</div>}
-    </div>
-  );
-}
-
-export type Crumb = { label: string; to?: string };
-
-export function Crumbs({ trail }: { trail: Crumb[] }) {
-  return (
-    <nav className="crumbs label-micro" aria-label="Breadcrumb">
-      {trail.map((crumb, index) => (
-        <React.Fragment key={crumb.label}>
-          {index > 0 && <ChevronRight aria-hidden="true" />}
-          {crumb.to ? (
-            <Link to={crumb.to}>{crumb.label}</Link>
-          ) : (
-            <span aria-current="page">{crumb.label}</span>
-          )}
-        </React.Fragment>
-      ))}
-    </nav>
-  );
-}
-
 /**
- * Reports a delta rather than a computed next value. Two clicks landing in one
- * React batch would both read the same `value` prop and both write the same
- * number, silently dropping an increment; a delta lets the owner apply it
- * functionally against whatever the current quantity really is.
+ * Quantity control. The buttons report a delta (two quick taps in one React
+ * batch both count), and the number itself can be typed for bulk orders.
  */
 export function Stepper({
   value,
   onStep,
+  onSet,
   min = 1,
-  max = 99,
+  max = 999,
   label,
   small,
 }: {
   value: number;
   onStep: (delta: number) => void;
+  onSet: (value: number) => void;
   min?: number;
   max?: number;
   label: string;
   small?: boolean;
 }) {
-  return (
-    <div className={`stepper${small ? ' stepper-sm' : ''}`}>
-      <button
-        type="button"
-        onClick={() => onStep(-1)}
-        disabled={value <= min}
-        aria-label={`Reduce quantity of ${label}`}
-      >
-        <Minus aria-hidden="true" />
-      </button>
-      <span className="stepper-value" aria-live="polite">
-        {value}
-      </span>
-      <button
-        type="button"
-        onClick={() => onStep(1)}
-        disabled={value >= max}
-        aria-label={`Increase quantity of ${label}`}
-      >
-        <Plus aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
+  const [draft, setDraft] = useState(String(value));
 
-/** Placeholder cards shown while the catalogue is in flight. */
-export function CardSkeletons({ count = 8 }: { count?: number }) {
+  useEffect(() => setDraft(String(value)), [value]);
+
+  const commit = () => {
+    const next = Math.round(Number(draft));
+    if (draft.trim() && Number.isFinite(next) && next >= min) onSet(Math.min(max, next));
+    else setDraft(String(value));
+  };
+
   return (
-    <div className="grid grid-products" aria-hidden="true">
-      {Array.from({ length: count }, (_, index) => (
-        <div className="card-skeleton" key={index}>
-          <div className="skeleton sk-media" />
-          <div className="skeleton sk-line" style={{ width: '40%' }} />
-          <div className="skeleton sk-line" style={{ width: '85%' }} />
-          <div className="skeleton sk-line" style={{ width: '55%' }} />
-        </div>
-      ))}
+    <div className={`stepper${small ? ' stepper-sm' : ''}`} role="group" aria-label={`Quantity of ${label}`}>
+      <button type="button" onClick={() => onStep(-1)} disabled={value <= min} aria-label={`One fewer ${label}`}>
+        <Minus strokeWidth={2.4} aria-hidden="true" />
+      </button>
+      <input
+        className="stepper-value"
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        value={draft}
+        aria-label={`Quantity of ${label}`}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      <button type="button" onClick={() => onStep(1)} disabled={value >= max} aria-label={`One more ${label}`}>
+        <Plus strokeWidth={2.4} aria-hidden="true" />
+      </button>
     </div>
   );
 }

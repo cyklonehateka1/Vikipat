@@ -1,0 +1,860 @@
+/* ======================= Quick price =======================
+   Built from five calculator references, on the light ground: plain labels
+   above inputs and a plus and minus stepper (loan calculator), big selectable
+   cards with numbered steps (solar cost calculator), chips and a result broken
+   into rows with a bar for each (car cost of ownership), and a segmented toggle
+   with a bordered "recommended" result card (credit estimator). White cards
+   with a hairline edge, one blue accent, no dark surfaces. */
+.qp-panel {
+  position: relative;
+}
+
+.qp-head {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 32px;
+  text-align: center;
+}
+
+.qp-head h2 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.35rem + 1.8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.qp-head p {
+  max-width: 52ch;
+  margin-inline: auto;
+  color: var(--muted);
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+.qp-grid {
+  position: relative;
+  display: grid;
+  gap: 20px;
+}
+
+.qp-form {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Each step is one white card. */
+.qp-step {
+  min-width: 0;
+  padding: 20px 16px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+
+.qp-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.qp-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sun-tint);
+  color: var(--leaf-2);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+/* ---- Step 1: job cards ---- */
+.qp-jobs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.qp-job {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 172px;
+  padding: 16px 10px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--fast) var(--ease),
+    background-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.qp-job input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.qp-job:active {
+  transform: scale(0.97);
+}
+
+.qp-job:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.qp-job-art {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 72px;
+  margin-bottom: 6px;
+}
+
+.qp-job-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.qp-job-label {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.qp-job-rate {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.qp-job-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sun);
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    opacity var(--fast) var(--ease),
+    transform 400ms var(--spring);
+}
+
+.qp-job-check svg {
+  width: 13px;
+  height: 13px;
+}
+
+.qp-job:has(input:checked) {
+  border-color: var(--sun);
+  background: var(--sun-tint);
+}
+
+.qp-job:has(input:checked) .qp-job-check {
+  opacity: 1;
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qp-job:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+/* ---- Chips ---- */
+.qp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qp-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 52px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  transition:
+    border-color var(--fast) var(--ease),
+    background-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.qp-chip span {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.qp-chip small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.qp-chip:active {
+  transform: scale(0.97);
+}
+
+.qp-chip[aria-pressed='true'] {
+  border-color: var(--sun);
+  background: var(--sun-tint);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .qp-chip:hover {
+    border-color: var(--line-strong);
+  }
+
+  .qp-chip[aria-pressed='true']:hover {
+    border-color: var(--sun);
+  }
+}
+
+/* ---- Custom size ---- */
+.qp-custom {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  animation: rise 360ms var(--ease);
+}
+
+.qp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.qp-stepbox {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 0 6px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #fff;
+  transition:
+    border-color var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease);
+}
+
+.qp-stepbox:focus-within {
+  border-color: var(--sun);
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 0.2);
+}
+
+.qp-stepbox button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: var(--chalk);
+  color: var(--ink);
+  transition: transform var(--fast) var(--ease);
+}
+
+.qp-stepbox button:active {
+  transform: scale(0.9);
+}
+
+.qp-stepbox svg {
+  width: 20px;
+  height: 20px;
+}
+
+.qp-stepbox input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+}
+
+.qp-unit {
+  flex: none;
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+/* Segmented toggle: an outlined track with the chosen side filled blue. */
+.qp-units,
+.qp-seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-pill);
+  background: #fff;
+}
+
+.qp-units {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.qp-units button,
+.qp-seg button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.qp-units button[aria-pressed='true'],
+.qp-seg button[aria-pressed='true'] {
+  background: var(--sun);
+  color: #fff;
+}
+
+.qp-hint {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+
+.qp-hint.is-error {
+  color: var(--error);
+}
+
+.qp-block {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.qp-step .qp-block + .qp-row2 {
+  margin-top: 20px;
+}
+
+.qp-row2 {
+  display: grid;
+  gap: 20px;
+}
+
+
+
+/* ---- Result: a bordered card with a blue top edge (the "recommended" card) ---- */
+.qp-result {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px 18px 18px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--sun);
+  border-radius: var(--r-lg);
+  background: #fff;
+  color: var(--ink);
+}
+
+.qp-result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.qp-kicker {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.qp-material {
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--chalk);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+.qp-total {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity var(--mid) var(--ease);
+}
+
+.qp-total.is-pricing .qp-price {
+  opacity: 0.6;
+}
+
+.qp-price {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 1.6rem + 3.4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  transition:
+    opacity var(--fast) var(--ease),
+    font-size var(--mid) var(--ease);
+}
+
+.qp-total[data-size='long'] .qp-price {
+  font-size: clamp(2.125rem, 1.4rem + 2.6vw, 2.875rem);
+}
+
+.qp-total[data-size='xlong'] .qp-price {
+  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.375rem);
+}
+
+.qp-sub {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Drawn to scale next to a person, on a light grid. */
+.qp-scale {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 18px;
+  height: 172px;
+  padding: 16px 16px 14px;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background-color: var(--chalk);
+  background-image:
+    linear-gradient(rgb(11 26 44 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(11 26 44 / 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.qp-scale.is-empty {
+  opacity: 0.5;
+}
+
+.qp-person {
+  flex: none;
+  fill: #9db0c8;
+}
+
+.qp-rect {
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--sun);
+  border-radius: 6px;
+  background: rgb(37 99 235 / 0.16);
+  color: var(--leaf-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition:
+    width 500ms var(--spring),
+    height 500ms var(--spring);
+}
+
+.qp-breakdown {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.qp-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 12px 14px 16px;
+  overflow: hidden;
+  border-radius: var(--r-sm);
+  background: var(--chalk);
+}
+
+.qp-line dt {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--t-sm);
+  font-weight: 700;
+}
+
+.qp-line dt small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.qp-line dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.qp-line::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--sun);
+  transform: scaleX(calc(var(--p, 100%) / 100%));
+  transform-origin: left;
+  transition: transform 700ms var(--spring);
+}
+
+.qp-line.is-design::after {
+  background: #7cb0ff;
+}
+
+.qp-result .btn-block {
+  margin-top: 2px;
+}
+
+.qp-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 6px;
+  color: var(--muted);
+  font-size: var(--t-sm);
+  text-align: center;
+}
+
+.qp-note a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--leaf-2);
+  font-weight: 700;
+  text-underline-offset: 0.25em;
+}
+
+.qp-error {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: #fff;
+}
+
+.qp-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ---- Phone: the price pill that trails you ---- */
+.qp-pill {
+  position: fixed;
+  right: 12px;
+  bottom: calc(var(--dock-h) + var(--safe-b) + 28px);
+  left: 12px;
+  z-index: calc(var(--z-bar) - 1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 22px;
+  border-radius: var(--r-md);
+  background: var(--leaf-deep);
+  color: var(--chalk);
+  box-shadow: var(--float);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(24px) scale(0.96);
+  transition:
+    opacity var(--mid) var(--ease),
+    transform 500ms var(--spring);
+}
+
+.qp-pill[data-show='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.qp-pill-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.qp-pill-text small {
+  color: #9db4d1;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.qp-pill-text b {
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Tablet ---- */
+@media (min-width: 720px) {
+  .qp-head {
+    padding-bottom: 40px;
+  }
+
+  .qp-step {
+    padding: 28px 28px 30px;
+  }
+
+  .qp-jobs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .qp-job {
+    min-height: 190px;
+  }
+
+  .qp-row2 {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    gap: 32px;
+  }
+
+  .qp-result {
+    padding: 28px;
+  }
+}
+
+/* ---- Laptop and desktop: steps on the left, the result card sticks on the right ---- */
+@media (min-width: 1024px) {
+  .qp-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+    align-items: start;
+    gap: 24px;
+  }
+
+  .qp-jobs {
+    gap: 12px;
+  }
+
+  .qp-result {
+    position: sticky;
+    top: 116px;
+    padding: 28px;
+  }
+
+  .qp-pill {
+    display: none;
+  }
+}
+
+/* Laptop widths: the steps column is narrow, so the four jobs sit two by two. */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .qp-jobs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qp-job {
+    min-height: 170px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .qp-scale {
+    height: 188px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qp-pill {
+    transition: none;
+  }
+}
+
+.home-quote.band {
+  padding-block: clamp(40px, 2rem + 3vw, 72px);
+}
+
+/* ======================= Phones only =======================
+   Tuned for one hand on a small screen. Everything here is limited to phones,
+   so the tablet and desktop layouts above are untouched. */
+@media (max-width: 719px) {
+  .qp-head {
+    padding-bottom: 24px;
+  }
+
+  .qp-form {
+    gap: 12px;
+  }
+
+  .qp-step {
+    padding: 18px 14px 18px;
+  }
+
+  .qp-legend {
+    margin-bottom: 14px;
+  }
+
+  .qp-job {
+    min-height: 156px;
+    padding: 14px 6px 12px;
+  }
+
+  .qp-job-art {
+    width: 72px;
+    height: 60px;
+  }
+
+  /* How big?: equal tiles in two columns, the dashed one is "Custom size". */
+  .qp-step[aria-labelledby='qp-l2'] .qp-chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .qp-step[aria-labelledby='qp-l2'] .qp-chip {
+    min-height: 64px;
+    padding: 10px 14px;
+  }
+
+  .qp-step[aria-labelledby='qp-l2'] .qp-chip:last-child {
+    border-style: dashed;
+  }
+
+  /* Material: full-width rows, name and rate on the left, a radio dot on the right. */
+  .qp-block .qp-chips {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .qp-block .qp-chip {
+    position: relative;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 52px 10px 14px;
+  }
+
+  .qp-block .qp-chip::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+    background: #fff;
+    transform: translateY(-50%);
+    transition:
+      border-color var(--fast) var(--ease),
+      box-shadow var(--fast) var(--ease);
+  }
+
+  .qp-block .qp-chip[aria-pressed='true']::after {
+    border-color: var(--sun);
+    box-shadow: inset 0 0 0 4px #fff, inset 0 0 0 12px var(--sun);
+  }
+
+  /* How many: the label on the left, the stepper on the right, on one line. */
+  .qp-row2 {
+    gap: 0;
+  }
+
+  .qp-row2 > .qp-block:first-child {
+    grid-auto-flow: column;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .qp-row2 > .qp-block:first-child .qp-stepbox {
+    width: 176px;
+  }
+
+  .qp-row2 > .qp-block:last-child {
+    padding-top: 16px;
+  }
+
+  .qp-seg {
+    display: grid;
+    width: 100%;
+  }
+
+  .qp-seg button {
+    padding: 0 8px;
+  }
+
+  .qp-step .qp-block + .qp-row2 {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .qp-custom {
+    margin-top: 14px;
+  }
+
+  .qp-result {
+    padding: 20px 16px 16px;
+  }
+}

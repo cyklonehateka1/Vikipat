@@ -1,97 +1,146 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  ArrowRight,
-  CreditCard,
-  FileCheck,
-  HelpCircle,
-  Link as LinkIcon,
-  Loader2,
-  MapPin,
-  Package,
-  Pencil,
-  Smartphone,
-  Truck,
-} from "lucide-react";
-import { Layout } from "../components/Layout";
-import { useOrder } from "../order";
-import { site } from "../site";
-import { useTitle } from "../lib/useReveal";
-import { API_BASE } from "../lib/api";
-import "../styles/checkout.css";
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AlertCircle, ChevronDown, MapPin, ShieldCheck, Smartphone, Truck } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Loader } from '../components/Dots';
+import { Price } from '../components/Primitives';
+import { StatusPanel } from '../components/ProductGrid';
+import { useOrder } from '../order';
+import { API_BASE } from '../lib/api';
+import { cedis, cedisFromPesewas } from '../lib/format';
+import { useTitle } from '../lib/useTitle';
+import { site } from '../site';
+import '../styles/pages/checkout.css';
 
 /** One order-level artwork submission is derived from the per-job choices
- * made in the configurator: design service wins (it needs studio review
+ * made in the print flow: design service wins (it needs studio review
  * regardless of what else was attached), then an actual uploaded file,
  * then a shared link, and "later" only if nothing else was given. */
-function deriveOrderArtwork(customJobs: ReturnType<typeof useOrder>["customJobs"]) {
-  const designJob = customJobs.find((j) => j.artworkOption === "design_service");
-  if (designJob) return { artworkOption: "design_service" as const, artworkUrl: "", artworkName: "", artworkLink: "" };
-  const uploadJob = customJobs.find((j) => j.artworkOption === "upload" && j.artworkUrl);
+function deriveOrderArtwork(customJobs: ReturnType<typeof useOrder>['customJobs']) {
+  const designJob = customJobs.find((j) => j.artworkOption === 'design_service');
+  if (designJob) return { artworkOption: 'design_service' as const, artworkUrl: '', artworkName: '', artworkLink: '' };
+  const uploadJob = customJobs.find((j) => j.artworkOption === 'upload' && j.artworkUrl);
   if (uploadJob) {
     return {
-      artworkOption: "upload" as const,
-      artworkUrl: uploadJob.artworkUrl || "",
-      artworkName: uploadJob.artworkName || "",
-      artworkLink: "",
+      artworkOption: 'upload' as const,
+      artworkUrl: uploadJob.artworkUrl || '',
+      artworkName: uploadJob.artworkName || '',
+      artworkLink: '',
     };
   }
-  const linkJob = customJobs.find((j) => j.artworkOption === "link" && j.artworkLink);
-  if (linkJob) return { artworkOption: "link" as const, artworkUrl: "", artworkName: "", artworkLink: linkJob.artworkLink || "" };
-  return { artworkOption: "later" as const, artworkUrl: "", artworkName: "", artworkLink: "" };
+  const linkJob = customJobs.find((j) => j.artworkOption === 'link' && j.artworkLink);
+  if (linkJob) return { artworkOption: 'link' as const, artworkUrl: '', artworkName: '', artworkLink: linkJob.artworkLink || '' };
+  return { artworkOption: 'later' as const, artworkUrl: '', artworkName: '', artworkLink: '' };
 }
 
 const artworkSummary: Record<string, string> = {
-  upload: "File uploaded",
-  link: "Shared via cloud link",
-  design_service: "Vikipat studio will design this",
-  later: "Will be sent later via WhatsApp",
+  upload: 'File uploaded',
+  link: 'Shared via cloud link',
+  design_service: 'Vikipat studio will design this',
+  later: 'Will be sent later via WhatsApp',
 };
 
+type Fields = {
+  name: string;
+  phone: string;
+  email: string;
+  company: string;
+  address: string;
+  landmark: string;
+  date: string;
+  note: string;
+};
+
+type FieldKey = keyof Fields | 'payment';
+
+function validate(fields: Fields, delivery: boolean, payment: string) {
+  const errors: Partial<Record<FieldKey, string>> = {};
+  if (fields.name.trim().length < 2) errors.name = 'Enter your name.';
+  if (!/^[+0-9 ()-]{8,24}$/.test(fields.phone.trim()))
+    errors.phone = 'Enter a phone number we can reach, like 024 000 0000.';
+  if (!/^\S+@\S+\.\S+$/.test(fields.email.trim())) errors.email = 'Enter an email address, like you@example.com.';
+  if (delivery && fields.address.trim().length < 3) errors.address = 'Tell us where to deliver.';
+  if (payment !== 'mobile_money') errors.payment = 'Choose Mobile Money to continue.';
+  return errors;
+}
+
+const order: FieldKey[] = ['name', 'phone', 'email', 'address', 'payment'];
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="field-error" id={id}>
+      <AlertCircle aria-hidden="true" />
+      {message}
+    </p>
+  );
+}
+
 export default function Checkout() {
-  useTitle(`Checkout & Complete Order | ${site.fullName}`);
+  useTitle(`Checkout | ${site.fullName}`);
   const navigate = useNavigate();
-  const { items, customJobs, total, totalPesewas, count, clear, updateCustomJobEstimate } = useOrder();
+  const { items, customJobs, total, count, clear, updateCustomJobEstimate } = useOrder();
 
-  // Customer Contact State
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [companyName, setCompanyName] = useState("");
-
-  // Fulfilment State
-  const [fulfilmentMethod, setFulfilmentMethod] = useState<
-    "pickup" | "delivery"
-  >("delivery");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryLandmark, setDeliveryLandmark] = useState("");
-  const [requestedDate, setRequestedDate] = useState("");
-  const [customerNote, setCustomerNote] = useState("");
-
-  const [paymentMethod, setPaymentMethod] = useState<"mobile_money" | "">("");
-
-  // Submission State
+  const [fields, setFields] = useState<Fields>({
+    name: '',
+    phone: '',
+    email: '',
+    company: '',
+    address: '',
+    landmark: '',
+    date: '',
+    note: '',
+  });
+  const [fulfilmentMethod, setFulfilmentMethod] = useState<'pickup' | 'delivery'>('pickup');
+  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | ''>('');
+  const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [submitError, setSubmitError] = useState('');
   const [pricesRefreshed, setPricesRefreshed] = useState(false);
+  const alertRef = useRef<HTMLDivElement>(null);
 
+  const delivery = fulfilmentMethod === 'delivery';
+  const errors = validate(fields, delivery, paymentMethod);
+  const shown = (key: FieldKey) => (touched[key] ? errors[key] : undefined);
+  const needsReview = customJobs.some((job) => job.estimate.requiresReview || job.artworkOption === 'design_service');
   const isEmpty = items.length === 0 && customJobs.length === 0;
+  const today = new Date().toISOString().slice(0, 10);
 
-  const handleSubmitOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!submitError) return;
+    alertRef.current?.focus({ preventScroll: true });
+    alertRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [submitError]);
 
-    if (!customerName.trim() || !customerEmail.trim()) {
-      setSubmitError("Please provide your name and email address.");
+  const set = (key: keyof Fields) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setFields((current) => ({ ...current, [key]: event.target.value }));
+  const blur = (key: FieldKey) => () => setTouched((current) => ({ ...current, [key]: true }));
+  const aria = (key: FieldKey) => ({
+    'aria-invalid': Boolean(shown(key)),
+    'aria-describedby': shown(key) ? `${key}-error` : undefined,
+  });
+
+  const handleSubmitOrder = async (event: React.SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const found = validate(fields, delivery, paymentMethod);
+    setTouched({ name: true, phone: true, email: true, address: true, payment: true });
+    const first = order.find((key) => found[key]);
+    if (first) {
+      document.getElementById(first === 'payment' ? 'pay-momo' : `c-${first}`)?.focus();
       return;
     }
 
-    if (paymentMethod !== "mobile_money") {
-      setSubmitError("Please select Mobile Money to continue.");
-      return;
-    }
+    const customerName = fields.name;
+    const customerEmail = fields.email;
+    const customerPhone = fields.phone;
+    const companyName = fields.company;
+    const deliveryAddress = delivery ? fields.address : '';
+    const deliveryLandmark = delivery ? fields.landmark : '';
+    const requestedDate = fields.date;
+    const customerNote = fields.note;
 
     setSubmitting(true);
-    setSubmitError("");
+    setSubmitError('');
     setPricesRefreshed(false);
 
     try {
@@ -99,7 +148,7 @@ export default function Checkout() {
 
       const buildLineItems = () => [
         ...customJobs.map((job) => ({
-          type: "large_format" as const,
+          type: 'large_format' as const,
           serviceCode: job.estimate.serviceCode,
           width: job.estimate.width,
           height: job.estimate.height,
@@ -107,12 +156,10 @@ export default function Checkout() {
           quantity: job.estimate.quantity,
           estimateId: job.estimate.estimateId,
           fingerprint: job.estimate.fingerprint,
-          needsDesign:
-            job.estimate.designFeePesewas > 0 ||
-            job.artworkOption === "design_service",
+          needsDesign: job.estimate.designFeePesewas > 0 || job.artworkOption === 'design_service',
         })),
         ...items.map((item) => ({
-          type: "product" as const,
+          type: 'product' as const,
           productId: item.product.id,
           quantity: item.qty,
         })),
@@ -122,33 +169,33 @@ export default function Checkout() {
         .map((job) =>
           [
             `${job.estimate.serviceName} (${job.estimate.width}${job.estimate.unit}×${job.estimate.height}${job.estimate.unit}): ${artworkSummary[job.artworkOption]}`,
-            job.artworkUrl ? `  file: ${job.artworkUrl}` : "",
-            job.artworkLink ? `  link: ${job.artworkLink}` : "",
-            job.notes ? `  note: ${job.notes}` : "",
+            job.artworkUrl ? `  file: ${job.artworkUrl}` : '',
+            job.artworkLink ? `  link: ${job.artworkLink}` : '',
+            job.notes ? `  note: ${job.notes}` : '',
           ]
             .filter(Boolean)
-            .join("\n"),
+            .join('\n'),
         )
-        .join("\n");
+        .join('\n');
 
       const consolidatedNote = [
         customerNote.trim(),
-        companyName ? `Company: ${companyName}` : "",
-        `Fulfilment: ${fulfilmentMethod === "delivery" ? `Delivery to ${deliveryAddress} (${deliveryLandmark})` : `Pickup at ${site.address.line1}, ${site.address.line2}`}`,
-        requestedDate ? `Deadline: ${requestedDate}` : "",
+        companyName ? `Company: ${companyName}` : '',
+        `Fulfilment: ${delivery ? `Delivery to ${deliveryAddress} (${deliveryLandmark})` : `Pickup at ${site.address.line1}, ${site.address.line2}`}`,
+        requestedDate ? `Deadline: ${requestedDate}` : '',
         jobNotes,
       ]
         .filter(Boolean)
-        .join("\n");
+        .join('\n');
 
       const response = await fetch(`${API_BASE}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim().toLowerCase(),
           customerPhone: customerPhone.trim(),
-          source: "online",
+          source: 'online',
           paymentMethod,
           items: buildLineItems(),
           customerNote: consolidatedNote,
@@ -159,19 +206,19 @@ export default function Checkout() {
           ...orderArtwork,
         }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         // Rates change rarely, so this only fires on that rare event: a rate
         // was republished between the customer viewing a quote and checking
         // out. Re-price every job and show the customer the new totals —
         // never resubmit at a price they haven't seen and agreed to.
-        if (/estimate has changed/i.test(data.message || "")) {
+        if (/estimate has changed/i.test(data.message || '')) {
           await Promise.all(
             customJobs.map(async (job) => {
               const refreshed = await fetch(`${API_BASE}/estimates/large-format`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   serviceCode: job.estimate.serviceCode,
                   width: job.estimate.width,
@@ -205,19 +252,15 @@ export default function Checkout() {
             }),
           );
           setPricesRefreshed(true);
-          throw new Error(
-            "Prices changed since you last checked out. We've refreshed them below, please review the new total and submit again.",
-          );
+          throw new Error('A price changed since you added it. We have updated your total, so check it and place the order again.');
         }
 
-        throw new Error(
-          data.message || "Could not submit your order. Please try again.",
-        );
+        const message = Array.isArray(data.message) ? data.message.join('. ') : data.message;
+        throw new Error(message || 'Your order did not go through. Please try again.');
       }
 
-      // Order created successfully!
       const orderNumber = data.orderNumber;
-      clear(); // Empty cart
+      clear();
 
       if (data.payment?.authorizationUrl) {
         window.location.assign(data.payment.authorizationUrl);
@@ -225,11 +268,15 @@ export default function Checkout() {
       }
 
       navigate(
-        `/confirmation?orderNumber=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(customerEmail.trim().toLowerCase())}&payment=${encodeURIComponent(data.payment?.reference || "")}`,
+        `/confirmation?orderNumber=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(customerEmail.trim().toLowerCase())}&payment=${encodeURIComponent(data.payment?.reference || '')}`,
       );
-    } catch (err: any) {
+    } catch (err) {
       setSubmitError(
-        err.message || "An unexpected error occurred during submission.",
+        err instanceof TypeError
+          ? 'We could not reach Vikipat. Check your connection and try again.'
+          : err instanceof Error
+            ? err.message
+            : 'Something went wrong. Please try again.',
       );
     } finally {
       setSubmitting(false);
@@ -238,577 +285,341 @@ export default function Checkout() {
 
   if (isEmpty) {
     return (
-      <Layout>
-        <div className="checkout-shell">
-          <div className="confirmation-hero">
-            <Package
-              aria-hidden="true"
-              style={{
-                width: 48,
-                height: 48,
-                color: "var(--brand-primary)",
-                margin: "0 auto 16px",
-              }}
-            />
-            <h1 className="h2">Your Order List is Empty</h1>
-            <p className="muted" style={{ marginTop: "8px" }}>
-              Configure a large-format print job or choose products from our
-              catalogue before checking out.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "center",
-                marginTop: "24px",
-              }}
-            >
-              <Link to="/print" className="btn btn-primary">
-                <span>Start a Print Job</span>
-                <ArrowRight aria-hidden="true" />
-              </Link>
-              <Link to="/shop" className="btn btn-secondary">
-                <span>Browse Catalogue</span>
-              </Link>
-            </div>
-          </div>
+      <AppShell title="Checkout" back="/cart">
+        <div className="container section">
+          <StatusPanel title="Your cart is empty" note="Add a print job or a product before you check out.">
+            <Link className="btn btn-primary" to="/print">
+              Print something
+            </Link>
+            <Link className="btn btn-secondary" to="/shop">
+              Browse the shop
+            </Link>
+          </StatusPanel>
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
-  return (
-    <Layout>
-      <div className="checkout-shell">
-        <div>
-          <span
-            className="label-micro"
-            style={{ color: "var(--brand-primary)" }}
-          >
-            Vikipat Digital Storefront
+  const cta = submitting ? (
+    <>
+      <Loader label="Placing your order" />
+      Placing your order
+    </>
+  ) : needsReview ? (
+    'Send order for review'
+  ) : (
+    `Pay ${cedis(total)}`
+  );
+
+  const ctaNote = needsReview ? (
+    <>You don't pay yet. We confirm the design price with you first.</>
+  ) : (
+    <>
+      <ShieldCheck aria-hidden="true" />
+      You finish on Paystack's secure page
+    </>
+  );
+
+  const summaryList = (
+    <ul className="checkout-items">
+      {customJobs.map((job) => (
+        <li key={job.id}>
+          <span>
+            <span className="checkout-item-name">{job.estimate.serviceName}</span>
+            <span className="checkout-item-meta">
+              {job.estimate.width} × {job.estimate.height} {job.estimate.unit}, {job.estimate.quantity}{' '}
+              {job.estimate.quantity === 1 ? 'piece' : 'pieces'}
+            </span>
           </span>
-          <h1 className="h1" style={{ marginTop: "4px" }}>
-            Complete Your Print Job &amp; Order
-          </h1>
-          <p className="muted" style={{ marginTop: "6px" }}>
-            Verify your specifications, attach artwork or request design, and
-            submit directly to our Accra production team.
-          </p>
-        </div>
+          <span className="price">{cedisFromPesewas(job.estimate.totalPesewas)}</span>
+        </li>
+      ))}
+      {items.map((item) => (
+        <li key={item.product.id}>
+          <span>
+            <span className="checkout-item-name">{item.product.name}</span>
+            <span className="checkout-item-meta">Quantity {item.qty}</span>
+          </span>
+          <Price value={item.lineTotal} />
+        </li>
+      ))}
+      <li className="checkout-items-total">
+        <span>Total</span>
+        <Price value={total} />
+      </li>
+    </ul>
+  );
 
-        <form onSubmit={handleSubmitOrder} className="checkout-grid">
-          {/* Main Checkout Flow (Left Column) */}
-          <div className="checkout-main-flow">
-            {/* Step 1: Artwork summary (captured per job in the configurator) */}
-            {customJobs.length > 0 && (
-              <div className="checkout-step-card">
-                <div className="checkout-step-header">
-                  <span className="checkout-step-num">1</span>
-                  <div>
-                    <h2>Artwork &amp; Creative Files</h2>
-                    <span
-                      style={{
-                        fontSize: "var(--t-micro)",
-                        color: "var(--ink-subtle)",
-                      }}
-                    >
-                      Free pre-flight CMYK verification on all uploads
-                    </span>
-                  </div>
-                </div>
+  const payButton = (
+    <button type="submit" form="checkout-form" className="co-pay" disabled={submitting}>
+      {cta}
+    </button>
+  );
 
-                {customJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "12px 0",
-                      borderTop: "1px solid var(--line)",
-                    }}
-                  >
-                    <div>
-                      <strong style={{ fontSize: "var(--t-small)" }}>
-                        {job.estimate.serviceName}
-                      </strong>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          marginTop: 4,
-                          fontSize: "var(--t-micro)",
-                          color: "var(--ink-subtle)",
-                        }}
-                      >
-                        {job.artworkOption === "upload" ? (
-                          <FileCheck size={13} aria-hidden="true" />
-                        ) : job.artworkOption === "link" ? (
-                          <LinkIcon size={13} aria-hidden="true" />
-                        ) : (
-                          <HelpCircle size={13} aria-hidden="true" />
-                        )}
-                        <span>
-                          {artworkSummary[job.artworkOption]}
-                          {job.artworkName ? ` (${job.artworkName})` : ""}
-                        </span>
-                      </div>
-                    </div>
-                    <Link
-                      to="/print"
-                      className="label-micro"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        color: "var(--brand-primary)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <Pencil size={12} aria-hidden="true" />
-                      Edit
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
+  // Phones: one slim white row. Desktop: the summary card holds the button.
+  const bar = (
+    <div className="co-bar">
+      <span className="co-bar-figure">
+        <Price value={total} className="co-bar-price" />
+        <span className="co-bar-note">
+          {needsReview ? (
+            'You pay after we confirm'
+          ) : (
+            <>
+              <ShieldCheck aria-hidden="true" />
+              Secure payment on Paystack
+            </>
+          )}
+        </span>
+      </span>
+      {payButton}
+    </div>
+  );
 
-            {/* Step 2: Contact Information */}
-            <div className="checkout-step-card">
-              <div className="checkout-step-header">
-                <span className="checkout-step-num">2</span>
-                <div>
-                  <h2>Customer Information</h2>
-                  <span
-                    style={{
-                      fontSize: "var(--t-micro)",
-                      color: "var(--ink-subtle)",
-                    }}
-                  >
-                    No account needed. Track order status via one-time email OTP
-                  </span>
-                </div>
-              </div>
+  return (
+    <AppShell title="Checkout" back="/cart" bar={bar} barPhoneOnly tabs={false} footer={false}>
+      <div className="container checkout">
+        <header className="co-head">
+          <h1>Checkout</h1>
+          <p>Your details, how you get it, then payment.</p>
+        </header>
 
-              <div className="form-grid-2">
+        <div className="checkout-layout">
+          <form id="checkout-form" className="checkout-form" onSubmit={handleSubmitOrder} noValidate>
+            <details className="checkout-summary-phone">
+              <summary>
+                <span>
+                  {count} {count === 1 ? 'item' : 'items'}
+                </span>
+                <span className="checkout-summary-total">
+                  <Price value={total} />
+                  <ChevronDown aria-hidden="true" />
+                </span>
+              </summary>
+              {summaryList}
+            </details>
+
+            <fieldset className="checkout-group">
+              <legend className="co-title">Your details</legend>
+              <div className="form-grid form-grid-2">
                 <div className="field">
-                  <label htmlFor="c-name" className="label-micro">
-                    Full Name / Primary Contact *
+                  <label className="field-label" htmlFor="c-name">
+                    Full name
                   </label>
                   <input
                     id="c-name"
-                    type="text"
                     className="input"
-                    placeholder="e.g. Kwame Osei"
-                    required
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    autoComplete="name"
+                    value={fields.name}
+                    onChange={set('name')}
+                    onBlur={blur('name')}
+                    {...aria('name')}
                   />
+                  <FieldError id="name-error" message={shown('name')} />
                 </div>
-
                 <div className="field">
-                  <label htmlFor="c-email" className="label-micro">
-                    Email Address (for OTP Tracking) *
-                  </label>
-                  <input
-                    id="c-email"
-                    type="email"
-                    className="input"
-                    placeholder="kwame@company.com"
-                    required
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-grid-2" style={{ marginTop: "16px" }}>
-                <div className="field">
-                  <label htmlFor="c-phone" className="label-micro">
-                    Phone / WhatsApp Number *
+                  <label className="field-label" htmlFor="c-phone">
+                    Phone number
                   </label>
                   <input
                     id="c-phone"
-                    type="tel"
                     className="input"
-                    placeholder="055 511 0844"
-                    required
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="024 000 0000"
+                    value={fields.phone}
+                    onChange={set('phone')}
+                    onBlur={blur('phone')}
+                    {...aria('phone')}
                   />
+                  {shown('phone') ? (
+                    <FieldError id="phone-error" message={shown('phone')} />
+                  ) : (
+                    <p className="field-hint">We call or WhatsApp you about your order.</p>
+                  )}
                 </div>
-
                 <div className="field">
-                  <label htmlFor="c-company" className="label-micro">
-                    Company / Organization (Optional)
+                  <label className="field-label" htmlFor="c-email">
+                    Email
+                  </label>
+                  <input
+                    id="c-email"
+                    className="input"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={fields.email}
+                    onChange={set('email')}
+                    onBlur={blur('email')}
+                    {...aria('email')}
+                  />
+                  {shown('email') ? (
+                    <FieldError id="email-error" message={shown('email')} />
+                  ) : (
+                    <p className="field-hint">Your receipt and tracking code go here.</p>
+                  )}
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="c-company">
+                    Company <span className="field-optional">(optional)</span>
                   </label>
                   <input
                     id="c-company"
-                    type="text"
                     className="input"
-                    placeholder="e.g. Acme Ghana Ltd"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    autoComplete="organization"
+                    value={fields.company}
+                    onChange={set('company')}
                   />
                 </div>
               </div>
-            </div>
+            </fieldset>
 
-            {/* Step 3: Fulfilment & Schedule */}
-            <div className="checkout-step-card">
-              <div className="checkout-step-header">
-                <span className="checkout-step-num">3</span>
-                <div>
-                  <h2>Fulfilment &amp; Delivery</h2>
-                  <span
-                    style={{
-                      fontSize: "var(--t-micro)",
-                      color: "var(--ink-subtle)",
-                    }}
-                  >
-                    Dispatched from {site.address.line1}
+            <fieldset className="checkout-group">
+              <legend className="co-title">Pickup or delivery</legend>
+              <div className="co-opts">
+                <label className="co-opt">
+                  <input
+                    type="radio"
+                    name="fulfilment"
+                    checked={fulfilmentMethod === 'pickup'}
+                    onChange={() => setFulfilmentMethod('pickup')}
+                  />
+                  <span className="co-opt-body">
+                    <span className="co-opt-title">Pick up at the workshop</span>
+                    <span className="co-opt-note">
+                      Free. {site.address.line1}, {site.address.line2}.
+                    </span>
                   </span>
-                </div>
-              </div>
-
-              <div className="fulfilment-selector">
-                <label
-                  className={`fulfilment-card ${fulfilmentMethod === "delivery" ? "is-active" : ""}`}
-                >
+                  <span className="co-opt-icon" aria-hidden="true">
+                    <MapPin />
+                  </span>
+                  <span className="co-radio" aria-hidden="true" />
+                </label>
+                <label className="co-opt">
                   <input
                     type="radio"
                     name="fulfilment"
-                    checked={fulfilmentMethod === "delivery"}
-                    onChange={() => setFulfilmentMethod("delivery")}
+                    checked={fulfilmentMethod === 'delivery'}
+                    onChange={() => setFulfilmentMethod('delivery')}
                   />
-                  <div>
-                    <strong
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <Truck
-                        aria-hidden="true"
-                        style={{
-                          width: 16,
-                          height: 16,
-                          color: "var(--brand-primary)",
-                        }}
-                      />
-                      Courier Delivery Across Ghana
-                    </strong>
-                    <span
-                      style={{
-                        fontSize: "var(--t-micro)",
-                        color: "var(--ink-subtle)",
-                        display: "block",
-                        marginTop: 4,
-                      }}
-                    >
-                      Doorstep dispatch via express dispatch rider in Accra or
-                      parcel service nationwide.
-                    </span>
-                  </div>
-                </label>
-
-                <label
-                  className={`fulfilment-card ${fulfilmentMethod === "pickup" ? "is-active" : ""}`}
-                >
-                  <input
-                    type="radio"
-                    name="fulfilment"
-                    checked={fulfilmentMethod === "pickup"}
-                    onChange={() => setFulfilmentMethod("pickup")}
-                  />
-                  <div>
-                    <strong
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
-                    >
-                      <MapPin
-                        aria-hidden="true"
-                        style={{
-                          width: 16,
-                          height: 16,
-                          color: "var(--brand-primary)",
-                        }}
-                      />
-                      Pickup at Studio Counter
-                    </strong>
-                    <span
-                      style={{
-                        fontSize: "var(--t-micro)",
-                        color: "var(--ink-subtle)",
-                        display: "block",
-                        marginTop: 4,
-                      }}
-                    >
-                      Free collection from {site.address.line1},{" "}
-                      {site.address.line2}.
-                    </span>
-                  </div>
+                  <span className="co-opt-body">
+                    <span className="co-opt-title">Deliver to me</span>
+                    <span className="co-opt-note">Anywhere in Ghana. We confirm the fee with you before dispatch.</span>
+                  </span>
+                  <span className="co-opt-icon" aria-hidden="true">
+                    <Truck />
+                  </span>
+                  <span className="co-radio" aria-hidden="true" />
                 </label>
               </div>
 
-              {fulfilmentMethod === "delivery" && (
-                <div className="form-grid-2">
+              {delivery && (
+                <div className="form-grid form-grid-2 checkout-delivery">
                   <div className="field">
-                    <label htmlFor="f-address" className="label-micro">
-                      Delivery Address / Area in Accra *
+                    <label className="field-label" htmlFor="c-address">
+                      Delivery address or area
                     </label>
                     <input
-                      id="f-address"
-                      type="text"
+                      id="c-address"
                       className="input"
-                      placeholder="e.g. Airport Residential, Spintex Road, Osu"
-                      required={fulfilmentMethod === "delivery"}
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      autoComplete="street-address"
+                      placeholder="Spintex Road, Osu, Kasoa"
+                      value={fields.address}
+                      onChange={set('address')}
+                      onBlur={blur('address')}
+                      {...aria('address')}
                     />
+                    <FieldError id="address-error" message={shown('address')} />
                   </div>
-
                   <div className="field">
-                    <label htmlFor="f-landmark" className="label-micro">
-                      Landmark / Digital Address (GhanaPost GPS)
+                    <label className="field-label" htmlFor="c-landmark">
+                      Landmark or GhanaPost GPS <span className="field-optional">(optional)</span>
                     </label>
                     <input
-                      id="f-landmark"
-                      type="text"
+                      id="c-landmark"
                       className="input"
-                      placeholder="e.g. GA-183-9022, near Shell station"
-                      value={deliveryLandmark}
-                      onChange={(e) => setDeliveryLandmark(e.target.value)}
+                      placeholder="GA-183-9022, near the Shell station"
+                      value={fields.landmark}
+                      onChange={set('landmark')}
                     />
                   </div>
                 </div>
               )}
 
-              <div className="form-grid-2" style={{ marginTop: "16px" }}>
+              <div className="form-grid form-grid-2 checkout-extras">
                 <div className="field">
-                  <label htmlFor="f-deadline" className="label-micro">
-                    Target Completion Date / Deadline
+                  <label className="field-label" htmlFor="c-date">
+                    Need it by <span className="field-optional">(optional)</span>
+                  </label>
+                  <input id="c-date" className="input" type="date" min={today} value={fields.date} onChange={set('date')} />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="c-note">
+                    Notes for our team <span className="field-optional">(optional)</span>
                   </label>
                   <input
-                    id="f-deadline"
-                    type="date"
+                    id="c-note"
                     className="input"
-                    value={requestedDate}
-                    onChange={(e) => setRequestedDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="f-notes" className="label-micro">
-                    Special Production Instructions
-                  </label>
-                  <input
-                    id="f-notes"
-                    type="text"
-                    className="input"
-                    placeholder="e.g. Eyelets on all 4 corners, matte lamination, etc."
-                    value={customerNote}
-                    onChange={(e) => setCustomerNote(e.target.value)}
+                    placeholder="Eyelets, lamination, gate colour"
+                    value={fields.note}
+                    onChange={set('note')}
                   />
                 </div>
               </div>
-            </div>
-            <section className="checkout-step-card">
-              <div className="checkout-step-header">
-                <span className="checkout-step-num">4</span>
-                <div>
-                  <h2>Payment method</h2>
-                  <span className="checkout-payment-hint" id="payment-method-hint">
-                    Select Mobile Money to continue.
-                  </span>
-                </div>
-              </div>
-              <fieldset className="checkout-payment-methods" aria-describedby="payment-method-hint" disabled={submitting}>
-                <legend className="checkout-payment-legend">Choose a payment method</legend>
-                <label className="checkout-payment-option is-disabled">
-                  <input type="radio" name="paymentMethod" value="card" disabled />
-                  <CreditCard aria-hidden="true" />
-                  <span><strong>Card</strong><small>Currently unavailable</small></span>
-                </label>
-                <label className={`checkout-payment-option ${paymentMethod === "mobile_money" ? "is-selected" : ""}`}>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="mobile_money"
-                    required
-                    checked={paymentMethod === "mobile_money"}
-                    onChange={() => { setPaymentMethod("mobile_money"); setSubmitError(""); }}
-                  />
-                  <Smartphone aria-hidden="true" />
-                  <span><strong>Mobile Money</strong><small>Pay with your mobile wallet</small></span>
-                </label>
-              </fieldset>
-            </section>
-          </div>
+            </fieldset>
 
-          {/* Right Column: Sticky Summary & Paystack Action */}
-          <aside className="checkout-summary-card">
-            <div className="checkout-summary-header">
-              <h3>Order Breakdown</h3>
-              <span className="label-micro">
-                {count} {count === 1 ? "item" : "items"}
-              </span>
-            </div>
-
-            {/* Custom Jobs */}
-            {customJobs.map((job) => (
-              <div key={job.id} className="checkout-item-row">
-                <div>
-                  <span className="checkout-item-title">
-                    {job.estimate.serviceName}
-                  </span>
-                  <div className="checkout-item-sub">
-                    {job.estimate.width} × {job.estimate.height}{" "}
-                    {job.estimate.unit} ({job.estimate.totalAreaSqFt} sq ft) ·
-                    Qty {job.estimate.quantity}
-                  </div>
-                  {job.estimate.designFeePesewas > 0 && (
-                    <div
-                      style={{
-                        fontSize: "var(--t-micro)",
-                        color: "var(--accent-cyan-ink)",
-                      }}
-                    >
-                      Includes Design Fee (+GH₵{" "}
-                      {(job.estimate.designFeePesewas / 100).toFixed(2)})
-                    </div>
-                  )}
-                </div>
-                <span className="checkout-item-price">
-                  GH₵ {(job.estimate.totalPesewas / 100).toFixed(2)}
-                </span>
-              </div>
-            ))}
-
-            {/* Physical Products */}
-            {items.map((item) => (
-              <div key={item.product.id} className="checkout-item-row">
-                <div>
-                  <span className="checkout-item-title">
-                    {item.product.name}
-                  </span>
-                  <div className="checkout-item-sub">
-                    {item.qty} × GH₵ {item.product.price} ({item.product.unit})
-                  </div>
-                </div>
-                <span className="checkout-item-price">
-                  GH₵ {item.lineTotal.toFixed(2)}
-                </span>
-              </div>
-            ))}
-
-            <div
-              style={{
-                marginTop: "20px",
-                borderTop: "1px solid var(--line)",
-                paddingTop: "16px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "var(--t-small)",
-                    color: "var(--ink-muted)",
+            <fieldset className="checkout-group" aria-describedby={shown('payment') ? 'payment-error' : undefined}>
+              <legend className="co-title">Payment</legend>
+              <label className="co-opt">
+                <input
+                  id="pay-momo"
+                  type="radio"
+                  name="payment"
+                  checked={paymentMethod === 'mobile_money'}
+                  onChange={() => {
+                    setPaymentMethod('mobile_money');
+                    setTouched((current) => ({ ...current, payment: true }));
                   }}
-                >
-                  Estimated Production Total
+                />
+                <span className="co-opt-body">
+                  <span className="co-opt-title">Mobile Money</span>
+                  <span className="co-opt-note">
+                    {needsReview
+                      ? 'MTN, Telecel or AT. You pay once we confirm the design price.'
+                      : 'MTN, Telecel or AT. You approve the payment on your phone.'}
+                  </span>
                 </span>
-                <strong
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontSize: "1.2rem",
-                    color: "var(--brand-primary)",
-                  }}
-                >
-                  GH₵ {total.toFixed(2)}
-                </strong>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "var(--t-micro)",
-                  color: "var(--ink-subtle)",
-                }}
-              >
-                <span>Delivery Dispatch</span>
-                <span>
-                  {fulfilmentMethod === "pickup"
-                    ? "Free Pickup"
-                    : "Billed on dispatch location"}
+                <span className="co-opt-icon is-momo" aria-hidden="true">
+                  <Smartphone />
                 </span>
-              </div>
-            </div>
+                <span className="co-radio" aria-hidden="true" />
+              </label>
+              <FieldError id="payment-error" message={shown('payment')} />
+            </fieldset>
 
             {submitError && (
               <div
+                ref={alertRef}
+                tabIndex={-1}
                 role="alert"
-                style={{
-                  background: pricesRefreshed ? "var(--accent-amber-soft)" : "var(--danger-soft)",
-                  color: pricesRefreshed ? "var(--accent-amber-ink)" : "var(--danger)",
-                  padding: "10px 14px",
-                  borderRadius: "var(--r-md)",
-                  marginTop: "16px",
-                  fontSize: "var(--t-small)",
-                }}
+                className={`form-alert${pricesRefreshed ? ' is-warn' : ''}`}
               >
-                {submitError}
+                <AlertCircle aria-hidden="true" />
+                <span>{submitError}</span>
               </div>
             )}
+          </form>
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg btn-block"
-              style={{ marginTop: "20px" }}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 aria-hidden="true" className="spin" />
-                  <span>Transmitting Order to Studio...</span>
-                </>
-              ) : (
-                <>
-                  <Smartphone aria-hidden="true" />
-                  <span>Submit Order & Continue to Payment</span>
-                </>
-              )}
-            </button>
-
-            <p
-              style={{
-                fontSize: "0.72rem",
-                color: "var(--ink-subtle)",
-                textAlign: "center",
-                marginTop: "12px",
-                lineHeight: 1.4,
-              }}
-            >
-              By submitting, your order is registered into Vikipat’s operational
-              queue. If design review is required, our team verifies artwork
-              prior to charging.
-            </p>
+          <aside className="checkout-aside" aria-label="Order summary">
+            <p className="co-aside-kicker">Your order</p>
+            {summaryList}
+            {payButton}
+            <p className="co-aside-note">{ctaNote}</p>
           </aside>
-        </form>
+        </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }

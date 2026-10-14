@@ -1,28 +1,310 @@
-import { FormEvent, useState } from 'react';
-import { Check, ChevronRight, Clock3, KeyRound, Mail, PackageCheck, RotateCcw, ShieldCheck } from 'lucide-react';
-import { Layout } from '../components/Layout';
-import { useTitle } from '../lib/useReveal';
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertCircle, MessageCircle, RotateCcw, ShieldCheck } from 'lucide-react';
+import { AppShell } from '../components/AppShell';
+import { Loader, OrderProgress } from '../components/Dots';
+import { API_BASE } from '../lib/api';
+import { cedisFromPesewas, whatsappLink } from '../lib/format';
+import { progressFor, STAGES } from '../lib/progress';
+import { useTitle } from '../lib/useTitle';
 import { site } from '../site';
+import '../styles/pages/track.css';
 
-const API=(import.meta.env.VITE_API_URL||'http://localhost:3000/api').replace(/\/$/,'');
-type OrderView={orderNumber:string;customerName:string;status:string;paymentStatus:string;totalPesewas:number;promisedDate:string;createdAt:string;updatedAt:string;items:{name:string;quantity:number;totalPesewas:number;specification:Record<string,unknown>}[];timeline:{status:string;note:string;createdAt:string}[]};
-const money=(value:number)=>new Intl.NumberFormat('en-GH',{style:'currency',currency:'GHS'}).format(value/100);
+type OrderView = {
+  orderNumber: string;
+  customerName: string;
+  status: string;
+  paymentStatus: string;
+  totalPesewas: number;
+  promisedDate: string;
+  createdAt: string;
+  updatedAt: string;
+  items: { name: string; quantity: number; totalPesewas: number; specification: Record<string, unknown> }[];
+  timeline: { status: string; note: string; createdAt: string }[];
+};
 
-export default function TrackOrder(){
+const ORDER_PATTERN = /^VP-[A-Z0-9]{8}$/;
+
+const dateTime = (value: string) =>
+  new Date(value).toLocaleString('en-GH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+const dateOnly = (value: string) =>
+  new Date(value).toLocaleDateString('en-GH', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const words = (value: string) => {
+  const text = value.replace(/_/g, ' ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+/** The colour of the dot a status belongs to, for the update timeline. */
+function statusColor(status: string) {
+  const { lit, current } = progressFor(status);
+  const index = current ?? lit - 1;
+  return index >= 0 ? STAGES[index].color : 'var(--line-strong)';
+}
+
+async function post(path: string, body: unknown, withCookies = false) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    credentials: withCookies ? 'include' : 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = Array.isArray(data.message) ? data.message.join('. ') : data.message;
+    throw new Error(message || 'Something went wrong. Please try again.');
+  }
+  return data;
+}
+
+export default function TrackOrder() {
   useTitle(`Track your order | ${site.fullName}`);
-  const [step,setStep]=useState<'identify'|'verify'|'order'>('identify');
-  const [orderNumber,setOrderNumber]=useState('');const [email,setEmail]=useState('');const [code,setCode]=useState('');
-  const [order,setOrder]=useState<OrderView|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');
-  const request=async(event:FormEvent)=>{event.preventDefault();setBusy(true);setError('');try{const response=await fetch(`${API}/order-tracking/request-otp`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderNumber:orderNumber.trim().toUpperCase(),email:email.trim().toLowerCase()})});const data=await response.json();if(!response.ok)throw new Error(data.message||'Could not send the verification code.');setNotice(data.devOtp?`Development code: ${data.devOtp}`:data.message);setStep('verify')}catch(e){setError(e instanceof Error?e.message:'Something went wrong.')}finally{setBusy(false)}};
-  const verify=async(event:FormEvent)=>{event.preventDefault();setBusy(true);setError('');try{const response=await fetch(`${API}/order-tracking/verify-otp`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderNumber:orderNumber.trim().toUpperCase(),email:email.trim().toLowerCase(),code})});const data=await response.json();if(!response.ok)throw new Error(data.message||'That code is invalid or has expired.');setOrder(data.order);setStep('order')}catch(e){setError(e instanceof Error?e.message:'Something went wrong.')}finally{setBusy(false)}};
-  const reset=()=>{setStep('identify');setCode('');setError('');setNotice('');setOrder(null)};
-  return <Layout><section className="tracking-shell">
-    <div className="tracking-intro"><span className="tracking-mark"><PackageCheck aria-hidden="true"/></span><p className="tracking-kicker">Secure order tracking</p><h1>See exactly where your order is.</h1><p>No account required. We verify the email used for the order before showing any details.</p><div className="tracking-trust"><ShieldCheck aria-hidden="true"/><span>Your order information is protected by a one-time code.</span></div></div>
-    <div className="tracking-panel" aria-live="polite">
-      <div className="tracking-steps" aria-label="Tracking progress"><span className={step==='identify'?'is-current':'is-done'}>1</span><i/><span className={step==='verify'?'is-current':step==='order'?'is-done':''}>2</span><i/><span className={step==='order'?'is-current':''}>3</span></div>
-      {step==='identify'&&<form className="tracking-form tracking-stage" onSubmit={request}><div><p className="tracking-overline">Find your order</p><h2>Enter your order details</h2><p>Use the order number and email address shown on your confirmation.</p></div><label>Order number<div className="tracking-input"><PackageCheck/><input value={orderNumber} onChange={e=>setOrderNumber(e.target.value.toUpperCase())} placeholder="VP-AB12CD34" pattern="VP-[A-Z0-9]{8}" required autoComplete="off"/></div></label><label>Email address<div className="tracking-input"><Mail/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email"/></div></label>{error&&<p className="tracking-error" role="alert">{error}</p>}<button className="tracking-submit" disabled={busy}>{busy?'Sending code…':<>Send verification code <ChevronRight/></>}</button></form>}
-      {step==='verify'&&<form className="tracking-form tracking-stage" onSubmit={verify}><div className="tracking-code-icon"><KeyRound/></div><div><p className="tracking-overline">Email verification</p><h2>Enter the six-digit code</h2><p>We sent a code to <strong>{email}</strong>. It expires in 10 minutes.</p></div>{notice&&<p className="tracking-notice">{notice}</p>}<label>Verification code<input className="otp-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,''))} placeholder="000000" required autoFocus/></label>{error&&<p className="tracking-error" role="alert">{error}</p>}<button className="tracking-submit" disabled={busy||code.length!==6}>{busy?'Verifying…':<>Verify and view order <ChevronRight/></>}</button><button className="tracking-link" type="button" onClick={reset}><RotateCcw/> Use different details</button></form>}
-      {step==='order'&&order&&<div className="tracking-stage order-view"><div className="order-view-head"><div><p className="tracking-overline">{order.orderNumber}</p><h2>{order.status}</h2><p>Hi {order.customerName}, here is the latest progress on your order.</p></div><span className="order-status"><Check/> Verified</span></div><dl className="order-facts"><div><dt>Order total</dt><dd>{money(order.totalPesewas)}</dd></div><div><dt>Payment</dt><dd>{order.paymentStatus.replace('_',' ')}</dd></div><div><dt>Placed</dt><dd>{new Date(order.createdAt).toLocaleDateString('en-GH',{day:'numeric',month:'short',year:'numeric'})}</dd></div></dl><div className="order-items"><h3>Order details</h3>{order.items.map((item,index)=><div className="order-item" key={`${item.name}-${index}`}><div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div><strong>{money(item.totalPesewas)}</strong></div>)}</div><div className="order-timeline"><h3>Progress</h3>{order.timeline.map((event,index)=><div className="timeline-event" key={`${event.createdAt}-${index}`}><span><Check/></span><div><strong>{event.status}</strong>{event.note&&<p>{event.note}</p>}<time><Clock3/> {new Date(event.createdAt).toLocaleString('en-GH',{dateStyle:'medium',timeStyle:'short'})}</time></div></div>)}</div><button className="tracking-link" type="button" onClick={reset}><RotateCcw/> Track another order</button></div>}
-    </div>
-  </section></Layout>
+  const [params] = useSearchParams();
+  const [step, setStep] = useState<'identify' | 'verify' | 'order'>('identify');
+  const [orderNumber, setOrderNumber] = useState((params.get('order') || '').toUpperCase());
+  const [email, setEmail] = useState(params.get('email') || '');
+  const [code, setCode] = useState('');
+  const [order, setOrder] = useState<OrderView | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const cleanNumber = orderNumber.trim().toUpperCase();
+  const cleanEmail = email.trim().toLowerCase();
+
+  const request = async (event?: React.SyntheticEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    if (!ORDER_PATTERN.test(cleanNumber)) {
+      setError('Enter the order number from your email. It looks like VP-AB12CD34.');
+      document.getElementById('track-number')?.focus();
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+      setError('Enter the email address you used for the order.');
+      document.getElementById('track-email')?.focus();
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const data = await post('/order-tracking/request-otp', { orderNumber: cleanNumber, email: cleanEmail });
+      setNotice(data.devOtp ? `Development code: ${data.devOtp}` : data.message || `We sent a code to ${cleanEmail}.`);
+      setCode('');
+      setStep('verify');
+    } catch (thrown) {
+      setError(thrown instanceof TypeError ? 'We could not reach Vikipat. Check your connection.' : (thrown as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = async (event: React.SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const data = await post('/order-tracking/verify-otp', { orderNumber: cleanNumber, email: cleanEmail, code }, true);
+      setOrder(data.order);
+      setStep('order');
+      window.scrollTo({ top: 0 });
+    } catch (thrown) {
+      setError(
+        thrown instanceof TypeError ? 'We could not reach Vikipat. Check your connection.' : (thrown as Error).message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reset = () => {
+    setStep('identify');
+    setCode('');
+    setError('');
+    setNotice('');
+    setOrder(null);
+  };
+
+  const errorBox = error && (
+    <p className="form-alert" role="alert">
+      <AlertCircle aria-hidden="true" />
+      <span>{error}</span>
+    </p>
+  );
+
+  return (
+    <AppShell>
+      <div className="container track">
+        {step !== 'order' && (
+          <header className="page-intro">
+            <h1 className="title">Track your order</h1>
+            <p>No account needed. We send a one-time code to the email on your order before showing it.</p>
+          </header>
+        )}
+
+        {step === 'identify' && (
+          <form className="track-card track-form" onSubmit={request} noValidate>
+            <div className="field">
+              <label className="field-label" htmlFor="track-number">
+                Order number
+              </label>
+              <input
+                id="track-number"
+                className="input track-code-field"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="VP-AB12CD34"
+                value={orderNumber}
+                onChange={(event) => setOrderNumber(event.target.value.toUpperCase())}
+              />
+              <p className="field-hint">It is in your confirmation email.</p>
+            </div>
+            <div className="field">
+              <label className="field-label" htmlFor="track-email">
+                Email
+              </label>
+              <input
+                id="track-email"
+                className="input"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            {errorBox}
+            <button className="btn btn-primary btn-lg btn-block" disabled={busy}>
+              {busy ? <Loader label="Sending" /> : 'Send me a code'}
+            </button>
+            <p className="track-trust">
+              <ShieldCheck aria-hidden="true" />
+              Only someone with access to that email can see the order.
+            </p>
+          </form>
+        )}
+
+        {step === 'verify' && (
+          <form className="track-card track-form" onSubmit={verify} noValidate>
+            <div>
+              <h2 className="heading">Enter the 6-digit code</h2>
+              <p className="track-sub">
+                We sent it to <strong>{cleanEmail}</strong>. It works for 10 minutes.
+              </p>
+            </div>
+            {notice && <p className="track-notice">{notice}</p>}
+            <div className="field">
+              <label className="field-label" htmlFor="track-otp">
+                Code
+              </label>
+              <input
+                id="track-otp"
+                className="input track-otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                autoFocus
+              />
+            </div>
+            {errorBox}
+            <button className="btn btn-primary btn-lg btn-block" disabled={busy || code.length !== 6}>
+              {busy ? <Loader label="Checking" /> : 'Show my order'}
+            </button>
+            <div className="track-links">
+              <button type="button" className="btn btn-ghost" onClick={() => request()} disabled={busy}>
+                Send a new code
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={reset}>
+                Use different details
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 'order' && order && (
+          <>
+            <section className="track-card track-status" aria-labelledby="status-title">
+              <span className="track-number num">Order {order.orderNumber}</span>
+              <h1 className="title" id="status-title">
+                {order.status}
+              </h1>
+              <p className="track-sub">Hi {order.customerName.split(' ')[0]}, here is where your order is now.</p>
+              <OrderProgress status={order.status} />
+              <dl className="track-facts">
+                <div>
+                  <dt>Total</dt>
+                  <dd className="num">{cedisFromPesewas(order.totalPesewas)}</dd>
+                </div>
+                <div>
+                  <dt>Payment</dt>
+                  <dd>{words(order.paymentStatus)}</dd>
+                </div>
+                <div>
+                  <dt>{order.promisedDate ? 'Needed by' : 'Placed'}</dt>
+                  <dd>{dateOnly(order.promisedDate || order.createdAt)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className="track-card" aria-labelledby="items-title">
+              <h2 className="heading" id="items-title">
+                In this order
+              </h2>
+              <ul className="track-items">
+                {order.items.map((item, index) => (
+                  <li key={`${item.name}-${index}`}>
+                    <span>
+                      <span className="track-item-name">{item.name}</span>
+                      <span className="track-item-meta">Quantity {item.quantity}</span>
+                    </span>
+                    <span className="price">{cedisFromPesewas(item.totalPesewas)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {order.timeline.length > 0 && (
+              <section className="track-card" aria-labelledby="updates-title">
+                <h2 className="heading" id="updates-title">
+                  Updates
+                </h2>
+                <ol className="track-timeline">
+                  {[...order.timeline].reverse().map((event, index) => (
+                    <li key={`${event.createdAt}-${index}`}>
+                      <span className="track-timeline-dot" style={{ background: statusColor(event.status) }} />
+                      <span className="track-timeline-body">
+                        <span className="track-timeline-status">{event.status}</span>
+                        {event.note && <span className="track-timeline-note">{event.note}</span>}
+                        <time dateTime={event.createdAt}>{dateTime(event.createdAt)}</time>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            <div className="track-actions">
+              <a
+                className="btn btn-secondary btn-lg btn-block"
+                href={whatsappLink(`Hello ${site.name}, I have a question about order ${order.orderNumber}.`)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle className="wa" aria-hidden="true" />
+                Ask about this order on WhatsApp
+              </a>
+              <button type="button" className="btn btn-ghost btn-block" onClick={reset}>
+                <RotateCcw aria-hidden="true" />
+                Track another order
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </AppShell>
+  );
 }

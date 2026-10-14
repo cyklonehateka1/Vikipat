@@ -1,0 +1,1690 @@
+/* ======================= Hero =======================
+   Quiet and simple: a heavy headline with glossy vector objects that overlap
+   it, one line of text and one button. No photographs here. */
+.hero {
+  position: relative;
+  overflow-x: clip;
+}
+
+.hero-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: 12px 32px;
+  text-align: center;
+}
+
+.hero-title {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-hero);
+  font-size: clamp(2.75rem, 0.5rem + 10.4vw, 8.5rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.hero-line {
+  display: block;
+  white-space: nowrap;
+}
+
+.hero-line.is-accent {
+  color: var(--orange-text);
+}
+
+.hero-lede {
+  position: relative;
+  z-index: 3;
+  max-width: 30ch;
+  margin-top: 28px;
+  color: var(--text-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.hero .btn-tactile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: min(300px, 100%);
+  min-height: 60px;
+  padding: 0 28px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform var(--mid) var(--spring),
+    background-color var(--fast) var(--ease);
+}
+
+.btn-tactile::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 38px;
+  height: 38px;
+  background: var(--sun);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.btn-tactile:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-tactile:hover {
+    background: var(--chalk-3);
+  }
+}
+
+/* ---------- Toggle: sits in the headline, at the end of line one ---------- */
+.v-toggle {
+  display: inline-block;
+  position: relative;
+  width: 0.62em;
+  height: 0.36em;
+  margin-left: 0.14em;
+  vertical-align: 0.12em;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2fbf6a, #14894a);
+  box-shadow:
+    inset 0 0.02em 0.03em rgb(255 255 255 / 0.5),
+    inset 0 -0.03em 0.05em rgb(0 0 0 / 0.18),
+    0 0 0 0.045em #fff,
+    0 0.1em 0.16em -0.08em rgb(14 27 20 / 0.28);
+  animation: rise 700ms var(--spring) 900ms both;
+}
+
+.v-toggle span {
+  position: absolute;
+  top: 50%;
+  right: 0.04em;
+  width: 0.28em;
+  height: 0.28em;
+  margin-top: -0.14em;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff, #e5ebe6);
+  box-shadow: 0 0.03em 0.05em rgb(14 27 20 / 0.3);
+  animation: toggle-slide 1200ms var(--spring) 1400ms both;
+}
+
+@keyframes toggle-slide {
+  from {
+    transform: translateX(-0.22em);
+  }
+}
+
+/* ---------- Objects (vector only) ---------- */
+.hero-objects {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 340px;
+  height: 212px;
+  margin-top: 16px;
+}
+
+.hero-fan {
+  position: absolute;
+  inset: 0 12%;
+}
+
+.vcard {
+  position: absolute;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 38%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 16px;
+  color: #fff;
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / 0.5),
+    inset 0 -8px 14px rgb(0 0 0 / 0.1),
+    0 8px 14px -10px rgb(14 27 20 / 0.3);
+  transform-origin: 50% 100%;
+  transform: translateY(var(--up)) rotate(var(--r));
+  animation: eject 1000ms var(--spring) var(--delay) both;
+}
+
+.vcard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.4) 0%, rgb(255 255 255 / 0) 45%);
+  pointer-events: none;
+}
+
+.vcard svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.v1 {
+  --r: -16deg;
+  --up: -6px;
+  --delay: 500ms;
+  left: 3%;
+  background: linear-gradient(160deg, #ffa25c, #ff5a0a);
+}
+
+.v2 {
+  --r: -5deg;
+  --up: -16px;
+  --delay: 600ms;
+  left: 21%;
+  background: linear-gradient(160deg, #ffffff, #e4e8e2);
+}
+
+.v3 {
+  --r: 5deg;
+  --up: -20px;
+  --delay: 700ms;
+  left: 40%;
+  background: linear-gradient(160deg, #3a403b, #131614);
+}
+
+.v4 {
+  --r: 16deg;
+  --up: -8px;
+  --delay: 800ms;
+  left: 58%;
+  background: linear-gradient(160deg, #6db1ff, #2b66e6);
+}
+
+@keyframes eject {
+  from {
+    opacity: 0;
+    transform: translateY(60px) rotate(0deg);
+  }
+}
+
+/* The slot the cards slide out of: an outlined frame with a thick dark rim
+   and a light interior, as in the reference. The back layer has the whole
+   frame and sits behind the cards; the front layer repeats only the sides and
+   bottom rim, so the cards stand inside it and poke out over the top edge. */
+.hero-tray-back,
+.hero-tray {
+  position: absolute;
+  right: -7%;
+  bottom: 0;
+  left: -7%;
+  box-sizing: border-box;
+  border: 7px solid #23272a;
+  pointer-events: none;
+}
+
+.hero-cards {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  /* Cards may poke out of the top and sides of the frame, but end at its floor. */
+  clip-path: inset(-300px -80px 7px -80px);
+}
+
+.hero-tray-back {
+  z-index: 1;
+  height: 100px;
+  border-radius: 26px;
+  background: linear-gradient(180deg, #f7f8f6 0%, #dde0dc 100%);
+  box-shadow:
+    inset 0 8px 12px -8px rgb(0 0 0 / 0.22),
+    0 8px 14px -12px rgb(14 27 20 / 0.3);
+}
+
+.hero-tray {
+  z-index: 6;
+  height: 50px;
+  border-top: 0;
+  border-radius: 0 0 26px 26px;
+  background: transparent;
+}
+
+.hero-cursor {
+  display: none;
+  position: absolute;
+  z-index: 7;
+  top: 30px;
+  left: 44%;
+  filter: drop-shadow(0 3px 3px rgb(14 27 20 / 0.22));
+  animation: rise 700ms var(--spring) 1200ms both;
+}
+
+.hero-cursor svg {
+  width: 36px;
+  height: 36px;
+  fill: #fff;
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+/* App-icon tiles, overlapping in a small cluster like the reference */
+.hero-tiles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tile {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 17px;
+  color: #fff;
+  box-shadow:
+    inset 0 1.5px 0 rgb(255 255 255 / 0.45),
+    inset 0 -5px 10px rgb(0 0 0 / 0.16),
+    0 8px 14px -10px rgb(14 27 20 / 0.32);
+  transform: rotate(var(--tilt, 0deg));
+  animation:
+    pop-in 700ms var(--spring) var(--delay, 900ms) both,
+    float 6s ease-in-out calc(var(--delay, 900ms) + 700ms) infinite;
+}
+
+.tile svg {
+  width: 78%;
+  height: 78%;
+}
+
+.tile-dark {
+  --tilt: 8deg;
+  --delay: 900ms;
+  top: 0;
+  right: 2%;
+  z-index: 1;
+  background: linear-gradient(160deg, #3a403b, #111412);
+}
+
+.tile-glass {
+  --tilt: 8deg;
+  --delay: 1000ms;
+  display: none;
+  top: 38%;
+  left: 30%;
+  z-index: 2;
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.3));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.tile-blue {
+  --tilt: -8deg;
+  --delay: 1100ms;
+  top: 12px;
+  left: 2%;
+  z-index: 3;
+  background: linear-gradient(160deg, #6db1ff, #2b66e6);
+}
+
+@keyframes float {
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(var(--tilt, 0deg));
+  }
+}
+
+/* Extra floating vector objects: shown from desktop up */
+.fl {
+  display: none;
+}
+
+/* ---------- Desktop: the objects overlap the headline, as in the reference ---------- */
+@media (min-width: 1024px) {
+  .hero-inner {
+    padding-block: 112px 128px;
+  }
+
+  .hero-title {
+    font-size: clamp(4rem, 1.6rem + 4.8vw, 6.75rem);
+  }
+
+  .hero-lede {
+    margin-top: 8px;
+    font-size: 1rem;
+  }
+
+  .hero-objects {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    max-width: none;
+    height: auto;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  /* The card fan tucks under the left of the headline, in front of it. */
+  .hero-fan {
+    inset: auto;
+    bottom: 170px;
+    left: 8.5%;
+    z-index: 4;
+    width: 300px;
+    height: 230px;
+  }
+
+  .hero-tiles {
+    inset: auto;
+    right: 6%;
+    bottom: 140px;
+    width: 220px;
+    height: 220px;
+  }
+
+  .tile {
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+  }
+
+  .hero-cursor {
+    display: block;
+  }
+
+  .tile-glass {
+    display: grid;
+  }
+
+  .tile-dark {
+    --tilt: -8deg;
+    top: 20%;
+    right: auto;
+    left: 0;
+  }
+
+  .tile-blue {
+    --tilt: -10deg;
+    top: 56%;
+    left: 6%;
+  }
+
+
+  .fl {
+    position: absolute;
+    display: block;
+    filter: drop-shadow(0 8px 10px rgb(14 27 20 / 0.16));
+    transform: rotate(var(--tilt, 0deg));
+    animation:
+      pop-in 700ms var(--spring) var(--delay, 900ms) both,
+      float 7s ease-in-out calc(var(--delay, 900ms) + 700ms) infinite;
+  }
+
+  /* Colour-swatch fan: behind the "P" of the headline. */
+  .fl-swatch {
+    --tilt: -8deg;
+    --delay: 700ms;
+    top: 70px;
+    left: 22%;
+    z-index: 1;
+    width: 150px;
+  }
+
+  /* Glossy shirt: tucked behind the end of "brands". */
+  .fl-shirt {
+    --tilt: 10deg;
+    --delay: 850ms;
+    top: 34%;
+    right: 20%;
+    z-index: 1;
+    width: 118px;
+  }
+
+  /* Holographic sticker, just past the full stop of "out." */
+  .fl-sticker {
+    --tilt: -14deg;
+    --delay: 1000ms;
+    top: 56%;
+    right: 27%;
+    z-index: 1;
+    width: 88px;
+  }
+
+  .fl svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+
+/* ======================= Section titles =======================
+   The hero's poster face, at section size, with one orange phrase. */
+.title-poster {
+  font-family: var(--font-hero);
+  font-size: clamp(2.25rem, 1.2rem + 4.2vw, 4rem);
+  font-weight: 400;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.title-poster .accent {
+  color: var(--orange-text);
+}
+
+.on-dark .title-poster .accent {
+  color: var(--sun);
+}
+
+/* The hero already has generous air below it. The footer's own margin-top
+   already gives .home-visit its space below, so it isn't listed here. */
+.home-services {
+  padding-bottom: var(--section);
+}
+
+.container.section.home-featured {
+  padding-top: calc(var(--section) * 0.6);
+  padding-bottom: calc(var(--section) * 0.6);
+}
+
+/* ======================= Services =======================
+   Two Dribbble references combined, on the section's own dark ground. From the
+   first: one rounded panel, and a bento of one tall card and two stacked, each
+   with a big light-weight title, a short line and a photo bleeding off the
+   bottom edge. From the second: a split header (title left, muted line right),
+   a faint disc behind it, and wide compact cards with an icon circle over an
+   outlined arrow circle that fills on hover. */
+.services-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  --cell: rgb(180 210 255 / 0.08);
+}
+
+.home-services.band {
+  padding-block: clamp(40px, 2rem + 3vw, 72px);
+}
+
+.services-head {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 0 0 20px;
+}
+
+.services-head p {
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: var(--t-lg);
+  line-height: 1.4;
+}
+
+.services {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  list-style: none;
+}
+
+.service-item {
+  display: flex;
+  min-width: 0;
+}
+
+.service {
+  position: relative;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--cell);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    transform var(--mid) var(--ease),
+    background-color var(--mid) var(--ease);
+}
+
+.service-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.service-label {
+  font-family: var(--font-display);
+  font-size: clamp(1.625rem, 1.3rem + 1.4vw, 2.25rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.service-blurb {
+  max-width: 38ch;
+  color: var(--text-2);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+
+.service-hint {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.service-skeleton {
+  width: 120px;
+  height: 16px;
+  border-radius: 8px;
+}
+
+/* The outlined arrow circle: fills and turns when the card is hovered. */
+.service-go {
+  z-index: 2;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--text);
+  border-radius: 50%;
+  color: var(--text);
+  transition:
+    background-color var(--mid) var(--ease),
+    color var(--mid) var(--ease),
+    transform var(--mid) var(--spring);
+}
+
+.service-go svg {
+  width: 20px;
+  height: 20px;
+}
+
+.service:active {
+  transform: scale(0.985);
+}
+
+/* ---- Photos ---- */
+.service-photo,
+.service-thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: rgb(180 210 255 / 0.08);
+}
+
+.service-photo img,
+.service-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: photo-drift 18s ease-in-out infinite alternate;
+  transition: transform 1000ms var(--ease);
+}
+
+@keyframes photo-drift {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: 1.07;
+  }
+}
+
+.can-reveal .service-item .service-photo img,
+.can-reveal .service-item .service-thumb img {
+  transform: scale(1.22);
+}
+
+.can-reveal .service-item.is-in .service-photo img,
+.can-reveal .service-item.is-in .service-thumb img {
+  transform: scale(1);
+  transition: transform 1500ms var(--ease) 150ms;
+}
+
+.service-item:nth-child(2) .service-photo img {
+  animation-delay: -6s;
+}
+
+.service-item:nth-child(3) .service-photo img {
+  animation-delay: -12s;
+}
+
+/* ---- Bento cards: text on top, photo bleeding off the bottom ---- */
+.service.is-feature {
+  flex-direction: column;
+  padding: 28px 28px 0;
+}
+
+.service.is-feature .service-go {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+}
+
+.service.is-feature .service-copy {
+  padding-right: 56px;
+}
+
+.service.is-feature .service-photo {
+  margin: 24px -28px 0;
+  aspect-ratio: 4 / 3;
+  border-radius: 20px 20px 0 0;
+}
+
+/* ---- Compact cards: icon over arrow on the left, text, small photo ---- */
+.service.is-compact {
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+}
+
+.service-rail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.service-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--sun);
+  color: #fff;
+  transition: transform 500ms var(--spring);
+}
+
+.service-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.service.is-compact .service-label {
+  font-size: 1.5rem;
+}
+
+.service.is-compact .service-copy {
+  flex: 1;
+}
+
+.service.is-compact .service-thumb {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: 16px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .service:hover {
+    transform: translateY(-4px);
+    background: rgb(180 210 255 / 0.13);
+  }
+
+  .service:hover .service-go {
+    background: var(--text);
+    color: var(--leaf-deep);
+    transform: rotate(45deg);
+  }
+
+  .service:hover .service-photo img,
+  .service:hover .service-thumb img {
+    transform: scale(1.06);
+  }
+
+  .service.is-compact:hover .service-icon {
+    transform: scale(1.1) rotate(-8deg);
+  }
+}
+
+@media (min-width: 720px) {
+  .services-head {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+    align-items: center;
+    padding: 0 0 28px;
+  }
+
+  .services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .service-item.is-feature:first-child {
+    grid-row: span 2;
+  }
+
+  .service-item.is-feature:first-child .service.is-feature .service-photo {
+    flex: 1;
+    aspect-ratio: auto;
+    min-height: 280px;
+  }
+
+  .service.is-feature {
+    padding: 32px 32px 0;
+  }
+
+  .service.is-feature .service-photo {
+    aspect-ratio: 16 / 7;
+    margin: 24px -32px 0;
+  }
+
+  .service.is-compact {
+    padding: 24px 28px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .service.is-compact .service-thumb {
+    width: 112px;
+    height: 112px;
+  }
+}
+
+/* ======================= Quick links ======================= */
+.home-quick {
+  display: grid;
+  gap: 12px;
+  padding-top: var(--section);
+}
+
+.quick {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 96px;
+  padding: 18px 22px;
+  border-radius: var(--r-lg);
+  background: var(--cell);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    transform var(--fast) var(--ease),
+    background-color var(--fast) var(--ease);
+}
+
+.quick:active {
+  transform: scale(0.98);
+}
+
+.quick > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.quick b {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.quick small {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.35;
+}
+
+.quick-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sun);
+  color: var(--ink);
+}
+
+.quick-icon.is-wa {
+  background: var(--whatsapp);
+  color: #fff;
+}
+
+.quick-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quick:hover {
+    background: var(--chalk-3);
+  }
+}
+
+@media (min-width: 720px) {
+  .home-quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--grid-gap);
+  }
+}
+
+/* ======================= How ordering works ======================= */
+.band {
+  padding-block: var(--section);
+}
+
+.band-light {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.hero.on-dark {
+  padding-bottom: 48px;
+  margin-top: calc(-1 * var(--topbar-h));
+  padding-top: var(--topbar-h);
+}
+
+.hero {
+  padding-bottom: 32px;
+}
+
+.band-light + .home-featured {
+  padding-top: var(--section);
+}
+
+.on-dark .accent,
+.on-dark .hero-line.is-accent,
+.on-dark .title-poster .accent {
+  color: #60a5fa;
+}
+
+/* ======================= How ordering works =======================
+   From the reference: a plain title with one illustration underneath on the
+   left, and on the right a dotted line that wiggles from step to step, each
+   outlined number sitting on the line with its text beside it. */
+/* The curve is meant to touch the very top and bottom of this band, so the
+   band carries no vertical padding of its own; .how-step supplies the only
+   breathing room, at its own top and bottom. */
+.home-how.band {
+  padding-block: 0;
+}
+
+.how-grid {
+  display: grid;
+  gap: 40px;
+}
+
+.how-intro {
+  display: flex;
+  flex-direction: column;
+}
+
+.how-intro h2 {
+  margin-bottom: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.5rem + 2.2vw, 3.25rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.how-accent {
+  color: #60a5fa;
+}
+
+.how-intro > p {
+  max-width: 36ch;
+  color: var(--muted);
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+/* A soft, faintly bordered panel behind the phone, so the illustration reads
+   as a distinct card rather than floating loose on the band. */
+.how-art-card {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+  padding: 28px 24px;
+  border: 1px solid rgb(200 220 255 / 0.12);
+  border-radius: var(--r-xl);
+  background: rgb(180 210 255 / 0.05);
+}
+
+.how-art {
+  display: block;
+  width: min(220px, 70%);
+  color: var(--text);
+}
+
+.how-art svg {
+  width: 100%;
+  height: auto;
+}
+
+.how-body {
+  position: relative;
+  display: grid;
+  margin-left: -32px;
+}
+
+.how-rail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  color: var(--line-strong);
+}
+
+/* Sized to match its own viewBox exactly (110x1182 / 130x648), so the arc
+   renders at true 1:1 scale — no stretch, so it stays a real circle. */
+.how-rail.is-tight {
+  width: 120px;
+}
+
+.how-rail.is-wide {
+  display: none;
+  width: 180px;
+}
+
+/* Three equal rows: with no free space to distribute, three 1fr tracks
+   resolve to the same size (the tallest row's own content height), so every
+   row's centre sits at an exact sixth of the total — the same fractions the
+   arc's x values above were computed at. */
+.how-steps {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(max-content, 1fr));
+  list-style: none;
+}
+
+.how-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-block: 44px;
+}
+
+/* Each row's text starts right after that row's own circle — following the
+   curve outward and back, instead of sitting on one straight vertical line. */
+.how-step-1,
+.how-step-3 {
+  padding-left: 131px;
+}
+
+.how-step-2 {
+  padding-left: 166px;
+}
+
+.how-num {
+  position: absolute;
+  top: 50%;
+  left: 31px;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  transform: translateY(-50%);
+}
+
+.how-step-2 .how-num {
+  left: 66px;
+}
+
+.how-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.how-copy strong {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.how-copy span {
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: var(--t-body);
+  line-height: 1.6;
+}
+
+@media (min-width: 900px) {
+  .how-grid {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: stretch;
+    gap: 64px;
+  }
+
+  .how-intro {
+    height: 100%;
+    justify-content: center;
+  }
+
+  .how-body {
+    margin-left: -84px;
+  }
+
+  .how-art-card {
+    margin-top: 36px;
+    padding: 32px 28px;
+  }
+
+  .how-art {
+    width: min(240px, 72%);
+  }
+
+  .how-step {
+    padding-block: 64px;
+  }
+
+  .how-step-1,
+  .how-step-3 {
+    padding-left: 184px;
+  }
+
+  .how-step-2 {
+    padding-left: 240px;
+  }
+
+  .how-rail.is-tight {
+    display: none;
+  }
+
+  .how-rail.is-wide {
+    display: block;
+  }
+
+  .how-num {
+    left: 74px;
+  }
+
+  .how-step-2 .how-num {
+    left: 130px;
+  }
+}
+
+/* ======================= Our work =======================
+   Three big photo cards, after the reference: an outlined "Our work" pill, a
+   plain title and line on the left with a button on the right, and each photo
+   card cut by a notch in the bottom-right corner that holds a round arrow. The
+   notch is drawn in the section's own colour, with two small rounded fillets so
+   the cut curves into the card edge. Content is placeholder (content/work.ts). */
+.home-work.band {
+  padding-block: clamp(48px, 2.5rem + 3vw, 88px);
+}
+
+.work-head {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.work-pill {
+  justify-self: start;
+  padding: 6px 16px;
+  border: 1.5px solid var(--text);
+  border-radius: 999px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.work-head-row {
+  display: grid;
+  gap: 20px;
+}
+
+.work-head h2 {
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.35rem + 1.8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.work-head p {
+  max-width: 48ch;
+  color: var(--muted);
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+.work-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  align-self: end;
+  justify-self: start;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--sun);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color var(--mid) var(--ease);
+}
+
+.work-more svg {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--mid) var(--spring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .work-more:hover {
+    background: var(--sun-press);
+  }
+
+  .work-more:hover svg {
+    transform: rotate(45deg);
+  }
+}
+
+/* Phones: a row you swipe, one card and a peek of the next. */
+.work-list {
+  display: flex;
+  gap: 12px;
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 0 var(--gutter) 4px;
+  overflow-x: auto;
+  list-style: none;
+  scroll-padding-inline: var(--gutter);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.work-list::-webkit-scrollbar {
+  display: none;
+}
+
+.work-item {
+  flex: 0 0 78%;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.work-card {
+  --notch: 84px;
+  --fillet: 28px;
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: 28px;
+  background: var(--cell);
+  color: #fff;
+  text-decoration: none;
+}
+
+.work-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 900ms var(--ease);
+}
+
+.work-notch {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: var(--notch);
+  height: var(--notch);
+  border-top-left-radius: 28px;
+  background: var(--bg);
+  box-shadow: 2px 2px 0 var(--bg);
+}
+
+.work-notch::before,
+.work-notch::after {
+  content: '';
+  position: absolute;
+  width: var(--fillet);
+  height: var(--fillet);
+  background: radial-gradient(circle at 0 0, transparent calc(var(--fillet) - 0.5px), var(--bg) var(--fillet));
+}
+
+.work-notch::before {
+  right: -2px;
+  bottom: calc(100% - 1px);
+}
+
+.work-notch::after {
+  right: calc(100% - 1px);
+  bottom: -2px;
+}
+
+.work-go {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--sun);
+  color: #fff;
+  transition: transform var(--mid) var(--spring);
+}
+
+.work-go svg {
+  width: 24px;
+  height: 24px;
+}
+
+.work-caption {
+  position: absolute;
+  right: var(--notch);
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 44px 8px 20px 20px;
+  background: linear-gradient(to top, rgb(7 17 31 / 0.78), transparent);
+}
+
+.work-caption b {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.work-caption small {
+  color: rgb(255 255 255 / 0.8);
+  font-size: var(--t-xs);
+  font-weight: 500;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .work-card:hover img {
+    transform: scale(1.06);
+  }
+
+  .work-card:hover .work-go {
+    transform: rotate(45deg);
+  }
+}
+
+@media (min-width: 720px) {
+  .work-head-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .work-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .work-item {
+    flex: none;
+  }
+
+  .work-card {
+    --notch: 96px;
+    aspect-ratio: 1 / 1.1;
+  }
+
+  .work-go {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .work-head {
+    margin-bottom: 40px;
+  }
+
+  .work-list {
+    gap: 24px;
+  }
+
+  .work-card {
+    --notch: 104px;
+    border-radius: 32px;
+  }
+
+  .work-notch {
+    border-top-left-radius: 32px;
+  }
+}
+
+/* ======================= Reassurance =======================
+   After the reference: a plain heading, then a row of slightly tilted cards
+   each with a small floating icon over a tinted panel, joined by a dashed
+   line. Straightens and lifts on hover. Light band, tints stay inside the
+   site's own black/white/blue palette rather than borrowing new hues. */
+.home-reassure {
+  padding-block: clamp(48px, 2.5rem + 3vw, 88px);
+}
+
+.reassure-head {
+  display: grid;
+  gap: 10px;
+  max-width: 52ch;
+  margin-bottom: 40px;
+}
+
+.reassure-head h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.35rem + 1.8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.reassure-head .accent {
+  color: var(--orange-text);
+}
+
+.reassure-head p {
+  color: var(--muted);
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+.reassure-list {
+  display: grid;
+  gap: 28px;
+  list-style: none;
+}
+
+.reassure-item {
+  position: relative;
+}
+
+.reassure-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 36px 20px 20px;
+  border-radius: var(--r-lg);
+  background: var(--chalk-2);
+  transition:
+    transform var(--mid) var(--ease),
+    box-shadow var(--mid) var(--ease);
+}
+
+.reassure-item:nth-child(odd) .reassure-card {
+  transform: rotate(-4deg);
+}
+
+.reassure-item:nth-child(even) .reassure-card {
+  transform: rotate(4deg);
+  background: rgb(37 99 235 / 0.06);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reassure-card:hover {
+    transform: none;
+    box-shadow: var(--lift);
+  }
+}
+
+.reassure-icon {
+  position: absolute;
+  top: -18px;
+  left: 20px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--leaf-2);
+  box-shadow: var(--lift);
+}
+
+.reassure-item:nth-child(even) .reassure-icon {
+  color: #2563eb;
+}
+
+.reassure-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.reassure-card strong {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.reassure-card span {
+  color: var(--muted);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+
+/* The dashed connector: a short vertical stitch between stacked cards on
+   phones, a horizontal one between cards side by side from tablet up. */
+.reassure-link {
+  display: block;
+  width: 1.5px;
+  height: 28px;
+  margin: 0 auto;
+  border-left: 1.5px dashed var(--line-strong);
+}
+
+@media (min-width: 720px) {
+  .reassure-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 48px 32px;
+  }
+
+  .reassure-link {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .reassure-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+    gap: 0;
+  }
+
+  .reassure-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .reassure-card {
+    flex: 1;
+  }
+
+  .reassure-link {
+    display: block;
+    width: 32px;
+    height: 1.5px;
+    margin-top: -20px;
+    border-top: 1.5px dashed var(--line-strong);
+    border-left: 0;
+  }
+}
+
+/* ======================= Ready to order: feature cards =======================
+   After the reference: a rounded white card on the page's own tint, a real
+   category label above the name (from the catalogue, not invented), and a
+   labelled "Add to cart" button next to the price instead of a small round
+   button floating on the photo. Scoped to `.product-card.is-feature` so the
+   shop grid itself is untouched. Capped to two rows at every width. */
+.home-featured .product-grid.is-feature .product-card {
+  padding: 0;
+  border-radius: var(--r-lg);
+  background: #fff;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+.home-featured .product-card.is-feature .product-card-media {
+  padding: 8px 8px 0;
+}
+
+.home-featured .product-card.is-feature .product-card-photo {
+  border-radius: calc(var(--r-lg) - 8px);
+}
+
+.home-featured .product-card.is-feature .product-card-flag {
+  top: 18px;
+  left: 18px;
+}
+
+.home-featured .product-card-dept {
+  color: var(--muted);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.home-featured .product-card.is-feature .product-card-body {
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+
+.home-featured .product-card.is-feature .product-card-name {
+  min-height: 0;
+  font-size: 1rem;
+}
+
+/* Narrow (2-column) cards: price above a full-width button, not squeezed
+   into one row. From 720px up, cards are wide enough for a single row. */
+.home-featured .product-card-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.home-featured .product-card-add.is-feature {
+  justify-content: center;
+  width: 100%;
+}
+
+@media (min-width: 1100px) {
+  .home-featured .product-card-foot {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .home-featured .product-card-add.is-feature {
+    width: auto;
+  }
+}
+
+.home-featured .product-card.is-feature .product-card-price {
+  margin-top: 0;
+}
+
+.home-featured .product-card-add.is-feature {
+  position: static;
+  min-width: 0;
+  height: 40px;
+  padding-inline: 16px;
+  font-size: 0.8125rem;
+}
+
+.home-featured .product-card-add.is-feature.is-in {
+  padding-inline: 14px;
+}
+
+/* Two rows, whatever the column count: 4 items at 2 columns, 6 at 3, 8 at 4. */
+.home-featured .product-grid.is-feature .product-cell:nth-child(n + 5) {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .home-featured .product-grid.is-feature .product-cell:nth-child(n + 5) {
+    display: flex;
+  }
+
+  .home-featured .product-grid.is-feature .product-cell:nth-child(n + 7) {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .home-featured .product-grid.is-feature .product-cell:nth-child(n + 7) {
+    display: flex;
+  }
+}
+
+/* ======================= Ready to order: header + button fixes =======================
+   The heading was still the old heavy poster face while the rest of the page
+   moved to a plainer style (see Reassurance, How ordering works) — bring it
+   in line. The Add-to-cart button was too big, too rounded and too blue next
+   to a white card; make it a small ink pill instead, closer to the reference. */
+.section-head.is-plain h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 1.35rem + 1.8vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-transform: none;
+}
+
+.section-head-accent {
+  color: var(--orange-text);
+}
+
+.home-featured .product-card-dept {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.home-featured .product-card-add.is-feature {
+  height: 40px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.home-featured .product-card-add.is-feature svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-featured .product-card-add.is-feature.is-in {
+  background: var(--leaf);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-featured .product-card-add.is-feature:hover {
+    background: var(--orange-text);
+  }
+}
