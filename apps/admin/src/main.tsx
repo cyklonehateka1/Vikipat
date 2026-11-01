@@ -32,8 +32,8 @@ const emptySummary:Summary={totalProducts:0,activeProducts:0,lowStock:0,categori
 const emptyPaymentSummary:PaymentSummary={totalCount:0,totalPesewas:0,paidCount:0,paidPesewas:0,pendingCount:0,pendingPesewas:0,failedCount:0,failedPesewas:0,generatedAt:''};
 const emptySettings:StoreSettings={businessName:'',phone:'',location:'',currency:'GHS',description:'',whatsappNotificationsEnabled:false,whatsappBusinessNumber:'233555110844'};
 const errorText=(error:unknown)=>error instanceof Error?error.message:'Something went wrong. Please try again.';
-const when=(value:string)=>new Intl.DateTimeFormat('en-GH',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
-const money=(pesewas:number)=>'GH₵ '+(pesewas/100).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});
+export const when=(value:string)=>new Intl.DateTimeFormat('en-GH',{dateStyle:'medium',timeStyle:'short'}).format(new Date(value));
+export const money=(pesewas:number)=>'GH₵ '+(pesewas/100).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});
 function Logo(){return <img className="admin-logo" src={logoUrl} alt="Vikipat Media Solutions"/>}
 function PasswordInput(props:React.InputHTMLAttributes<HTMLInputElement>){const[shown,setShown]=useState(false);return <div className="password-input"><input {...props} type={shown?'text':'password'}/><button type="button" onClick={()=>setShown(!shown)} aria-label={shown?'Hide password':'Show password'}>{shown?<EyeOff/>:<Eye/>}</button></div>}
 

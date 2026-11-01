@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
-import { AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
+import { AttendanceRecord, AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
 import { CustomerService } from './customer.service';
@@ -25,7 +25,7 @@ const PUBLIC_STATUS:Record<OrderStatus,string>={pending_review:'Under review',aw
 
 @Injectable()
 export class OrderService implements OnApplicationBootstrap {
-  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService,private customers:CustomerService){}
+  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService,private customers:CustomerService,@InjectRepository(OrderRefund) private refunds:Repository<OrderRefund>,@InjectRepository(AttendanceRecord) private attendance:Repository<AttendanceRecord>){}
   onApplicationBootstrap(){return this.seed()}
   async seed(){for(const [code,name,employee,marketer,walkIn] of RATE_SEED){if(!await this.rules.findOneBy({code}))await this.rules.save(this.rules.create({code,name,material:name,employeeRatePesewas:employee,marketerRatePesewas:marketer,walkInRatePesewas:walkIn,onlineRatePesewas:walkIn}))}}
   listRules(){return this.rules.find({where:{active:true},order:{name:'ASC'}})}
@@ -158,6 +158,56 @@ export class OrderService implements OnApplicationBootstrap {
       .andWhere('NOT EXISTS (SELECT 1 FROM production_jobs job WHERE job."orderId" = CAST(order.id AS text))')
       .orderBy('order.createdAt','DESC').take(250).getMany();
     return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
+  }
+  /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
+  async flagCustomPricedItems(from?:string,to?:string){
+    const items=await this.items.find({where:{kind:'custom'}});
+    if(!items.length)return[];
+    const orders=await this.orders.find();
+    const orderMap=new Map(orders.map(o=>[o.id,o]));
+    const fromDate=from?new Date(from):null,toDate=to?new Date(to):null;
+    return items.map(item=>({item,order:orderMap.get(item.orderId)}))
+      .filter((x):x is{item:typeof items[number];order:Order}=>!!x.order)
+      .filter(({order})=>(!fromDate||order.createdAt>=fromDate)&&(!toDate||order.createdAt<=toDate))
+      .map(({item,order})=>({orderId:item.orderId,orderNumber:order.orderNumber,customerName:order.customerName,name:item.name,quantity:item.quantity,unitPricePesewas:item.unitPricePesewas,totalPesewas:item.totalPesewas,createdAt:order.createdAt}));
+  }
+  /** Orders cancelled or refunded after they had already reached production — an ordinary cancellation almost never happens this late. */
+  async flagLateCancellations(from?:string,to?:string){
+    const REACHED_PRODUCTION:OrderStatus[]=['ready_for_production','in_production','quality_check','ready','out_for_delivery','completed'];
+    const [cancelled,refunds,allOrders]=await Promise.all([this.orders.find({where:{status:'cancelled'}}),this.refunds.find(),this.orders.find()]);
+    const refundedOrderIds=new Set(refunds.map(r=>r.orderId));
+    const candidates=new Map<string,Order>();
+    for(const o of cancelled)candidates.set(o.id,o);
+    for(const o of allOrders)if(refundedOrderIds.has(o.id))candidates.set(o.id,o);
+    const fromDate=from?new Date(from):null,toDate=to?new Date(to):null;
+    const results=[];
+    for(const order of candidates.values()){
+      const history=await this.history.find({where:{orderId:order.id}});
+      const triggerTimes:Date[]=[];
+      if(order.status==='cancelled'){const row=history.find(h=>h.status==='cancelled');if(row)triggerTimes.push(row.createdAt)}
+      for(const r of refunds)if(r.orderId===order.id)triggerTimes.push(r.occurredAt);
+      if(!triggerTimes.length)continue;
+      const triggerAt=triggerTimes.sort((a,b)=>a.getTime()-b.getTime())[0];
+      if(fromDate&&triggerAt<fromDate)continue;
+      if(toDate&&triggerAt>toDate)continue;
+      const reached=history.filter(h=>REACHED_PRODUCTION.includes(h.status)&&h.createdAt<triggerAt).sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime())[0];
+      if(!reached)continue;
+      results.push({orderId:order.id,orderNumber:order.orderNumber,customerName:order.customerName,cancelledOrRefundedAt:triggerAt,reachedStage:reached.status,reachedAt:reached.createdAt});
+    }
+    return results;
+  }
+  /** Production work logged with nobody clocked in to have done it — a report, never a block. */
+  async flagUnattendedJobs(date:string){
+    const start=new Date(`${date}T00:00:00.000Z`),end=new Date(`${date}T23:59:59.999Z`);
+    const activity=(await this.jobActivity.find({where:{type:'stage_change'}})).filter(a=>a.createdAt>=start&&a.createdAt<=end);
+    if(!activity.length)return[];
+    const attendance=await this.attendance.find();
+    const covered=(at:Date)=>attendance.some(r=>r.clockIn<=at&&(!r.clockOut||r.clockOut>=at));
+    const uncovered=activity.filter(a=>!covered(a.createdAt));
+    if(!uncovered.length)return[];
+    const jobs=await this.jobs.find();
+    const jobMap=new Map(jobs.map(j=>[j.id,j]));
+    return uncovered.map(a=>({jobId:a.jobId,jobNumber:a.jobNumber,orderNumber:jobMap.get(a.jobId)?.orderNumber||'',occurredAt:a.createdAt,note:a.note}));
   }
   async listProductionJobActivity(jobId:string){
     const job=await this.jobs.findOneBy({id:jobId});if(!job)throw new NotFoundException('Production job not found');

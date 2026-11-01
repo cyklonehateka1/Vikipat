@@ -1,4 +1,4 @@
-import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, LogMaterialConsumptionDto, ReleaseOrderDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
@@ -38,4 +38,7 @@ export class AdminOrderController {
   @Post('production/jobs/:id/activity') addJobNote(@Req() request:Request,@Param('id') id:string,@Body() dto:AddProductionJobNoteDto){if(!request.user!.permissions.includes('jobs.note'))throw new ForbiddenException('Job note permission required');return this.orders.addProductionJobNote(id,dto.note,request.user!.email)}
   @Patch('production/jobs/:id') updateJob(@Req() request:Request,@Param('id') id:string,@Body() dto:UpdateProductionJobDto){return this.orders.updateProductionJob(id,dto,request.user!.email,request.user!.role)}
   @Post('production/jobs/:id/consumption') logConsumption(@Req() request:Request,@Param('id') id:string,@Body() dto:LogMaterialConsumptionDto){if(!request.user!.permissions.includes('jobs.note'))throw new ForbiddenException('Job note permission required');return this.materials.logConsumption(id,dto,request.user!.email)}
+  @Get('flags/custom-priced') @UseGuards(AdminOnlyGuard) customPriced(@Query('from') from?:string,@Query('to') to?:string){return this.orders.flagCustomPricedItems(from,to)}
+  @Get('flags/late-cancellations') @UseGuards(AdminOnlyGuard) lateCancellations(@Query('from') from?:string,@Query('to') to?:string){return this.orders.flagLateCancellations(from,to)}
+  @Get('flags/unattended-jobs') @UseGuards(AdminOnlyGuard) unattendedJobs(@Query('date') date:string){return this.orders.flagUnattendedJobs(date)}
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { api } from './api';
-import { Empty } from './main';
+import { Empty, money, when } from './main';
 
 type Tab = 'flags' | 'materials' | 'reconciliation';
 
@@ -12,7 +12,109 @@ type MaterialItem = {
   createdAt: string; updatedAt: string;
 };
 
+type CustomPricedItem = {
+  orderId: string; orderNumber: string; customerName: string; name: string;
+  quantity: number; unitPricePesewas: number; totalPesewas: number; createdAt: string;
+};
+type LateCancellation = {
+  orderId: string; orderNumber: string; customerName: string;
+  cancelledOrRefundedAt: string; reachedStage: string; reachedAt: string;
+};
+type UnattendedJob = { jobId: string; jobNumber: string; orderNumber: string; occurredAt: string; note: string };
+
 const errText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
+const today = () => new Date().toISOString().slice(0, 10);
+const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+
+function FlagsTab() {
+  const [range, setRange] = useState({ from: daysAgo(7), to: today() });
+  const [date, setDate] = useState(today());
+  const [customPriced, setCustomPriced] = useState<CustomPricedItem[]>([]);
+  const [lateCancellations, setLateCancellations] = useState<LateCancellation[]>([]);
+  const [unattended, setUnattended] = useState<UnattendedJob[]>([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [cp, lc, uj] = await Promise.all([
+        api.flagCustomPriced<CustomPricedItem[]>(range),
+        api.flagLateCancellations<LateCancellation[]>(range),
+        api.flagUnattendedJobs<UnattendedJob[]>(date),
+      ]);
+      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setError('');
+    } catch (e) { setError(errText(e)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div>
+      {error && <div className="alert" role="alert">{error}</div>}
+
+      <section className="surface" style={{ marginBottom: 16 }}>
+        <div className="section-title">
+          <div><h2>Custom-priced items</h2><p>Every manual-quote line item — the only place a human types in a price — for the owner to review</p></div>
+        </div>
+        <div className="form-grid three" style={{ marginBottom: 12 }}>
+          <label>From<input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></label>
+          <label>To<input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></label>
+          <button className="button ghost" disabled={loading} onClick={load} style={{ alignSelf: 'end' }}>{loading ? 'Loading…' : 'Refresh'}</button>
+        </div>
+        {customPriced.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Item</th><th>Qty</th><th>Price</th><th>Date</th></tr></thead>
+            <tbody>{customPriced.map((i) => (
+              <tr key={i.orderId + i.name}>
+                <td><strong>{i.orderNumber}</strong></td><td>{i.customerName}</td><td>{i.name}</td>
+                <td>{i.quantity}</td><td>{money(i.totalPesewas)}</td><td>{when(i.createdAt)}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No custom-priced items in this range.</p>}
+      </section>
+
+      <section className="surface" style={{ marginBottom: 16 }}>
+        <div className="section-title">
+          <div><h2>Late cancellations and refunds</h2><p>Orders cancelled or refunded after they had already reached production — an ordinary cancellation almost never happens this late</p></div>
+        </div>
+        {lateCancellations.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>Order</th><th>Customer</th><th>Reached</th><th>Cancelled/refunded</th></tr></thead>
+            <tbody>{lateCancellations.map((c) => (
+              <tr key={c.orderId}>
+                <td><strong>{c.orderNumber}</strong></td><td>{c.customerName}</td>
+                <td>{c.reachedStage.replaceAll('_', ' ')} · {when(c.reachedAt)}</td>
+                <td>{when(c.cancelledOrRefundedAt)}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No late cancellations or refunds in this range.</p>}
+      </section>
+
+      <section className="surface">
+        <div className="section-title">
+          <div><h2>Unattended production jobs</h2><p>Production stage changes with nobody clocked in to have done the work — a report, not a block</p></div>
+        </div>
+        <div className="form-grid three" style={{ marginBottom: 12 }}>
+          <label>Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          <button className="button ghost" disabled={loading} onClick={load} style={{ alignSelf: 'end' }}>{loading ? 'Loading…' : 'Refresh'}</button>
+        </div>
+        {unattended.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>Job</th><th>Order</th><th>When</th><th>Note</th></tr></thead>
+            <tbody>{unattended.map((j) => (
+              <tr key={j.jobId + j.occurredAt}>
+                <td><strong>{j.jobNumber}</strong></td><td>{j.orderNumber}</td><td>{when(j.occurredAt)}</td><td>{j.note || '—'}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No unattended stage changes on this date.</p>}
+      </section>
+    </div>
+  );
+}
 
 function MaterialsTab() {
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
@@ -116,11 +218,7 @@ export default function Controls() {
         ))}
       </div>
 
-      {tab === 'flags' && (
-        <section className="surface">
-          <Empty icon={<ShieldAlert />} title="Nothing here yet" copy="Custom-priced items, late cancellations and refunds, and unattended production jobs will be listed here for review." />
-        </section>
-      )}
+      {tab === 'flags' && <FlagsTab />}
 
       {tab === 'materials' && <MaterialsTab />}
 
