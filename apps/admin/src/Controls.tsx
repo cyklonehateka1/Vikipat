@@ -201,6 +201,61 @@ function MaterialsTab() {
   );
 }
 
+type BilledLine = { serviceCode: string; serviceName: string; totalAreaSqFt: number };
+type LoggedLine = { materialName: string; totalQuantity: number; unit: string };
+
+function ReconciliationTab() {
+  const [range, setRange] = useState({ from: daysAgo(30), to: today() });
+  const [billed, setBilled] = useState<BilledLine[]>([]);
+  const [logged, setLogged] = useState<LoggedLine[]>([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const result = await api.materialReconciliation<{ billedByServiceCode: BilledLine[]; loggedByMaterial: LoggedLine[] }>(range.from, range.to);
+      setBilled(result.billedByServiceCode); setLogged(result.loggedByMaterial); setError('');
+    } catch (e) { setError(errText(e)); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div>
+      {error && <div className="alert" role="alert">{error}</div>}
+      <section className="surface" style={{ marginBottom: 16 }}>
+        <div className="form-grid three">
+          <label>From<input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></label>
+          <label>To<input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></label>
+          <button className="button ghost" disabled={loading} onClick={load} style={{ alignSelf: 'end' }}>{loading ? 'Loading…' : 'Refresh'}</button>
+        </div>
+        <p className="muted" style={{ marginTop: 12 }}>Two independent numbers to compare, not an automatic match — nothing here links a material to a service code, so a gap between them is for a person to judge, not a computed variance.</p>
+      </section>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <section className="surface">
+          <div className="section-title"><div><h2>Billed by service code</h2><p>Area invoiced on released large-format jobs</p></div></div>
+          {billed.length ? (
+            <div className="data-table"><table>
+              <thead><tr><th>Service</th><th>Sq ft</th></tr></thead>
+              <tbody>{billed.map((b) => <tr key={b.serviceCode}><td><strong>{b.serviceName}</strong></td><td>{b.totalAreaSqFt}</td></tr>)}</tbody>
+            </table></div>
+          ) : <p className="muted" style={{ padding: 20 }}>No billed area in this range.</p>}
+        </section>
+        <section className="surface">
+          <div className="section-title"><div><h2>Logged by material</h2><p>Consumption staff recorded against jobs</p></div></div>
+          {logged.length ? (
+            <div className="data-table"><table>
+              <thead><tr><th>Material</th><th>Quantity</th></tr></thead>
+              <tbody>{logged.map((l) => <tr key={l.materialName}><td><strong>{l.materialName}</strong></td><td>{l.totalQuantity} {l.unit}</td></tr>)}</tbody>
+            </table></div>
+          ) : <p className="muted" style={{ padding: 20 }}>No consumption logged in this range.</p>}
+        </section>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Owner-only review surface: payment-override log, material stock and
  * per-job consumption, and the material/billed-area reconciliation report.
@@ -222,11 +277,7 @@ export default function Controls() {
 
       {tab === 'materials' && <MaterialsTab />}
 
-      {tab === 'reconciliation' && (
-        <section className="surface">
-          <Empty icon={<ShieldAlert />} title="Nothing here yet" copy="Billed area by service code and logged material consumption will be compared here." />
-        </section>
-      )}
+      {tab === 'reconciliation' && <ReconciliationTab />}
     </div>
   );
 }

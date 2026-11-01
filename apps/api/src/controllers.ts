@@ -51,6 +51,7 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
 @Controller('admin/materials') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard) export class MaterialController {
   constructor(private materials:MaterialService){}
   @Get() list(){return this.materials.list()}
+  @Get('reconciliation') @UseGuards(AdminOnlyGuard) reconciliation(@Query('from') from:string,@Query('to') to:string){return this.materials.reconciliation(from,to)}
   @Get(':id') one(@Param('id') id:string){return this.materials.one(id)}
   @Post() @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
   @Patch(':id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}

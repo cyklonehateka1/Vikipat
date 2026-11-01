@@ -43,6 +43,7 @@ export const api={
   flagCustomPriced:<T>(params:{from?:string;to?:string}={})=>{const q=new URLSearchParams(Object.entries(params).filter(([,v])=>v) as [string,string][]);return request<T>(`/admin/orders/flags/custom-priced${q.toString()?'?'+q:''}`)},
   flagLateCancellations:<T>(params:{from?:string;to?:string}={})=>{const q=new URLSearchParams(Object.entries(params).filter(([,v])=>v) as [string,string][]);return request<T>(`/admin/orders/flags/late-cancellations${q.toString()?'?'+q:''}`)},
   flagUnattendedJobs:<T>(date:string)=>request<T>(`/admin/orders/flags/unattended-jobs?date=${date}`),
+  materialReconciliation:<T>(from:string,to:string)=>request<T>(`/admin/materials/reconciliation?from=${from}&to=${to}`),
   clockIn:<T>(employeeId:string,note='')=>request<T>('/admin/people/attendance/clock-in',{method:'POST',body:JSON.stringify({employeeId,note})}),
   clockOut:<T>(employeeId:string)=>request<T>('/admin/people/attendance/clock-out',{method:'POST',body:JSON.stringify({employeeId})}),
   recordAttendance:<T>(data:unknown)=>request<T>('/admin/people/attendance',{method:'POST',body:JSON.stringify(data)}),

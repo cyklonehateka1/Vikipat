@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { lockedFindOne } from './db';
 import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
 import { MaterialConsumption, MaterialItem, MaterialStockActivity, ProductionJob } from './entities';
@@ -12,6 +12,8 @@ export class MaterialService {
     @InjectRepository(MaterialItem) private materials: Repository<MaterialItem>,
     @InjectRepository(MaterialStockActivity) private stocks: Repository<MaterialStockActivity>,
     private auth: AuthService,
+    @InjectRepository(ProductionJob) private jobs: Repository<ProductionJob>,
+    @InjectRepository(MaterialConsumption) private consumption: Repository<MaterialConsumption>,
   ) {}
 
   async list() {
@@ -77,5 +79,39 @@ export class MaterialService {
       const consumption = manager.getRepository(MaterialConsumption);
       return consumption.save(consumption.create({ jobId, materialItemId: item.id, materialName: item.name, quantity: dto.quantity, unit: dto.unit, recordedBy: actor }));
     });
+  }
+
+  /**
+   * Two independent numbers for a person to compare, not a computed
+   * variance — this shop has never configured a material-to-service-code
+   * mapping, and inventing one here would be fiction (see
+   * docs/superpowers/specs/2026-10-31-internal-controls-system.md).
+   */
+  async reconciliation(from: string, to: string) {
+    const range = Between(new Date(`${from}T00:00:00.000Z`), new Date(`${to}T23:59:59.999Z`));
+    const jobs = await this.jobs.find({ where: { createdAt: range } });
+    const billed = new Map<string, { serviceCode: string; serviceName: string; totalAreaSqFt: number }>();
+    for (const job of jobs) {
+      let spec: { totalAreaSqFt?: number };
+      try { spec = JSON.parse(job.specification || '{}'); } catch { spec = {}; }
+      const area = Number(spec.totalAreaSqFt) || 0;
+      if (!area) continue;
+      const existing = billed.get(job.serviceCode);
+      if (existing) existing.totalAreaSqFt += area;
+      else billed.set(job.serviceCode, { serviceCode: job.serviceCode, serviceName: job.title, totalAreaSqFt: area });
+    }
+
+    const consumed = await this.consumption.find({ where: { createdAt: range } });
+    const logged = new Map<string, { materialName: string; totalQuantity: number; unit: string }>();
+    for (const row of consumed) {
+      const existing = logged.get(row.materialName);
+      if (existing) existing.totalQuantity += row.quantity;
+      else logged.set(row.materialName, { materialName: row.materialName, totalQuantity: row.quantity, unit: row.unit });
+    }
+
+    return {
+      billedByServiceCode: [...billed.values()].sort((a, b) => b.totalAreaSqFt - a.totalAreaSqFt),
+      loggedByMaterial: [...logged.values()].sort((a, b) => b.totalQuantity - a.totalQuantity),
+    };
   }
 }
