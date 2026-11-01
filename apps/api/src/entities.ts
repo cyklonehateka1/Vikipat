@@ -432,3 +432,16 @@ export class MaterialStockActivity {
   @Column() actorEmail!: string;
   @CreateDateColumn() createdAt!: Date;
 }
+
+/** One row per (job, material) consumption event, logged by staff working the job. */
+@Entity('material_consumption')
+export class MaterialConsumption {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() jobId!: string;
+  @Column() materialItemId!: string;
+  @Column() materialName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) quantity!: number;
+  @Column() unit!: string;
+  @Column() recordedBy!: string;
+  @CreateDateColumn() createdAt!: Date;
+}

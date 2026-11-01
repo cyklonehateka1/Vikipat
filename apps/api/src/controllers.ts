@@ -9,7 +9,7 @@ import { MaterialService } from './material.service';
 import { PricingAdminService } from './pricing-admin.service';
 import { StorageService } from './storage.service';
 import { AdjustMaterialStockDto, AdjustStockDto, ChangePasswordDto, CreateMaterialItemDto, CreateProductDto, CreateQuoteDto, LoginDto, RequestPasswordResetDto, ResetPasswordDto, UpdateMaterialItemDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
-import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
+import { AdminOnlyGuard, AuthGuard, CsrfGuard, OperationsGuard, PasswordChangedGuard } from './security';
 const cookieSecure=process.env.COOKIE_SECURE==='true';
 const cookieOptions={httpOnly:true,sameSite:(cookieSecure?'none':'strict') as 'none'|'strict',secure:cookieSecure,maxAge:8*60*60*1000,path:'/'};
 // Files are held in memory only long enough to forward them to R2; nothing
@@ -46,13 +46,15 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Post('media') @UseInterceptors(FileInterceptor('file',imageUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return this.storage.upload(file,{prefix:'catalogue',kind:'image'})}
 }
 
-@Controller('admin/materials') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard) export class MaterialController {
+// list/one are read by any operations staff (the job panel's material picker needs them);
+// create/update/adjust stay admin-only, same split as AdminOrderController's own routes.
+@Controller('admin/materials') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard) export class MaterialController {
   constructor(private materials:MaterialService){}
   @Get() list(){return this.materials.list()}
   @Get(':id') one(@Param('id') id:string){return this.materials.one(id)}
-  @Post() create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
-  @Patch(':id') update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}
-  @Post(':id/stock') adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustMaterialStockDto){return this.materials.adjust(id,dto,req.user!.email)}
+  @Post() @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
+  @Patch(':id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}
+  @Post(':id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustMaterialStockDto){return this.materials.adjust(id,dto,req.user!.email)}
 }
 
 @Controller('quotes') export class QuoteController {

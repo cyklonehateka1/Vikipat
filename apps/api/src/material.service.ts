@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AdjustMaterialStockDto, CreateMaterialItemDto, UpdateMaterialItemDto } from './dto';
-import { MaterialItem, MaterialStockActivity } from './entities';
+import { lockedFindOne } from './db';
+import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
+import { MaterialConsumption, MaterialItem, MaterialStockActivity, ProductionJob } from './entities';
 import { AuthService } from './auth.service';
 
 @Injectable()
@@ -54,5 +55,27 @@ export class MaterialService {
 
   private recordStock(item: MaterialItem, previousQuantity: number, newQuantity: number, reason: string, actorEmail: string) {
     return this.stocks.save(this.stocks.create({ materialItemId: item.id, materialName: item.name, previousQuantity, newQuantity, reason, actorEmail }));
+  }
+
+  /**
+   * Logged against a specific job, not a daily total, so a quantity mismatch
+   * on one job shows up on that job's own record rather than being buried in
+   * a period aggregate (see docs/superpowers/specs/2026-10-31-internal-controls-system.md).
+   */
+  async logConsumption(jobId: string, dto: LogMaterialConsumptionDto, actor: string): Promise<MaterialConsumption> {
+    return this.materials.manager.transaction(async (manager) => {
+      const item = await lockedFindOne(manager, MaterialItem, { id: dto.materialItemId });
+      if (!item) throw new NotFoundException('Material item not found');
+      const job = await lockedFindOne(manager, ProductionJob, { id: jobId });
+      if (!job) throw new NotFoundException('Production job not found');
+      if (dto.quantity > item.stockQuantity) throw new BadRequestException(`Only ${item.stockQuantity} ${item.unit} of "${item.name}" left in stock`);
+      const previous = item.stockQuantity;
+      item.stockQuantity -= dto.quantity;
+      await manager.getRepository(MaterialItem).save(item);
+      const stocks = manager.getRepository(MaterialStockActivity);
+      await stocks.save(stocks.create({ materialItemId: item.id, materialName: item.name, previousQuantity: previous, newQuantity: item.stockQuantity, reason: `Job ${job.jobNumber}`, actorEmail: actor }));
+      const consumption = manager.getRepository(MaterialConsumption);
+      return consumption.save(consumption.create({ jobId, materialItemId: item.id, materialName: item.name, quantity: dto.quantity, unit: dto.unit, recordedBy: actor }));
+    });
   }
 }

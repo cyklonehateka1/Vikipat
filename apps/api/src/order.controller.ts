@@ -1,8 +1,9 @@
 import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, ReleaseOrderDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
+import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, LogMaterialConsumptionDto, ReleaseOrderDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
 import { CommerceService, RecordRefundDto } from './commerce.service';
+import { MaterialService } from './material.service';
 import { OrderService } from './order.service';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 
@@ -24,7 +25,7 @@ export class CustomerOrderController {
 @Controller('admin/orders')
 @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard)
 export class AdminOrderController {
-  constructor(private orders:OrderService,private commerce:CommerceService){}
+  constructor(private orders:OrderService,private commerce:CommerceService,private materials:MaterialService){}
   @Get() @UseGuards(AdminOnlyGuard) list(){return this.orders.list()}
   @Get('production/intake') intake(@Req() request:Request){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');return this.orders.listProductionIntake()}
   @Get('production/jobs') jobs(@Req() request:Request){return this.orders.listProductionJobs(request.user!.role)}
@@ -36,4 +37,5 @@ export class AdminOrderController {
   @Get('production/jobs/:id/activity') jobActivity(@Param('id') id:string){return this.orders.listProductionJobActivity(id)}
   @Post('production/jobs/:id/activity') addJobNote(@Req() request:Request,@Param('id') id:string,@Body() dto:AddProductionJobNoteDto){if(!request.user!.permissions.includes('jobs.note'))throw new ForbiddenException('Job note permission required');return this.orders.addProductionJobNote(id,dto.note,request.user!.email)}
   @Patch('production/jobs/:id') updateJob(@Req() request:Request,@Param('id') id:string,@Body() dto:UpdateProductionJobDto){return this.orders.updateProductionJob(id,dto,request.user!.email,request.user!.role)}
+  @Post('production/jobs/:id/consumption') logConsumption(@Req() request:Request,@Param('id') id:string,@Body() dto:LogMaterialConsumptionDto){if(!request.user!.permissions.includes('jobs.note'))throw new ForbiddenException('Job note permission required');return this.materials.logConsumption(id,dto,request.user!.email)}
 }

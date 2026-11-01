@@ -131,6 +131,11 @@ export class AdjustMaterialStockDto {
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
   @IsString() @Length(3,160) reason!:string;
 }
+export class LogMaterialConsumptionDto {
+  @IsUUID() materialItemId!:string;
+  @IsNumber({maxDecimalPlaces:2}) @Min(0.01) @Max(1000000) quantity!:number;
+  @IsString() @Length(1,20) unit!:string;
+}
 
 export class SavePricingDraftDto {
   @IsInt() @Min(0) @Max(100000000) employeeRatePesewas!: number;
