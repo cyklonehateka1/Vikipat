@@ -130,7 +130,9 @@ export class OrderService implements OnApplicationBootstrap {
     });
     const payment=source==='online'?await this.payments.initializePaystack(order):null;
     if(payment){order.paymentProvider='paystack';order.paymentReference=payment.reference;await this.orders.save(order)}
-    await this.notifications.queueEmail(order,'order_created',{subject:`Vikipat order ${orderNumber} received`,text:`Hello ${order.customerName}, your order number is ${orderNumber}. Current status: ${PUBLIC_STATUS[order.status]}.`});
+    const receipt={subject:`Vikipat order ${orderNumber} received`,text:`Hello ${order.customerName}, your order number is ${orderNumber}. Current status: ${PUBLIC_STATUS[order.status]}.`};
+    await this.notifications.queueEmail(order,'order_created',receipt);
+    await this.notifications.queueWhatsApp(order,'order_created',receipt);
     return{id:order.id,orderNumber:order.orderNumber,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,requiresReview:order.requiresReview,payment:payment?{provider:'paystack',reference:payment.reference,authorizationUrl:payment.authorizationUrl,accessCode:payment.accessCode,providerConfigured:payment.providerConfigured}:null};
   }
   async requestOtp(orderNumber:string,email:string){
