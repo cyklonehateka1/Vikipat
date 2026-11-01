@@ -407,3 +407,28 @@ export class ReleaseOverride {
   @Column() actorEmail!: string;
   @CreateDateColumn() createdAt!: Date;
 }
+
+/** A raw consumable (vinyl, ink, paper) tracked separately from finished-goods Product stock. */
+@Entity('material_items')
+export class MaterialItem {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() name!: string;
+  @Column() unit!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) stockQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) lowStockThreshold!: number;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** Mirrors StockActivity for material_items instead of products. */
+@Entity('material_stock_activity')
+export class MaterialStockActivity {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() materialItemId!: string;
+  @Column() materialName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) previousQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) newQuantity!: number;
+  @Column() reason!: string;
+  @Column() actorEmail!: string;
+  @CreateDateColumn() createdAt!: Date;
+}

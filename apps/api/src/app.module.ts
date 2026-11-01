@@ -4,6 +4,7 @@ import { MaterialSizeLimits1720000012000 } from './migrations/1720000012000-Mate
 import { WholeCediAmounts1720000013000 } from './migrations/1720000013000-WholeCediAmounts';
 import { ProductPriceDecimals1720000014000 } from './migrations/1720000014000-ProductPriceDecimals';
 import { ReleaseOverrides1720000015000 } from './migrations/1720000015000-ReleaseOverrides';
+import { MaterialItems1720000016000 } from './migrations/1720000016000-MaterialItems';
 import { CommerceController, CommerceService } from './commerce.service';
 import { UniqueProductionOrderItem1720000005000 } from './migrations/1720000005000-UniqueProductionOrderItem';
 import { MultiItemOrders1720000006000 } from './migrations/1720000006000-MultiItemOrders';
@@ -22,7 +23,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
-import { AdminController, AuthController, CatalogController, HealthController, QuoteController } from './controllers';
+import { AdminController, AuthController, CatalogController, HealthController, MaterialController, QuoteController } from './controllers';
+import { MaterialService } from './material.service';
 import { AdminOrderController, CustomerOrderController } from './order.controller';
 import { NotificationService } from './notification.service';
 import { OrderService } from './order.service';
@@ -32,7 +34,7 @@ import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { CustomerService } from './customer.service';
 import { MailService } from './mail.service';
 import { StorageService } from './storage.service';
-import { OrderRefund, BusinessPolicy, AttendanceRecord, AuditLog, Customer, Employee, Estimate, NotificationOutbox, Order, OrderItem, OrderStatusHistory, OrderTrackingOtp, PasswordResetToken, PaymentTransaction, PayrollRun, Payslip, PricingRuleDraft, Product, ProductionJob, ProductionJobActivity, QuoteRequest, ReleaseOverride, ServicePriceRule, ServicePriceRuleVersion, StockActivity, StoreSettings, User } from './entities';
+import { OrderRefund, BusinessPolicy, AttendanceRecord, AuditLog, Customer, Employee, Estimate, MaterialItem, MaterialStockActivity, NotificationOutbox, Order, OrderItem, OrderStatusHistory, OrderTrackingOtp, PasswordResetToken, PaymentTransaction, PayrollRun, Payslip, PricingRuleDraft, Product, ProductionJob, ProductionJobActivity, QuoteRequest, ReleaseOverride, ServicePriceRule, ServicePriceRuleVersion, StockActivity, StoreSettings, User } from './entities';
 import { PricingAdminController } from './pricing-admin.controller';
 import { AnalyticsController, CustomerController, PeopleController } from './people.controller';
 import { PeopleService } from './people.service';
@@ -44,7 +46,7 @@ import { OperationsJobsSchema1720000002000 } from './migrations/1720000002000-Op
 import { ProductionJobActivitySchema1720000003000 } from './migrations/1720000003000-ProductionJobActivitySchema';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
 
-const entities = [OrderRefund, BusinessPolicy,User, Product, StockActivity, StoreSettings, AuditLog, QuoteRequest, ServicePriceRule, ServicePriceRuleVersion, PricingRuleDraft, Estimate, Customer, Order, OrderItem, ProductionJob, ProductionJobActivity, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, NotificationOutbox, Employee, AttendanceRecord, PayrollRun, Payslip, PasswordResetToken, ReleaseOverride];
+const entities = [OrderRefund, BusinessPolicy,User, Product, StockActivity, StoreSettings, AuditLog, QuoteRequest, ServicePriceRule, ServicePriceRuleVersion, PricingRuleDraft, Estimate, Customer, Order, OrderItem, ProductionJob, ProductionJobActivity, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, NotificationOutbox, Employee, AttendanceRecord, PayrollRun, Payslip, PasswordResetToken, ReleaseOverride, MaterialItem, MaterialStockActivity];
 const database = process.env.DATABASE_DRIVER === 'sqlite'
   ? {
       type: 'sqlite' as const,
@@ -62,7 +64,7 @@ const database = process.env.DATABASE_DRIVER === 'sqlite'
       ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: true } : false,
       entities,
       synchronize: false,
-      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000, PricingRuleCopyFields1720000008000, CustomersPeopleAndRefunds1720000009000, CommerceIntegrity1720000010000, CustomerPhoneIdentity1720000011000, MaterialSizeLimits1720000012000, WholeCediAmounts1720000013000, ProductPriceDecimals1720000014000, ReleaseOverrides1720000015000],
+      migrations: [InitialPlatformSchema1720000000000, PaymentCheckoutSchema1720000001000, OperationsJobsSchema1720000002000, ProductionJobActivitySchema1720000003000, StaffAccessSchema1720000004000, UniqueProductionOrderItem1720000005000, MultiItemOrders1720000006000, OrderLookupIndices1720000007000, PricingRuleCopyFields1720000008000, CustomersPeopleAndRefunds1720000009000, CommerceIntegrity1720000010000, CustomerPhoneIdentity1720000011000, MaterialSizeLimits1720000012000, WholeCediAmounts1720000013000, ProductPriceDecimals1720000014000, ReleaseOverrides1720000015000, MaterialItems1720000016000],
       migrationsRun: true,
     };
 
@@ -78,13 +80,14 @@ const database = process.env.DATABASE_DRIVER === 'sqlite'
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     ScheduleModule.forRoot(),
   ],
-  controllers: [CommerceController,StaffController, AuthController, AdminController, CatalogController, HealthController, QuoteController, CustomerOrderController, AdminOrderController, PricingAdminController, PaymentController, AdminPaymentController, PeopleController, AnalyticsController, CustomerController],
+  controllers: [CommerceController,StaffController, AuthController, AdminController, CatalogController, HealthController, QuoteController, CustomerOrderController, AdminOrderController, PricingAdminController, PaymentController, AdminPaymentController, PeopleController, AnalyticsController, CustomerController, MaterialController],
   providers: [CommerceService,
     StaffService,
     AdminOnlyGuard,
     OperationsGuard,
     AuthService,
     AdminService,
+    MaterialService,
     OrderService,
     NotificationService,
     PaymentService,

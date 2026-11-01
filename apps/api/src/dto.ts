@@ -115,6 +115,23 @@ export class ReleaseOrderDto {
   @IsOptional() @IsString() @Length(10, 500) @Matches(/\S/) overrideReason?: string;
 }
 
+export class CreateMaterialItemDto {
+  @IsString() @Length(2,120) name!:string;
+  @IsString() @Length(1,40) unit!:string;
+  @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
+  @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) lowStockThreshold!:number;
+}
+export class UpdateMaterialItemDto {
+  @IsOptional() @IsString() @Length(2,120) name?:string;
+  @IsOptional() @IsString() @Length(1,40) unit?:string;
+  @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity?:number;
+  @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) lowStockThreshold?:number;
+}
+export class AdjustMaterialStockDto {
+  @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
+  @IsString() @Length(3,160) reason!:string;
+}
+
 export class SavePricingDraftDto {
   @IsInt() @Min(0) @Max(100000000) employeeRatePesewas!: number;
   @IsInt() @Min(0) @Max(100000000) marketerRatePesewas!: number;
