@@ -1,7 +1,7 @@
 import { ForbiddenException, Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
+import { AddProductionJobNoteDto, CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, ReleaseOrderDto, RequestTrackingOtpDto, UpdateOrderStatusDto, UpdateProductionJobDto, VerifyTrackingOtpDto } from './dto';
 import { CommerceService, RecordRefundDto } from './commerce.service';
 import { OrderService } from './order.service';
 import { AdminOnlyGuard, OperationsGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
@@ -30,7 +30,7 @@ export class AdminOrderController {
   @Get('production/jobs') jobs(@Req() request:Request){return this.orders.listProductionJobs(request.user!.role)}
   @Post('estimate') @UseGuards(AdminOnlyGuard) estimate(@Body() dto:CreateGuestOrderDto){return this.orders.estimateStaff(dto)}
   @Post() @UseGuards(AdminOnlyGuard) create(@Body() dto:CreateGuestOrderDto){return this.orders.createGuest(dto,dto.source==='salesperson'?'salesperson':'walk_in')}
-  @Post(':id/release') release(@Req() request:Request,@Param('id') id:string){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');return this.orders.releaseOrderToProduction(id,request.user!.email)}
+  @Post(':id/release') release(@Req() request:Request,@Param('id') id:string,@Body() dto:ReleaseOrderDto){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');if(dto.overrideReason&&!request.user!.permissions.includes('jobs.release_unpaid'))throw new ForbiddenException('Permission to release an unpaid order is required');return this.orders.releaseOrderToProduction(id,request.user!.email,dto.overrideReason?{reason:dto.overrideReason}:undefined)}
   @Post(':id/refund') @UseGuards(AdminOnlyGuard) refund(@Req() request:Request,@Param('id') id:string,@Body() dto:RecordRefundDto){return this.commerce.refund(id,dto,request.user!.email)}
   @Patch(':id/status') @UseGuards(AdminOnlyGuard) update(@Req() request:Request,@Param('id') id:string,@Body() dto:UpdateOrderStatusDto){return this.orders.updateStatus(id,dto.status,dto.note||'',dto.customerVisible!==false,request.user!.email)}
   @Get('production/jobs/:id/activity') jobActivity(@Param('id') id:string){return this.orders.listProductionJobActivity(id)}

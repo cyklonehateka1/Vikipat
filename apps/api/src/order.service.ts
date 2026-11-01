@@ -217,8 +217,8 @@ export class OrderService implements OnApplicationBootstrap {
     return result.job;
   }
 
-  async releaseOrderToProduction(orderId:string,actor='system'){
-    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor));
+  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string}){
+    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor,override));
     // Existing outbox records are committed with the jobs; retries do not queue them again.
     await this.notifications.deliverQueued(result.notificationIds);
     return result.jobs;

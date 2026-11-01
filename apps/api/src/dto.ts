@@ -111,6 +111,10 @@ export class AddProductionJobNoteDto {
   @IsString() @Length(1,1000) note!: string;
 }
 
+export class ReleaseOrderDto {
+  @IsOptional() @IsString() @Length(10, 500) @Matches(/\S/) overrideReason?: string;
+}
+
 export class SavePricingDraftDto {
   @IsInt() @Min(0) @Max(100000000) employeeRatePesewas!: number;
   @IsInt() @Min(0) @Max(100000000) marketerRatePesewas!: number;

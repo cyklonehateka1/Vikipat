@@ -396,3 +396,14 @@ export class BusinessPolicy {
   @Column('text') value!: string;
   @UpdateDateColumn() updatedAt!: Date;
 }
+
+/** One row per order released into production while unpaid: who allowed it, and why. */
+@Entity('release_overrides')
+export class ReleaseOverride {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() orderId!: string;
+  @Column() orderNumber!: string;
+  @Column('text') reason!: string;
+  @Column() actorEmail!: string;
+  @CreateDateColumn() createdAt!: Date;
+}
