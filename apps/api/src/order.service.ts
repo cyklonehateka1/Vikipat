@@ -160,6 +160,13 @@ export class OrderService implements OnApplicationBootstrap {
     return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
   }
   /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
+  /** Orders created on one calendar day, by channel — for the owner's daily digest. */
+  async ordersCreatedOn(date:string){
+    const orders=await this.orders.createQueryBuilder('order').where("order.createdAt::date = :date",{date}).getMany();
+    const bySource={online:0,walk_in:0,salesperson:0} as Record<OrderSource,number>;
+    for(const o of orders)bySource[o.source]=(bySource[o.source]||0)+1;
+    return{count:orders.length,bySource};
+  }
   async flagCustomPricedItems(from?:string,to?:string){
     const items=await this.items.find({where:{kind:'custom'}});
     if(!items.length)return[];

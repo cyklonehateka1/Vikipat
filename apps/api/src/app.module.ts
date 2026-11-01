@@ -26,6 +26,7 @@ import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
 import { AdminController, AuthController, CatalogController, HealthController, MaterialController, QuoteController } from './controllers';
 import { MaterialService } from './material.service';
+import { OwnerDigestService } from './owner-digest.service';
 import { AdminOrderController, CustomerOrderController } from './order.controller';
 import { NotificationService } from './notification.service';
 import { OrderService } from './order.service';
@@ -94,6 +95,7 @@ const database = process.env.DATABASE_DRIVER === 'sqlite'
     PaymentService,
     PricingAdminService,
     PaymentReconciliationService,
+    OwnerDigestService,
     PeopleService,
     AnalyticsService,
     CustomerService,
