@@ -69,3 +69,8 @@ test('a stage-change activity during a clocked-in shift is not flagged', async (
   });
   assert.deepEqual(await service.flagUnattendedJobs('2026-10-30'), []);
 });
+
+test('an invalid date string is rejected with a clean error', async () => {
+  const { service } = fixture();
+  await assert.rejects(service.flagUnattendedJobs('not-a-date'), /valid calendar date/i);
+});

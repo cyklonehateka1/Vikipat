@@ -2,9 +2,15 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { lockedFindOne } from './db';
+import { dateOnly } from './finance';
 import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
 import { MaterialConsumption, MaterialItem, MaterialStockActivity, ProductionJob } from './entities';
 import { AuthService } from './auth.service';
+
+// Same try/catch-to-BadRequestException shape already used by AnalyticsService/PeopleService for dateOnly().
+function validDate(value: string): string {
+  try { return dateOnly(value); } catch { throw new BadRequestException('Enter a valid calendar date'); }
+}
 
 @Injectable()
 export class MaterialService {
@@ -88,7 +94,7 @@ export class MaterialService {
    * docs/superpowers/specs/2026-10-31-internal-controls-system.md).
    */
   async reconciliation(from: string, to: string) {
-    const range = Between(new Date(`${from}T00:00:00.000Z`), new Date(`${to}T23:59:59.999Z`));
+    const range = Between(new Date(`${validDate(from)}T00:00:00.000Z`), new Date(`${validDate(to)}T23:59:59.999Z`));
     const jobs = await this.jobs.find({ where: { createdAt: range } });
     const billed = new Map<string, { serviceCode: string; serviceName: string; totalAreaSqFt: number }>();
     for (const job of jobs) {

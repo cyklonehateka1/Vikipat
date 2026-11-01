@@ -14,6 +14,7 @@ import { CustomerService } from './customer.service';
 import { hasPermission, priceBookForSource, type OrderSource, type PriceBookCode } from '@vikipat/domain';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
 import { matchesFixedSize, parseFixedSizes } from './material-sizes';
+import { dateOnly } from './finance';
 
 const RATE_SEED=[
   ['sav-sticker','SAV / Sticker',210,220,240],['flexy-banner','Flexy / Banner',230,240,260],['oneway-vision','Oneway Vision',590,605,630],
@@ -162,6 +163,7 @@ export class OrderService implements OnApplicationBootstrap {
   /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
   /** Orders created on one calendar day, by channel — for the owner's daily digest. */
   async ordersCreatedOn(date:string){
+    date=this.validDate(date);
     const orders=await this.orders.createQueryBuilder('order').where("order.createdAt::date = :date",{date}).getMany();
     const bySource={online:0,walk_in:0,salesperson:0} as Record<OrderSource,number>;
     for(const o of orders)bySource[o.source]=(bySource[o.source]||0)+1;
@@ -172,7 +174,7 @@ export class OrderService implements OnApplicationBootstrap {
     if(!items.length)return[];
     const orders=await this.orders.find();
     const orderMap=new Map(orders.map(o=>[o.id,o]));
-    const fromDate=from?new Date(from):null,toDate=to?new Date(to):null;
+    const fromDate=from?new Date(this.validDate(from)):null,toDate=to?new Date(this.validDate(to)):null;
     return items.map(item=>({item,order:orderMap.get(item.orderId)}))
       .filter((x):x is{item:typeof items[number];order:Order}=>!!x.order)
       .filter(({order})=>(!fromDate||order.createdAt>=fromDate)&&(!toDate||order.createdAt<=toDate))
@@ -186,7 +188,7 @@ export class OrderService implements OnApplicationBootstrap {
     const candidates=new Map<string,Order>();
     for(const o of cancelled)candidates.set(o.id,o);
     for(const o of allOrders)if(refundedOrderIds.has(o.id))candidates.set(o.id,o);
-    const fromDate=from?new Date(from):null,toDate=to?new Date(to):null;
+    const fromDate=from?new Date(this.validDate(from)):null,toDate=to?new Date(this.validDate(to)):null;
     const results=[];
     for(const order of candidates.values()){
       const history=await this.history.find({where:{orderId:order.id}});
@@ -205,6 +207,7 @@ export class OrderService implements OnApplicationBootstrap {
   }
   /** Production work logged with nobody clocked in to have done it — a report, never a block. */
   async flagUnattendedJobs(date:string){
+    date=this.validDate(date);
     const start=new Date(`${date}T00:00:00.000Z`),end=new Date(`${date}T23:59:59.999Z`);
     const activity=(await this.jobActivity.find({where:{type:'stage_change'}})).filter(a=>a.createdAt>=start&&a.createdAt<=end);
     if(!activity.length)return[];
@@ -297,6 +300,8 @@ export class OrderService implements OnApplicationBootstrap {
   private assertEstimateMatches(input:{fingerprint?:string},quote:Awaited<ReturnType<OrderService['estimate']>>){
     if(input.fingerprint&&input.fingerprint!==quote.fingerprint)throw new BadRequestException('Estimate has changed. Please refresh the quote and try again.');
   }
+  // Same try/catch-to-BadRequestException shape already used by AnalyticsService/PeopleService for dateOnly().
+  private validDate(value:string){try{return dateOnly(value)}catch{throw new BadRequestException('Enter a valid calendar date')}}
   private checkoutNote(dto:CreateGuestOrderDto){
     return [
       dto.customerNote?.trim()||'',

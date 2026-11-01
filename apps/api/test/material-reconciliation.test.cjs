@@ -27,3 +27,8 @@ test('a service code or material with nothing in range returns an empty list, no
   const result = await service.reconciliation('2026-10-01', '2026-10-31');
   assert.deepEqual(result, { billedByServiceCode: [], loggedByMaterial: [] });
 });
+
+test('an invalid date string is rejected with a clean error, not an Invalid Date query', async () => {
+  const { service } = fixture();
+  await assert.rejects(service.reconciliation('not-a-date', '2026-10-31'), /valid calendar date/i);
+});
