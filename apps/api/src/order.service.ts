@@ -5,7 +5,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
 import { AttendanceRecord, AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
@@ -160,21 +160,21 @@ export class OrderService implements OnApplicationBootstrap {
       .orderBy('order.createdAt','DESC').take(250).getMany();
     return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
   }
-  /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
   /** Orders created on one calendar day, by channel — for the owner's daily digest. */
   async ordersCreatedOn(date:string){
     date=this.validDate(date);
-    const orders=await this.orders.createQueryBuilder('order').where("order.createdAt::date = :date",{date}).getMany();
+    const orders=await this.orders.find({where:{createdAt:Between(new Date(`${date}T00:00:00.000Z`),new Date(`${date}T23:59:59.999Z`))}});
     const bySource={online:0,walk_in:0,salesperson:0} as Record<OrderSource,number>;
     for(const o of orders)bySource[o.source]=(bySource[o.source]||0)+1;
     return{count:orders.length,bySource};
   }
+  /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
   async flagCustomPricedItems(from?:string,to?:string){
     const items=await this.items.find({where:{kind:'custom'}});
     if(!items.length)return[];
     const orders=await this.orders.find();
     const orderMap=new Map(orders.map(o=>[o.id,o]));
-    const fromDate=from?new Date(this.validDate(from)):null,toDate=to?new Date(this.validDate(to)):null;
+    const fromDate=from?new Date(`${this.validDate(from)}T00:00:00.000Z`):null,toDate=to?new Date(`${this.validDate(to)}T23:59:59.999Z`):null;
     return items.map(item=>({item,order:orderMap.get(item.orderId)}))
       .filter((x):x is{item:typeof items[number];order:Order}=>!!x.order)
       .filter(({order})=>(!fromDate||order.createdAt>=fromDate)&&(!toDate||order.createdAt<=toDate))
@@ -188,7 +188,7 @@ export class OrderService implements OnApplicationBootstrap {
     const candidates=new Map<string,Order>();
     for(const o of cancelled)candidates.set(o.id,o);
     for(const o of allOrders)if(refundedOrderIds.has(o.id))candidates.set(o.id,o);
-    const fromDate=from?new Date(this.validDate(from)):null,toDate=to?new Date(this.validDate(to)):null;
+    const fromDate=from?new Date(`${this.validDate(from)}T00:00:00.000Z`):null,toDate=to?new Date(`${this.validDate(to)}T23:59:59.999Z`):null;
     const results=[];
     for(const order of candidates.values()){
       const history=await this.history.find({where:{orderId:order.id}});

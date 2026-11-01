@@ -7,7 +7,9 @@ const { OrderService } = require('../dist/order.service');
 // rules, estimates, orders, items, products, jobs, jobActivity, history, otps, outbox,
 // jwt, notifications, payments, customers, refunds, attendance (the last two added by Task 7).
 function fixture({ items = [], orders = [], history = [], activity = [], attendance = [], refunds = [], jobs = [] } = {}) {
-  const ordersRepo = { find: async ({ where } = {}) => orders.filter((o) => !where?.status || o.status === where.status) };
+  const ordersRepo = {
+    find: async ({ where } = {}) => orders.filter((o) => !where?.status || o.status === where.status),
+  };
   const itemsRepo = { find: async ({ where } = {}) => items.filter((i) => !where?.kind || i.kind === where.kind) };
   const historyRepo = { find: async ({ where } = {}) => history.filter((h) => !where?.orderId || h.orderId === where.orderId) };
   const jobActivityRepo = { find: async ({ where } = {}) => activity.filter((a) => !where?.type || a.type === where.type) };
@@ -73,4 +75,35 @@ test('a stage-change activity during a clocked-in shift is not flagged', async (
 test('an invalid date string is rejected with a clean error', async () => {
   const { service } = fixture();
   await assert.rejects(service.flagUnattendedJobs('not-a-date'), /valid calendar date/i);
+});
+
+test('ordersCreatedOn counts orders by source without a dialect-specific query (works against SQLite dev, not just Postgres)', async () => {
+  const { service } = fixture({
+    orders: [
+      { id: 'o1', source: 'walk_in', createdAt: new Date('2026-10-30T09:00:00Z') },
+      { id: 'o2', source: 'online', createdAt: new Date('2026-10-30T09:00:00Z') },
+      { id: 'o3', source: 'online', createdAt: new Date('2026-10-30T09:00:00Z') },
+    ],
+  });
+  const result = await service.ordersCreatedOn('2026-10-30');
+  assert.equal(result.count, 3);
+  assert.deepEqual(result.bySource, { online: 2, walk_in: 1, salesperson: 0 });
+});
+
+test('a custom-priced item created during the "to" day is included, not excluded by an end-of-day cutoff', async () => {
+  const { service } = fixture({
+    items: [{ orderId: 'o1', kind: 'custom', name: 'Banner', quantity: 1, unitPricePesewas: 5000, totalPesewas: 5000 }],
+    orders: [{ id: 'o1', orderNumber: 'VP-1', customerName: 'Ama', createdAt: new Date('2026-10-20T18:00:00Z') }],
+  });
+  const flags = await service.flagCustomPricedItems('2026-10-01', '2026-10-20');
+  assert.equal(flags.length, 1);
+});
+
+test('a late cancellation triggered during the "to" day is included, not excluded by an end-of-day cutoff', async () => {
+  const { service } = fixture({
+    orders: [{ id: 'o1', orderNumber: 'VP-1', customerName: 'Ama', status: 'cancelled' }],
+    history: ['paid', 'in_production', 'cancelled'].map((status, i) => ({ orderId: 'o1', status, createdAt: new Date(Date.UTC(2026, 9, 20, 18 + i, 0, 0)) })),
+  });
+  const flags = await service.flagLateCancellations('2026-10-01', '2026-10-20');
+  assert.equal(flags.length, 1);
 });
