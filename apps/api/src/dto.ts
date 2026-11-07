@@ -147,6 +147,17 @@ export class SavePricingDraftDto {
   @IsString() @Length(3,300) changeNote!: string;
 }
 
+export class CreateServiceRuleDto {
+  @IsString() @Length(2,120) name!: string;
+  @IsOptional() @IsString() @Length(2,80) @Matches(/^[a-z0-9-]+$/) code?: string;
+  @IsInt() @Min(0) @Max(100000000) employeeRatePesewas!: number;
+  @IsInt() @Min(0) @Max(100000000) marketerRatePesewas!: number;
+  @IsInt() @Min(0) @Max(100000000) walkInRatePesewas!: number;
+  @IsInt() @Min(0) @Max(100000000) onlineRatePesewas!: number;
+  @IsInt() @Min(10000) @Max(100000000) designMinimumPesewas!: number;
+  @IsIn(['nearest_cedi','up_to_cedi']) roundingMode!: 'nearest_cedi'|'up_to_cedi';
+}
+
 export class MaterialSizeDto {
   @IsString() @Length(1,40) label!: string;
   @IsNumber() @Min(0.1) @Max(10000) width!: number;
