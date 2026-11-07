@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
 import { Between, Repository } from 'typeorm';
 import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
-import { AttendanceRecord, AuditLog, Estimate, MaterialConsumption, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
+import { AttendanceRecord, AuditLog, Estimate, MaterialConsumption, MaterialItem, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
 import { CustomerService } from './customer.service';
@@ -254,14 +254,23 @@ export class OrderService implements OnApplicationBootstrap {
       job.dueDate=dto.dueDate??job.dueDate;
       job.internalNote=dto.internalNote??job.internalNote;
       await jobs.save(job);
+      let rollConsumptionGapNote='';
       if(stageChanged&&dto.stage==='in_production'){
         const alreadyConsumed=await manager.getRepository(MaterialConsumption).existsBy({jobId:job.id});
-        if(!alreadyConsumed)await computeRollConsumption(manager,job,actor);
+        if(!alreadyConsumed){
+          const consumed=await computeRollConsumption(manager,job,actor);
+          if(!consumed){
+            // A roll exists for this service but none fit/had stock — flag the gap
+            // rather than letting it surface later as an unexplained physical-count shortfall.
+            const hasRollMaterial=await manager.getRepository(MaterialItem).existsBy({kind:'roll',serviceCode:job.serviceCode});
+            if(hasRollMaterial)rollConsumptionGapNote='No roll material had a fitting width in stock — log material use manually.';
+          }
+        }
       }
       await manager.getRepository(ProductionJobActivity).save({
         jobId:job.id,orderId:job.orderId,jobNumber:job.jobNumber,
         type:stageChanged?'stage_change':'assignment',fromStage:previousStage,toStage:job.stage,
-        note:dto.internalNote||'',actor,
+        note:[dto.internalNote,rollConsumptionGapNote].filter(Boolean).join(' — ')||'',actor,
       });
       const status=stageChanged?this.orderStatusForStage(job.stage):null;
       if(!status)return {job,notification:null};

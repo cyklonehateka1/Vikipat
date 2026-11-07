@@ -48,7 +48,9 @@ function presetRange(id: PresetId): { from: string; to: string } {
   }
   if (id === 'month') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))), to };
   if (id === 'year') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))), to };
-  return { from: iso(new Date(now.getTime() - 366 * 86400000)), to };
+  // overview() treats `to` as inclusive (end = to + 1 day) when computing the
+  // span, so from = now-365d gives a 366-day span — the server's exact cap.
+  return { from: iso(new Date(now.getTime() - 365 * 86400000)), to };
 }
 
 /** Bars are drawn relative to the busiest day, so a quiet week still reads. */

@@ -57,13 +57,13 @@ test('a job with no dimensions on its specification returns null', async () => {
 });
 
 const { OrderService } = require('../dist/order.service');
-const { ProductionJob, ProductionJobActivity, Order, OrderStatusHistory, MaterialConsumption: MC } = require('../dist/entities');
+const { ProductionJob, ProductionJobActivity, Order, OrderStatusHistory, MaterialConsumption: MC, MaterialItem: MI } = require('../dist/entities');
 
-function jobFixture({ existingConsumption = false } = {}) {
+function jobFixture({ existingConsumption = false, rolls = [] } = {}) {
   const state = {
     job: { id: 'job', orderId: 'order', jobNumber: 'VP-J1', stage: 'production_ready', internalNote: '', assignedTo: '', serviceCode: 'flexy-banner', specification: JSON.stringify({ width: 6, height: 3, unit: 'ft', totalAreaSqFt: 18 }) },
     order: { id: 'order', orderNumber: 'VP', customerName: 'Customer', status: 'ready_for_production' },
-    activity: [], history: [], rolls: [], consumption: existingConsumption ? [{ jobId: 'job' }] : [],
+    activity: [], history: [], rolls: rolls.map((r, i) => ({ id: `m${i + 1}`, ...r })), consumption: existingConsumption ? [{ jobId: 'job' }] : [],
   };
   const jobs = { manager: { connection: { options: { type: 'sqlite' } }, transaction: async (fn) => {
     const repositories = new Map([
@@ -75,6 +75,11 @@ function jobFixture({ existingConsumption = false } = {}) {
         existsBy: async ({ jobId }) => state.consumption.some((c) => c.jobId === jobId),
         create: (d) => ({ ...d }),
         save: async (d) => { state.consumption.push(d); return d; },
+      }],
+      [MI, {
+        find: async ({ where }) => state.rolls.filter((r) => r.kind === where.kind && r.serviceCode === where.serviceCode),
+        existsBy: async ({ kind, serviceCode }) => state.rolls.some((r) => r.kind === kind && r.serviceCode === serviceCode),
+        save: async (r) => { const i = state.rolls.findIndex((x) => x.id === r.id); state.rolls[i] = r; return r; },
       }],
     ]);
     return fn({ connection: { options: { type: 'sqlite' } }, getRepository: (entity) => repositories.get(entity) });
@@ -89,4 +94,27 @@ test('a job already carrying a consumption row is not drawn from again on a seco
   await service.updateProductionJob('job', { stage: 'in_production' }, 'staff', 'admin');
   assert.equal(state.job.stage, 'in_production');
   assert.equal(state.consumption.length, 1); // unchanged — no new row was added
+});
+
+test('a roll exists for the service but none fits in stock: the activity note flags it instead of silently skipping', async () => {
+  const { service, state } = jobFixture({ rolls: [{ kind: 'roll', serviceCode: 'flexy-banner', name: 'Flexy 5ft', rollWidthMetres: 1.524, stockQuantity: 0 }] });
+  await service.updateProductionJob('job', { stage: 'in_production' }, 'staff', 'admin');
+  assert.equal(state.consumption.length, 0);
+  assert.match(state.activity[0].note, /log material use manually/);
+});
+
+test('no roll material is configured for the service at all: no false flag is raised', async () => {
+  const { service, state } = jobFixture({ rolls: [] });
+  await service.updateProductionJob('job', { stage: 'in_production' }, 'staff', 'admin');
+  assert.equal(state.activity[0].note, '');
+});
+
+const { allowedProductionStages } = require('../dist/production-workflow');
+
+test('the stage workflow cannot skip past in_production — every non-cancel path to quality_check/ready/fulfilled passes through it', () => {
+  assert.ok(!allowedProductionStages('production_ready').includes('quality_check'));
+  assert.ok(!allowedProductionStages('production_ready').includes('ready'));
+  assert.ok(!allowedProductionStages('production_ready').includes('fulfilled'));
+  assert.ok(!allowedProductionStages('artwork_review').includes('in_production'));
+  assert.ok(!allowedProductionStages('proofing').includes('in_production'));
 });

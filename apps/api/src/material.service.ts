@@ -4,7 +4,7 @@ import { Between, Repository } from 'typeorm';
 import { lockedFindOne } from './db';
 import { dateOnly } from './finance';
 import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
-import { MaterialConsumption, MaterialItem, MaterialPhysicalCount, MaterialStockActivity, Product, ProductionJob } from './entities';
+import { MaterialConsumption, MaterialItem, MaterialPhysicalCount, MaterialStockActivity, Product, ProductionJob, StockActivity } from './entities';
 import { AuthService } from './auth.service';
 
 // Same try/catch-to-BadRequestException shape already used by AnalyticsService/PeopleService for dateOnly().
@@ -112,26 +112,35 @@ export class MaterialService {
    * (see docs/superpowers/specs/2026-11-07-material-reconciliation-and-analytics-design.md).
    */
   async recordPhysicalCount(targetKind: 'material_item' | 'product', targetId: string, measuredQuantity: number, actor: string, note?: string): Promise<MaterialPhysicalCount> {
-    const target = targetKind === 'material_item'
-      ? await this.materials.findOneBy({ id: targetId })
-      : await this.products.findOneBy({ id: targetId });
-    if (!target) throw new NotFoundException(`${targetKind === 'material_item' ? 'Material item' : 'Product'} not found`);
-    const expectedQuantity = targetKind === 'material_item' ? (target as MaterialItem).stockQuantity : (target as Product).stock;
+    if (targetKind === 'product' && !Number.isInteger(measuredQuantity)) throw new BadRequestException('Product stock counts must be a whole number');
 
-    const accountedForPercent = expectedQuantity > 0 ? Math.round((measuredQuantity / expectedQuantity) * 10000) / 100 : null;
-    const record = await this.counts.save(this.counts.create({
-      targetKind, targetId, targetName: target.name, measuredQuantity, expectedQuantity,
-      accountedForPercent, toleranceAtRecordPercent: target.tolerancePercent, recordedBy: actor, note: note ?? null,
-    }));
+    return this.materials.manager.transaction(async (manager) => {
+      const target = targetKind === 'material_item'
+        ? await lockedFindOne(manager, MaterialItem, { id: targetId })
+        : await lockedFindOne(manager, Product, { id: targetId });
+      if (!target) throw new NotFoundException(`${targetKind === 'material_item' ? 'Material item' : 'Product'} not found`);
+      const previousQuantity = targetKind === 'material_item' ? (target as MaterialItem).stockQuantity : (target as Product).stock;
 
-    if (targetKind === 'material_item') {
-      (target as MaterialItem).stockQuantity = measuredQuantity;
-      await this.materials.save(target as MaterialItem);
-    } else {
-      (target as Product).stock = measuredQuantity;
-      await this.products.save(target as Product);
-    }
-    return record;
+      const accountedForPercent = previousQuantity > 0 ? Math.round((measuredQuantity / previousQuantity) * 10000) / 100 : null;
+      const counts = manager.getRepository(MaterialPhysicalCount);
+      const record = await counts.save(counts.create({
+        targetKind, targetId, targetName: target.name, measuredQuantity, expectedQuantity: previousQuantity,
+        accountedForPercent, toleranceAtRecordPercent: target.tolerancePercent, recordedBy: actor, note: note ?? null,
+      }));
+
+      if (targetKind === 'material_item') {
+        (target as MaterialItem).stockQuantity = measuredQuantity;
+        await manager.getRepository(MaterialItem).save(target as MaterialItem);
+        const stocks = manager.getRepository(MaterialStockActivity);
+        await stocks.save(stocks.create({ materialItemId: target.id, materialName: target.name, previousQuantity, newQuantity: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
+      } else {
+        (target as Product).stock = measuredQuantity;
+        await manager.getRepository(Product).save(target as Product);
+        const stocks = manager.getRepository(StockActivity);
+        await stocks.save(stocks.create({ productId: target.id, productName: target.name, previousStock: previousQuantity, newStock: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
+      }
+      return record;
+    });
   }
 
   async flagShortfalls(from: string, to: string) {
