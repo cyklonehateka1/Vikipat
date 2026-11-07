@@ -54,7 +54,7 @@ export const api={
   updatePayslip:<T>(id:string,data:unknown)=>request<T>(`/admin/people/payslips/${id}`,{method:'PATCH',body:JSON.stringify(data)}),
   performance:<T>(params:{from?:string;to?:string}={})=>{const q=new URLSearchParams(Object.entries(params).filter(([,v])=>v) as [string,string][]);return request<T>(`/admin/people/performance${q.toString()?'?'+q:''}`)},
   // Analytics and customers
-  analytics:<T>(days=30)=>request<T>(`/admin/analytics?days=${days}`),
+  analytics:<T>(days=30,from?:string,to?:string)=>request<T>(`/admin/analytics?days=${days}${from?`&from=${from}`:''}${to?`&to=${to}`:''}`),
   analyticsInsights:<T>()=>request<T>('/admin/analytics/insights'),
   reconcilePayments:<T>()=>request<T>('/admin/analytics/reconcile',{method:'POST'}),
   customers:<T>(q='')=>request<T>(`/admin/customers${q?`?q=${encodeURIComponent(q)}`:''}`),
