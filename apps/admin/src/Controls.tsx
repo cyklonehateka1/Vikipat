@@ -24,6 +24,11 @@ type LateCancellation = {
   cancelledOrRefundedAt: string; reachedStage: string; reachedAt: string;
 };
 type UnattendedJob = { jobId: string; jobNumber: string; orderNumber: string; occurredAt: string; note: string };
+type MaterialShortfall = {
+  targetKind: 'material_item' | 'product'; targetId: string; targetName: string;
+  accountedForPercent: number; measuredQuantity: number; expectedQuantity: number;
+  recordedBy: string; recordedAt: string;
+};
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong');
 const today = () => new Date().toISOString().slice(0, 10);
@@ -35,18 +40,20 @@ function FlagsTab() {
   const [customPriced, setCustomPriced] = useState<CustomPricedItem[]>([]);
   const [lateCancellations, setLateCancellations] = useState<LateCancellation[]>([]);
   const [unattended, setUnattended] = useState<UnattendedJob[]>([]);
+  const [shortfalls, setShortfalls] = useState<MaterialShortfall[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      const [cp, lc, uj] = await Promise.all([
+      const [cp, lc, uj, sf] = await Promise.all([
         api.flagCustomPriced<CustomPricedItem[]>(range),
         api.flagLateCancellations<LateCancellation[]>(range),
         api.flagUnattendedJobs<UnattendedJob[]>(date),
+        api.flagMaterialShortfalls<MaterialShortfall[]>(range.from, range.to),
       ]);
-      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setError('');
+      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setError('');
     } catch (e) { setError(errText(e)); }
     finally { setLoading(false); }
   }
@@ -115,6 +122,26 @@ function FlagsTab() {
           </table></div>
         ) : <p className="muted" style={{ padding: 20 }}>No unattended stage changes on this date.</p>}
       </section>
+
+      <section className="surface" style={{ marginTop: 16 }}>
+        <div className="section-title">
+          <div><h2>Material shortfalls</h2><p>Physical counts that came in below the item's own accounted-for tolerance — a percentage and a gap, for a person to judge</p></div>
+        </div>
+        {shortfalls.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>Item</th><th>Measured</th><th>Expected</th><th>Accounted for</th><th>Recorded</th></tr></thead>
+            <tbody>{shortfalls.map((s) => (
+              <tr key={s.targetKind + s.targetId + s.recordedAt}>
+                <td><strong>{s.targetName}</strong></td>
+                <td>{s.measuredQuantity}</td>
+                <td>{s.expectedQuantity}</td>
+                <td style={{ color: 'var(--color-red)' }}><strong>{s.accountedForPercent}%</strong></td>
+                <td>{s.recordedBy} · {when(s.recordedAt)}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No shortfalls recorded in this range.</p>}
+      </section>
     </div>
   );
 }
@@ -164,6 +191,16 @@ function MaterialsTab() {
     const reason = prompt('Reason for adjustment', 'Physical count');
     if (!reason) return;
     try { await api.adjustMaterialStock(material.id, { stockQuantity: value, reason }); await load(); }
+    catch (e) { setError(errText(e)); }
+  }
+
+  async function recordCount(material: MaterialItem) {
+    const raw = prompt(`Measured quantity for ${material.name} (${material.unit})`, String(material.stockQuantity));
+    if (raw === null) return;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) { setError('Enter a quantity of zero or more'); return; }
+    const note = prompt('Note (optional)', '') || undefined;
+    try { await api.recordMaterialCount(material.id, { measuredQuantity: value, note }); await load(); }
     catch (e) { setError(errText(e)); }
   }
 
@@ -220,7 +257,7 @@ function MaterialsTab() {
                   <td><strong>{m.name}</strong></td>
                   <td>{m.unit}</td>
                   <td><strong>{m.stockQuantity}</strong>{m.lowStock && <small style={{ color: 'var(--color-red)', display: 'block' }}>Low stock</small>}</td>
-                  <td><button className="button ghost" onClick={() => adjust(m)}>Adjust</button></td>
+                  <td><button className="button ghost" onClick={() => adjust(m)}>Adjust</button> <button className="button ghost" onClick={() => recordCount(m)}>Record count</button></td>
                 </tr>
               ))}
             </tbody>
