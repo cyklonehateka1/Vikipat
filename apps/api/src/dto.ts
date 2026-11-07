@@ -120,12 +120,20 @@ export class CreateMaterialItemDto {
   @IsString() @Length(1,40) unit!:string;
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) lowStockThreshold!:number;
+  @IsOptional() @IsIn(['roll','count']) kind?:'roll'|'count';
+  @ValidateIf(o=>o.kind==='roll') @IsNumber() @Min(0.01) @Max(10000) rollWidthValue?:number;
+  @ValidateIf(o=>o.kind==='roll') @IsIn(['ft','in','cm']) rollWidthUnit?:'ft'|'in'|'cm';
+  @ValidateIf(o=>o.kind==='roll') @IsString() @Length(2,80) serviceCode?:string;
 }
 export class UpdateMaterialItemDto {
   @IsOptional() @IsString() @Length(2,120) name?:string;
   @IsOptional() @IsString() @Length(1,40) unit?:string;
   @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity?:number;
   @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) lowStockThreshold?:number;
+  @IsOptional() @IsIn(['roll','count']) kind?:'roll'|'count';
+  @ValidateIf(o=>o.kind==='roll') @IsNumber() @Min(0.01) @Max(10000) rollWidthValue?:number;
+  @ValidateIf(o=>o.kind==='roll') @IsIn(['ft','in','cm']) rollWidthUnit?:'ft'|'in'|'cm';
+  @ValidateIf(o=>o.kind==='roll') @IsString() @Length(2,80) serviceCode?:string;
 }
 export class AdjustMaterialStockDto {
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;

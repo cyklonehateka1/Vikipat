@@ -9,8 +9,11 @@ const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', materials: 'Materials',
 
 type MaterialItem = {
   id: string; name: string; unit: string; stockQuantity: number; lowStockThreshold: number; lowStock: boolean;
+  kind: 'roll' | 'count'; rollWidthMetres: number | null; serviceCode: string | null;
   createdAt: string; updatedAt: string;
 };
+
+type PricingRule = { id: string; code: string; name: string };
 
 type CustomPricedItem = {
   orderId: string; orderNumber: string; customerName: string; name: string;
@@ -121,8 +124,9 @@ function MaterialsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '' });
+  const [form, setForm] = useState({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count' as 'roll' | 'count', rollWidthValue: '', rollWidthUnit: 'ft' as 'ft'|'in'|'cm', serviceCode: '' });
   const [busy, setBusy] = useState(false);
+  const [rules, setRules] = useState<PricingRule[]>([]);
 
   async function load() {
     setLoading(true);
@@ -130,7 +134,7 @@ function MaterialsTab() {
     catch (e) { setError(errText(e)); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.pricingRules<PricingRule[]>().then(setRules).catch(() => {}); }, []);
 
   async function addMaterial(e: React.FormEvent) {
     e.preventDefault();
@@ -141,8 +145,10 @@ function MaterialsTab() {
         unit: form.unit,
         stockQuantity: Number(form.stockQuantity) || 0,
         lowStockThreshold: Number(form.lowStockThreshold) || 0,
+        kind: form.kind,
+        ...(form.kind === 'roll' ? { rollWidthValue: Number(form.rollWidthValue) || 0, rollWidthUnit: form.rollWidthUnit, serviceCode: form.serviceCode } : {}),
       });
-      setForm({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '' });
+      setForm({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count', rollWidthValue: '', rollWidthUnit: 'ft', serviceCode: '' });
       setAdding(false);
       await load();
     } catch (e) { setError(errText(e)); }
@@ -175,6 +181,30 @@ function MaterialsTab() {
           <label>Unit<input required placeholder="e.g. sq ft, roll, litre" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></label>
           <label>Starting stock<input required type="number" min="0" step="0.01" value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: e.target.value })} /></label>
           <label>Low-stock threshold<input required type="number" min="0" step="0.01" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })} /></label>
+          <label>Kind
+            <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as 'roll' | 'count' })}>
+              <option value="count">Count</option>
+              <option value="roll">Roll</option>
+            </select>
+          </label>
+          {form.kind === 'roll' && (
+            <>
+              <label>Roll width<input required type="number" min="0.01" step="0.01" value={form.rollWidthValue} onChange={(e) => setForm({ ...form, rollWidthValue: e.target.value })} /></label>
+              <label>Width unit
+                <select value={form.rollWidthUnit} onChange={(e) => setForm({ ...form, rollWidthUnit: e.target.value as 'ft'|'in'|'cm' })}>
+                  <option value="ft">ft</option>
+                  <option value="in">in</option>
+                  <option value="cm">cm</option>
+                </select>
+              </label>
+              <label>Print service
+                <select required value={form.serviceCode} onChange={(e) => setForm({ ...form, serviceCode: e.target.value })}>
+                  <option value="">Select a service…</option>
+                  {rules.map((r) => <option key={r.id} value={r.code}>{r.name}</option>)}
+                </select>
+              </label>
+            </>
+          )}
           <button className="button primary" disabled={busy} type="submit">{busy ? 'Saving…' : 'Save material'}</button>
         </form>
       )}

@@ -416,6 +416,9 @@ export class MaterialItem {
   @Column() unit!: string;
   @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) stockQuantity!: number;
   @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) lowStockThreshold!: number;
+  @Column({default:'count'}) kind!: 'roll' | 'count';
+  @Column('decimal',{precision:12,scale:4,nullable:true,transformer:{to:(v:number|null)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) rollWidthMetres!: number | null;
+  @Column({type:'varchar',nullable:true}) serviceCode!: string | null;
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }

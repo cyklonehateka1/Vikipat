@@ -33,8 +33,19 @@ export class MaterialService {
     return item;
   }
 
+  private rollWidthMetresFrom(value: number, unit: 'ft'|'in'|'cm'): number {
+    if (unit === 'ft') return value * 0.3048;
+    if (unit === 'in') return value * 0.0254;
+    return value * 0.01;
+  }
+
   async create(dto: CreateMaterialItemDto, email: string) {
-    const item = await this.materials.save(this.materials.create(dto));
+    const { rollWidthValue, rollWidthUnit, ...rest } = dto;
+    const entity = this.materials.create({ kind: 'count', rollWidthMetres: null, serviceCode: null, ...rest });
+    if (dto.kind === 'roll' && rollWidthValue !== undefined && rollWidthUnit) {
+      entity.rollWidthMetres = this.rollWidthMetresFrom(rollWidthValue, rollWidthUnit);
+    }
+    const item = await this.materials.save(entity);
     await this.auth.audit(email, 'create', 'material_item', item.id, { name: item.name });
     return item;
   }
@@ -42,7 +53,11 @@ export class MaterialService {
   async update(id: string, dto: UpdateMaterialItemDto, email: string) {
     const item = await this.one(id);
     const previousStock = item.stockQuantity;
-    Object.assign(item, dto);
+    const { rollWidthValue, rollWidthUnit, ...rest } = dto;
+    Object.assign(item, rest);
+    if (item.kind === 'roll' && rollWidthValue !== undefined && rollWidthUnit) {
+      item.rollWidthMetres = this.rollWidthMetresFrom(rollWidthValue, rollWidthUnit);
+    }
     const saved = await this.materials.save(item);
     if (dto.stockQuantity !== undefined && dto.stockQuantity !== previousStock) {
       await this.recordStock(saved, previousStock, dto.stockQuantity, 'Material item update', email);
