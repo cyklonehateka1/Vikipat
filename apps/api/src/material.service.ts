@@ -41,7 +41,7 @@ export class MaterialService {
 
   async create(dto: CreateMaterialItemDto, email: string) {
     const { rollWidthValue, rollWidthUnit, ...rest } = dto;
-    const entity = this.materials.create({ kind: 'count', rollWidthMetres: null, serviceCode: null, ...rest });
+    const entity = this.materials.create({ kind: 'count', rollWidthMetres: null, serviceCode: null, tolerancePercent: 90, ...rest });
     if (dto.kind === 'roll' && rollWidthValue !== undefined && rollWidthUnit) {
       entity.rollWidthMetres = this.rollWidthMetresFrom(rollWidthValue, rollWidthUnit);
     }

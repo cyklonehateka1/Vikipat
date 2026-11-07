@@ -44,3 +44,15 @@ test('a count material (no roll fields) still creates exactly as before', async 
   assert.equal(state.material.kind, 'count');
   assert.equal(state.material.rollWidthMetres, null);
 });
+
+test('a new material defaults to 90% tolerance when none is given', async () => {
+  const { service, state } = fixture();
+  await service.create({ name: 'Flexy/Banner 5ft', unit: 'm', stockQuantity: 50, lowStockThreshold: 10 }, 'owner@vikipat.com');
+  assert.equal(state.material.tolerancePercent, 90);
+});
+
+test('an explicit tolerance overrides the default', async () => {
+  const { service, state } = fixture();
+  await service.create({ name: 'Flexy/Banner 5ft', unit: 'm', stockQuantity: 50, lowStockThreshold: 10, tolerancePercent: 95 }, 'owner@vikipat.com');
+  assert.equal(state.material.tolerancePercent, 95);
+});

@@ -124,7 +124,7 @@ function MaterialsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count' as 'roll' | 'count', rollWidthValue: '', rollWidthUnit: 'ft' as 'ft'|'in'|'cm', serviceCode: '' });
+  const [form, setForm] = useState({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count' as 'roll' | 'count', rollWidthValue: '', rollWidthUnit: 'ft' as 'ft'|'in'|'cm', serviceCode: '', tolerancePercent: '' });
   const [busy, setBusy] = useState(false);
   const [rules, setRules] = useState<PricingRule[]>([]);
 
@@ -147,8 +147,9 @@ function MaterialsTab() {
         lowStockThreshold: Number(form.lowStockThreshold) || 0,
         kind: form.kind,
         ...(form.kind === 'roll' ? { rollWidthValue: Number(form.rollWidthValue) || 0, rollWidthUnit: form.rollWidthUnit, serviceCode: form.serviceCode } : {}),
+        ...(form.tolerancePercent ? { tolerancePercent: Number(form.tolerancePercent) } : {}),
       });
-      setForm({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count', rollWidthValue: '', rollWidthUnit: 'ft', serviceCode: '' });
+      setForm({ name: '', unit: '', stockQuantity: '', lowStockThreshold: '', kind: 'count', rollWidthValue: '', rollWidthUnit: 'ft', serviceCode: '', tolerancePercent: '' });
       setAdding(false);
       await load();
     } catch (e) { setError(errText(e)); }
@@ -205,6 +206,7 @@ function MaterialsTab() {
               </label>
             </>
           )}
+          <label>Accounted-for tolerance, %<input type="number" min="0" max="100" step="0.01" placeholder="90" value={form.tolerancePercent} onChange={(e) => setForm({ ...form, tolerancePercent: e.target.value })} /></label>
           <button className="button primary" disabled={busy} type="submit">{busy ? 'Saving…' : 'Save material'}</button>
         </form>
       )}
