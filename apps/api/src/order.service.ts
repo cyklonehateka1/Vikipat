@@ -1,4 +1,5 @@
 import { releaseProductionJobs } from './production-release';
+import { computeRollConsumption } from './roll-consumption';
 import { allowedProductionStages, permittedProductionStages } from './production-workflow';
 import { lockedFindOne } from './db';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnApplicationBootstrap, UnauthorizedException } from '@nestjs/common';
@@ -7,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
 import { Between, Repository } from 'typeorm';
 import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
-import { AttendanceRecord, AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
+import { AttendanceRecord, AuditLog, Estimate, MaterialConsumption, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
 import { CustomerService } from './customer.service';
@@ -253,6 +254,10 @@ export class OrderService implements OnApplicationBootstrap {
       job.dueDate=dto.dueDate??job.dueDate;
       job.internalNote=dto.internalNote??job.internalNote;
       await jobs.save(job);
+      if(stageChanged&&dto.stage==='in_production'){
+        const alreadyConsumed=await manager.getRepository(MaterialConsumption).existsBy({jobId:job.id});
+        if(!alreadyConsumed)await computeRollConsumption(manager,job,actor);
+      }
       await manager.getRepository(ProductionJobActivity).save({
         jobId:job.id,orderId:job.orderId,jobNumber:job.jobNumber,
         type:stageChanged?'stage_change':'assignment',fromStage:previousStage,toStage:job.stage,
