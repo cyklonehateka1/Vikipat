@@ -449,3 +449,20 @@ export class MaterialConsumption {
   @Column() recordedBy!: string;
   @CreateDateColumn() createdAt!: Date;
 }
+
+/** Ground-truth physical count, frozen against the target's tolerance at record time. */
+@Entity('material_physical_counts')
+@Index(['targetKind', 'targetId'])
+export class MaterialPhysicalCount {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() targetKind!: 'material_item' | 'product';
+  @Column() targetId!: string;
+  @Column() targetName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) measuredQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) expectedQuantity!: number;
+  @Column('decimal',{precision:5,scale:2,nullable:true,transformer:{to:(v:number|null)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) accountedForPercent!: number | null;
+  @Column('decimal',{precision:5,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) toleranceAtRecordPercent!: number;
+  @Column() recordedBy!: string;
+  @CreateDateColumn() recordedAt!: Date;
+  @Column({type:'varchar',nullable:true}) note!: string | null;
+}

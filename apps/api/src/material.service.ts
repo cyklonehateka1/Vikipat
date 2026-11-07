@@ -4,7 +4,7 @@ import { Between, Repository } from 'typeorm';
 import { lockedFindOne } from './db';
 import { dateOnly } from './finance';
 import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
-import { MaterialConsumption, MaterialItem, MaterialStockActivity, ProductionJob } from './entities';
+import { MaterialConsumption, MaterialItem, MaterialPhysicalCount, MaterialStockActivity, Product, ProductionJob } from './entities';
 import { AuthService } from './auth.service';
 
 // Same try/catch-to-BadRequestException shape already used by AnalyticsService/PeopleService for dateOnly().
@@ -20,6 +20,8 @@ export class MaterialService {
     private auth: AuthService,
     @InjectRepository(ProductionJob) private jobs: Repository<ProductionJob>,
     @InjectRepository(MaterialConsumption) private consumption: Repository<MaterialConsumption>,
+    @InjectRepository(Product) private products: Repository<Product>,
+    @InjectRepository(MaterialPhysicalCount) private counts: Repository<MaterialPhysicalCount>,
   ) {}
 
   async list() {
@@ -100,6 +102,45 @@ export class MaterialService {
       const consumption = manager.getRepository(MaterialConsumption);
       return consumption.save(consumption.create({ jobId, materialItemId: item.id, materialName: item.name, quantity: dto.quantity, unit: dto.unit, recordedBy: actor }));
     });
+  }
+
+  /**
+   * expectedQuantity is the target's *current* running total, not a replay
+   * of consumption/restocks since the previous count — stockQuantity/stock
+   * are already continuously maintained, so replaying history would risk
+   * drifting from the one number the rest of the system already trusts
+   * (see docs/superpowers/specs/2026-11-07-material-reconciliation-and-analytics-design.md).
+   */
+  async recordPhysicalCount(targetKind: 'material_item' | 'product', targetId: string, measuredQuantity: number, actor: string, note?: string): Promise<MaterialPhysicalCount> {
+    const target = targetKind === 'material_item'
+      ? await this.materials.findOneBy({ id: targetId })
+      : await this.products.findOneBy({ id: targetId });
+    if (!target) throw new NotFoundException(`${targetKind === 'material_item' ? 'Material item' : 'Product'} not found`);
+    const expectedQuantity = targetKind === 'material_item' ? (target as MaterialItem).stockQuantity : (target as Product).stock;
+
+    const accountedForPercent = expectedQuantity > 0 ? Math.round((measuredQuantity / expectedQuantity) * 10000) / 100 : null;
+    const record = await this.counts.save(this.counts.create({
+      targetKind, targetId, targetName: target.name, measuredQuantity, expectedQuantity,
+      accountedForPercent, toleranceAtRecordPercent: target.tolerancePercent, recordedBy: actor, note: note ?? null,
+    }));
+
+    if (targetKind === 'material_item') {
+      (target as MaterialItem).stockQuantity = measuredQuantity;
+      await this.materials.save(target as MaterialItem);
+    } else {
+      (target as Product).stock = measuredQuantity;
+      await this.products.save(target as Product);
+    }
+    return record;
+  }
+
+  async flagShortfalls(from: string, to: string) {
+    const range = Between(new Date(`${validDate(from)}T00:00:00.000Z`), new Date(`${validDate(to)}T23:59:59.999Z`));
+    const rows = await this.counts.find({ where: { recordedAt: range } });
+    return rows
+      .filter((row) => row.accountedForPercent !== null && row.accountedForPercent < row.toleranceAtRecordPercent)
+      .map(({ targetKind, targetId, targetName, accountedForPercent, measuredQuantity, expectedQuantity, recordedBy, recordedAt }) =>
+        ({ targetKind, targetId, targetName, accountedForPercent, measuredQuantity, expectedQuantity, recordedBy, recordedAt }));
   }
 
   /**

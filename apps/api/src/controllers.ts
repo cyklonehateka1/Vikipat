@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
 import { MaterialService } from './material.service';
 import { PricingAdminService } from './pricing-admin.service';
 import { StorageService } from './storage.service';
-import { AdjustMaterialStockDto, AdjustStockDto, ChangePasswordDto, CreateMaterialItemDto, CreateProductDto, CreateQuoteDto, LoginDto, RequestPasswordResetDto, ResetPasswordDto, UpdateMaterialItemDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
+import { AdjustMaterialStockDto, AdjustStockDto, ChangePasswordDto, CreateMaterialItemDto, CreateProductDto, CreateQuoteDto, LoginDto, RecordPhysicalCountDto, RequestPasswordResetDto, ResetPasswordDto, UpdateMaterialItemDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
 import { AdminOnlyGuard, AuthGuard, CsrfGuard, OperationsGuard, PasswordChangedGuard } from './security';
 const cookieSecure=process.env.COOKIE_SECURE==='true';
 const cookieOptions={httpOnly:true,sameSite:(cookieSecure?'none':'strict') as 'none'|'strict',secure:cookieSecure,maxAge:8*60*60*1000,path:'/'};
@@ -28,13 +28,14 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
 }
 
 @Controller('admin') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard) export class AdminController {
-  constructor(private admin:AdminService,private storage:StorageService){}
+  constructor(private admin:AdminService,private storage:StorageService,private materials:MaterialService){}
   @Get('products') products(@Query('q') q?:string){return this.admin.list(q)}
   @Get('products/:id') product(@Param('id') id:string){return this.admin.one(id)}
   @Post('products') create(@Req() req:Request,@Body() dto:CreateProductDto){return this.admin.create(dto,req.user!.email)}
   @Patch('products/:id') update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateProductDto){return this.admin.update(id,dto,req.user!.email)}
   @Delete('products/:id') remove(@Req() req:Request,@Param('id') id:string){return this.admin.remove(id,req.user!.email)}
   @Post('products/:id/stock') adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustStockDto){return this.admin.adjust(id,dto,req.user!.email)}
+  @Post('products/:id/count') recordProductCount(@Req() req:Request,@Param('id') id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note)}
   @Get('stock-activity') stock(){return this.admin.stockActivity()}
   @Get('dashboard') dashboard(){return this.admin.summary()}
   @Get('insights') insights(){return this.admin.insights()}
@@ -56,6 +57,7 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Post() @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
   @Patch(':id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}
   @Post(':id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustMaterialStockDto){return this.materials.adjust(id,dto,req.user!.email)}
+  @Post(':id/count') @UseGuards(AdminOnlyGuard) recordCount(@Req() req:Request,@Param('id') id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('material_item',id,dto.measuredQuantity,req.user!.email,dto.note)}
 }
 
 @Controller('quotes') export class QuoteController {

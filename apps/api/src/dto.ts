@@ -137,6 +137,10 @@ export class UpdateMaterialItemDto {
   @ValidateIf(o=>o.kind==='roll') @IsString() @Length(2,80) serviceCode?:string;
   @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number;
 }
+export class RecordPhysicalCountDto {
+  @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) measuredQuantity!:number;
+  @IsOptional() @IsString() @Length(0,500) note?:string;
+}
 export class AdjustMaterialStockDto {
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
   @IsString() @Length(3,160) reason!:string;
