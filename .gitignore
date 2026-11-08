@@ -13,3 +13,6 @@ apps/api/.test-runtime/
 backups
 
 .worktrees/
+
+# Scratch dev-recording scripts with hardcoded dev credentials — never commit.
+video-demos/
