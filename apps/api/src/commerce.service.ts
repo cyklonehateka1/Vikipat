@@ -114,7 +114,7 @@ export class CommerceController {
   @Get('policies') @UseGuards(AdminOnlyGuard) policies(){return this.commerce.policies();}
   @Patch('policies') @UseGuards(AdminOnlyGuard) save(@Body() dto:PolicyDto,@Req() r:Request){return this.commerce.savePolicies(dto,r.user!.email);}
   @Get('orders/:id') detail(@Param('id') id:string,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.detail(id);}
-  @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.payment(id,dto,r.user!.email);}
+  @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('payments.record'))throw new ForbiddenException('Payment recording permission required');return this.commerce.payment(id,dto,r.user!.email);}
   @Post('orders/:id/refunds') @UseGuards(AdminOnlyGuard) refund(@Param('id') id:string,@Body() dto:RecordRefundDto,@Req() r:Request){return this.commerce.refund(id,dto,r.user!.email);}
   @Post('quotes/:id/email') @UseGuards(AdminOnlyGuard) email(@Param('id') id:string,@Body() dto:EmailDto,@Req() r:Request){return this.commerce.emailQuote(id,dto,r.user!.email);}
   @Get('notifications') @UseGuards(AdminOnlyGuard) messages(){return this.notifications.list();}

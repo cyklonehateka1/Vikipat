@@ -1,7 +1,7 @@
 export const STAFF_ROLES = ['operations_supervisor', 'designer', 'production_operator', 'quality_control', 'dispatch'] as const;
 export type StaffRole = typeof STAFF_ROLES[number];
 export type Role = 'admin' | StaffRole;
-export const PERMISSIONS = ['operations.read', 'jobs.release', 'jobs.release_unpaid', 'jobs.assign', 'jobs.note', 'jobs.artwork', 'jobs.production', 'jobs.qc', 'jobs.dispatch', 'jobs.supervise', 'orders.manage'] as const;
+export const PERMISSIONS = ['operations.read', 'jobs.release', 'jobs.release_unpaid', 'jobs.assign', 'jobs.note', 'jobs.artwork', 'jobs.production', 'jobs.qc', 'jobs.dispatch', 'jobs.supervise', 'orders.manage', 'payments.record'] as const;
 export type Permission = typeof PERMISSIONS[number];
 
 const rolePermissions: Record<Role, readonly Permission[]> = {
