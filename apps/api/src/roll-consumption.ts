@@ -19,8 +19,14 @@ export async function computeRollConsumption(manager: EntityManager, job: Produc
   const candidates = (await materials.find({ where: { kind: 'roll', serviceCode: job.serviceCode } }))
     .sort((a, b) => a.rollWidthMetres! - b.rollWidthMetres!);
 
+  // A job whose dimension in feet exactly equals a roll's width in metres
+  // (e.g. 3ft -> 0.9144m) can fail this comparison on float error alone —
+  // 3 * 0.3048 === 0.9144000000000001, not 0.9144 — which silently skips
+  // the exact-fit roll for the next wider one. A tenth-of-a-millimetre
+  // tolerance absorbs that without masking a genuinely too-narrow roll.
+  const EPSILON_METRES = 1e-6;
   for (const roll of candidates) {
-    if (roll.rollWidthMetres! < acrossRollMetres) continue;
+    if (roll.rollWidthMetres! < acrossRollMetres - EPSILON_METRES) continue;
     const rollWidthFt = roll.rollWidthMetres! / 0.3048;
     const lengthMetres = (totalAreaSqFt / rollWidthFt) * 0.3048;
     if (roll.stockQuantity < lengthMetres) continue;

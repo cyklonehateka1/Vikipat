@@ -56,11 +56,18 @@ function presetRange(id: PresetId): { from: string; to: string } {
 /** Bars are drawn relative to the busiest day, so a quiet week still reads. */
 function RevenueChart({ data }: { data: Report['revenueByDay'] }) {
   const peak = Math.max(1, ...data.map(d => d.revenuePesewas));
+  // A fixed per-bar minWidth + gap only fits short windows (a week, a month).
+  // Over a year's worth of days the row overflowed its card by ~2.5x and,
+  // since zero-revenue days sort first and render as a near-invisible
+  // sliver, the real (recent, nonzero) bars landed entirely off-screen —
+  // the chart looked empty even though the data was there. Scaling the gap
+  // down and dropping the hard minWidth lets every bar shrink to fit.
+  const dense = data.length > 60;
   return (
-    <div className="revenue-chart" style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 140, padding: '12px 0' }}>
+    <div className="revenue-chart" style={{ display: 'flex', alignItems: 'flex-end', gap: dense ? 1 : 3, height: 140, padding: '12px 0' }}>
       {data.map(d => (
         <div key={d.date} title={`${d.date}: ${money(d.revenuePesewas)} · ${d.orders} order(s)`}
-          style={{ flex: 1, minWidth: 4, height: `${Math.max(2, (d.revenuePesewas / peak) * 100)}%`, background: d.revenuePesewas ? 'var(--brand-primary, #F38432)' : 'var(--line, #E8E9F2)', borderRadius: '3px 3px 0 0', transition: 'height .3s' }} />
+          style={{ flex: 1, minWidth: dense ? 0 : 4, height: `${Math.max(2, (d.revenuePesewas / peak) * 100)}%`, background: d.revenuePesewas ? 'var(--brand-primary, #F38432)' : 'var(--line, #E8E9F2)', borderRadius: '3px 3px 0 0', transition: 'height .3s' }} />
       ))}
     </div>
   );

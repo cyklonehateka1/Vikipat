@@ -32,6 +32,21 @@ test('draws the smallest roll width that fits and has stock, length computed fro
   assert.ok(state.rolls[0].stockQuantity < 50);
 });
 
+test('a roll whose width in metres exactly equals the job dimension in feet is not skipped on float error', async () => {
+  // 3ft * 0.3048 === 0.9144000000000001 in JS float arithmetic, not 0.9144 —
+  // an unguarded "<" comparison treats the exact-fit roll as too narrow and
+  // silently falls back to the next wider one.
+  const { manager, state } = fixture({ rolls: [
+    { kind: 'roll', serviceCode: 'flexy-banner', name: 'Flexy 3ft', rollWidthMetres: 0.9144, stockQuantity: 50 },
+    { kind: 'roll', serviceCode: 'flexy-banner', name: 'Flexy 5ft', rollWidthMetres: 1.524, stockQuantity: 50 },
+  ] });
+  const result = await computeRollConsumption(manager, job({ specification: JSON.stringify({ width: 6, height: 3, unit: 'ft', totalAreaSqFt: 18 }) }), 'operator@vikipat.com');
+  assert.ok(result);
+  assert.equal(state.rolls[0].name, 'Flexy 3ft'); // the exact-width roll was drawn, not the 5ft
+  assert.ok(state.rolls[0].stockQuantity < 50);
+  assert.equal(state.rolls[1].stockQuantity, 50); // 5ft untouched
+});
+
 test('falls back to the next wider roll when the right-sized one has run out', async () => {
   const { manager, state } = fixture({ rolls: [
     { kind: 'roll', serviceCode: 'flexy-banner', name: 'Flexy 5ft', rollWidthMetres: 1.524, stockQuantity: 0.1 },
