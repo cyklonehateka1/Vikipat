@@ -1,14 +1,15 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
 import { AdminService } from './admin.service';
 import { AuthService } from './auth.service';
+import { MaterialService } from './material.service';
 import { PricingAdminService } from './pricing-admin.service';
 import { StorageService } from './storage.service';
-import { AdjustStockDto, ChangePasswordDto, CreateProductDto, CreateQuoteDto, LoginDto, RequestPasswordResetDto, ResetPasswordDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
-import { AdminOnlyGuard, AuthGuard, CsrfGuard, PasswordChangedGuard } from './security';
+import { AdjustMaterialStockDto, AdjustStockDto, ChangePasswordDto, CreateMaterialItemDto, CreateProductDto, CreateQuoteDto, LoginDto, RecordPhysicalCountDto, RequestPasswordResetDto, ResetPasswordDto, UpdateMaterialItemDto, UpdateProductDto, UpdateQuoteStatusDto, UpdateSettingsDto } from './dto';
+import { AdminOnlyGuard, AuthGuard, CsrfGuard, OperationsGuard, PasswordChangedGuard } from './security';
 const cookieSecure=process.env.COOKIE_SECURE==='true';
 const cookieOptions={httpOnly:true,sameSite:(cookieSecure?'none':'strict') as 'none'|'strict',secure:cookieSecure,maxAge:8*60*60*1000,path:'/'};
 // Files are held in memory only long enough to forward them to R2; nothing
@@ -27,13 +28,14 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
 }
 
 @Controller('admin') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard) export class AdminController {
-  constructor(private admin:AdminService,private storage:StorageService){}
+  constructor(private admin:AdminService,private storage:StorageService,private materials:MaterialService){}
   @Get('products') products(@Query('q') q?:string){return this.admin.list(q)}
   @Get('products/:id') product(@Param('id') id:string){return this.admin.one(id)}
   @Post('products') create(@Req() req:Request,@Body() dto:CreateProductDto){return this.admin.create(dto,req.user!.email)}
   @Patch('products/:id') update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateProductDto){return this.admin.update(id,dto,req.user!.email)}
   @Delete('products/:id') remove(@Req() req:Request,@Param('id') id:string){return this.admin.remove(id,req.user!.email)}
   @Post('products/:id/stock') adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustStockDto){return this.admin.adjust(id,dto,req.user!.email)}
+  @Post('products/:id/count') recordProductCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note)}
   @Get('stock-activity') stock(){return this.admin.stockActivity()}
   @Get('dashboard') dashboard(){return this.admin.summary()}
   @Get('insights') insights(){return this.admin.insights()}
@@ -43,6 +45,20 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Get('quotes') quotes(){return this.admin.listQuotes()}
   @Patch('quotes/:id/status') updateQuote(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateQuoteStatusDto){return this.admin.updateQuoteStatus(id,dto.status,req.user!.email)}
   @Post('media') @UseInterceptors(FileInterceptor('file',imageUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return this.storage.upload(file,{prefix:'catalogue',kind:'image'})}
+}
+
+// list/one are read by any operations staff (the job panel's material picker needs them);
+// create/update/adjust stay admin-only, same split as AdminOrderController's own routes.
+@Controller('admin/materials') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard) export class MaterialController {
+  constructor(private materials:MaterialService){}
+  @Get() list(){return this.materials.list()}
+  @Get('reconciliation') @UseGuards(AdminOnlyGuard) reconciliation(@Query('from') from:string,@Query('to') to:string){return this.materials.reconciliation(from,to)}
+  @Get('flags/shortfalls') @UseGuards(AdminOnlyGuard) shortfalls(@Query('from') from:string,@Query('to') to:string){return this.materials.flagShortfalls(from,to)}
+  @Get(':id') one(@Param('id') id:string){return this.materials.one(id)}
+  @Post() @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
+  @Patch(':id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}
+  @Post(':id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustMaterialStockDto){return this.materials.adjust(id,dto,req.user!.email)}
+  @Post(':id/count') @UseGuards(AdminOnlyGuard) recordCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('material_item',id,dto.measuredQuantity,req.user!.email,dto.note)}
 }
 
 @Controller('quotes') export class QuoteController {

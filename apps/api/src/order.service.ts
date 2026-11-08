@@ -1,19 +1,21 @@
 import { releaseProductionJobs } from './production-release';
+import { computeRollConsumption } from './roll-consumption';
 import { allowedProductionStages, permittedProductionStages } from './production-workflow';
 import { lockedFindOne } from './db';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnApplicationBootstrap, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { createHmac, randomInt, randomUUID } from 'crypto';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { CreateGuestOrderDto, CreateOnlineOrderDto, LargeFormatEstimateDto, OrderLineItemDto, UpdateProductionJobDto } from './dto';
-import { AuditLog, Estimate, NotificationOutbox, Order, OrderItem, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
+import { AttendanceRecord, AuditLog, Estimate, MaterialConsumption, MaterialItem, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatus, OrderStatusHistory, OrderTrackingOtp, PaymentTransaction, Product, ProductionJob, ProductionJobActivity, ProductionStage, ServicePriceRule, StockActivity } from './entities';
 import { NotificationService } from './notification.service';
 import { PaymentService } from './payment.service';
 import { CustomerService } from './customer.service';
 import { hasPermission, priceBookForSource, type OrderSource, type PriceBookCode } from '@vikipat/domain';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
 import { matchesFixedSize, parseFixedSizes } from './material-sizes';
+import { dateOnly } from './finance';
 
 const RATE_SEED=[
   ['sav-sticker','SAV / Sticker',210,220,240],['flexy-banner','Flexy / Banner',230,240,260],['oneway-vision','Oneway Vision',590,605,630],
@@ -25,7 +27,7 @@ const PUBLIC_STATUS:Record<OrderStatus,string>={pending_review:'Under review',aw
 
 @Injectable()
 export class OrderService implements OnApplicationBootstrap {
-  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService,private customers:CustomerService){}
+  constructor(@InjectRepository(ServicePriceRule) private rules:Repository<ServicePriceRule>,@InjectRepository(Estimate) private estimates:Repository<Estimate>,@InjectRepository(Order) private orders:Repository<Order>,@InjectRepository(OrderItem) private items:Repository<OrderItem>,@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(ProductionJob) private jobs:Repository<ProductionJob>,@InjectRepository(ProductionJobActivity) private jobActivity:Repository<ProductionJobActivity>,@InjectRepository(OrderStatusHistory) private history:Repository<OrderStatusHistory>,@InjectRepository(OrderTrackingOtp) private otps:Repository<OrderTrackingOtp>,@InjectRepository(NotificationOutbox) private outbox:Repository<NotificationOutbox>,private jwt:JwtService,private notifications:NotificationService,private payments:PaymentService,private customers:CustomerService,@InjectRepository(OrderRefund) private refunds:Repository<OrderRefund>,@InjectRepository(AttendanceRecord) private attendance:Repository<AttendanceRecord>){}
   onApplicationBootstrap(){return this.seed()}
   async seed(){for(const [code,name,employee,marketer,walkIn] of RATE_SEED){if(!await this.rules.findOneBy({code}))await this.rules.save(this.rules.create({code,name,material:name,employeeRatePesewas:employee,marketerRatePesewas:marketer,walkInRatePesewas:walkIn,onlineRatePesewas:walkIn}))}}
   listRules(){return this.rules.find({where:{active:true},order:{name:'ASC'}})}
@@ -130,7 +132,9 @@ export class OrderService implements OnApplicationBootstrap {
     });
     const payment=source==='online'?await this.payments.initializePaystack(order):null;
     if(payment){order.paymentProvider='paystack';order.paymentReference=payment.reference;await this.orders.save(order)}
-    await this.notifications.queueEmail(order,'order_created',{subject:`Vikipat order ${orderNumber} received`,text:`Hello ${order.customerName}, your order number is ${orderNumber}. Current status: ${PUBLIC_STATUS[order.status]}.`});
+    const receipt={subject:`Vikipat order ${orderNumber} received`,text:`Hello ${order.customerName}, your order number is ${orderNumber}. Current status: ${PUBLIC_STATUS[order.status]}.`};
+    await this.notifications.queueEmail(order,'order_created',receipt);
+    await this.notifications.queueWhatsApp(order,'order_created',receipt);
     return{id:order.id,orderNumber:order.orderNumber,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,requiresReview:order.requiresReview,payment:payment?{provider:'paystack',reference:payment.reference,authorizationUrl:payment.authorizationUrl,accessCode:payment.accessCode,providerConfigured:payment.providerConfigured}:null};
   }
   async requestOtp(orderNumber:string,email:string){
@@ -156,6 +160,65 @@ export class OrderService implements OnApplicationBootstrap {
       .andWhere('NOT EXISTS (SELECT 1 FROM production_jobs job WHERE job."orderId" = CAST(order.id AS text))')
       .orderBy('order.createdAt','DESC').take(250).getMany();
     return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
+  }
+  /** Orders created on one calendar day, by channel — for the owner's daily digest. */
+  async ordersCreatedOn(date:string){
+    date=this.validDate(date);
+    const orders=await this.orders.find({where:{createdAt:Between(new Date(`${date}T00:00:00.000Z`),new Date(`${date}T23:59:59.999Z`))}});
+    const bySource={online:0,walk_in:0,salesperson:0} as Record<OrderSource,number>;
+    for(const o of orders)bySource[o.source]=(bySource[o.source]||0)+1;
+    return{count:orders.length,bySource};
+  }
+  /** Every custom/manual-quote line item — the only place a human types in a price — for owner review. */
+  async flagCustomPricedItems(from?:string,to?:string){
+    const items=await this.items.find({where:{kind:'custom'}});
+    if(!items.length)return[];
+    const orders=await this.orders.find();
+    const orderMap=new Map(orders.map(o=>[o.id,o]));
+    const fromDate=from?new Date(`${this.validDate(from)}T00:00:00.000Z`):null,toDate=to?new Date(`${this.validDate(to)}T23:59:59.999Z`):null;
+    return items.map(item=>({item,order:orderMap.get(item.orderId)}))
+      .filter((x):x is{item:typeof items[number];order:Order}=>!!x.order)
+      .filter(({order})=>(!fromDate||order.createdAt>=fromDate)&&(!toDate||order.createdAt<=toDate))
+      .map(({item,order})=>({orderId:item.orderId,orderNumber:order.orderNumber,customerName:order.customerName,name:item.name,quantity:item.quantity,unitPricePesewas:item.unitPricePesewas,totalPesewas:item.totalPesewas,createdAt:order.createdAt}));
+  }
+  /** Orders cancelled or refunded after they had already reached production — an ordinary cancellation almost never happens this late. */
+  async flagLateCancellations(from?:string,to?:string){
+    const REACHED_PRODUCTION:OrderStatus[]=['ready_for_production','in_production','quality_check','ready','out_for_delivery','completed'];
+    const [cancelled,refunds,allOrders]=await Promise.all([this.orders.find({where:{status:'cancelled'}}),this.refunds.find(),this.orders.find()]);
+    const refundedOrderIds=new Set(refunds.map(r=>r.orderId));
+    const candidates=new Map<string,Order>();
+    for(const o of cancelled)candidates.set(o.id,o);
+    for(const o of allOrders)if(refundedOrderIds.has(o.id))candidates.set(o.id,o);
+    const fromDate=from?new Date(`${this.validDate(from)}T00:00:00.000Z`):null,toDate=to?new Date(`${this.validDate(to)}T23:59:59.999Z`):null;
+    const results=[];
+    for(const order of candidates.values()){
+      const history=await this.history.find({where:{orderId:order.id}});
+      const triggerTimes:Date[]=[];
+      if(order.status==='cancelled'){const row=history.find(h=>h.status==='cancelled');if(row)triggerTimes.push(row.createdAt)}
+      for(const r of refunds)if(r.orderId===order.id)triggerTimes.push(r.occurredAt);
+      if(!triggerTimes.length)continue;
+      const triggerAt=triggerTimes.sort((a,b)=>a.getTime()-b.getTime())[0];
+      if(fromDate&&triggerAt<fromDate)continue;
+      if(toDate&&triggerAt>toDate)continue;
+      const reached=history.filter(h=>REACHED_PRODUCTION.includes(h.status)&&h.createdAt<triggerAt).sort((a,b)=>b.createdAt.getTime()-a.createdAt.getTime())[0];
+      if(!reached)continue;
+      results.push({orderId:order.id,orderNumber:order.orderNumber,customerName:order.customerName,cancelledOrRefundedAt:triggerAt,reachedStage:reached.status,reachedAt:reached.createdAt});
+    }
+    return results;
+  }
+  /** Production work logged with nobody clocked in to have done it — a report, never a block. */
+  async flagUnattendedJobs(date:string){
+    date=this.validDate(date);
+    const start=new Date(`${date}T00:00:00.000Z`),end=new Date(`${date}T23:59:59.999Z`);
+    const activity=(await this.jobActivity.find({where:{type:'stage_change'}})).filter(a=>a.createdAt>=start&&a.createdAt<=end);
+    if(!activity.length)return[];
+    const attendance=await this.attendance.find();
+    const covered=(at:Date)=>attendance.some(r=>r.clockIn<=at&&(!r.clockOut||r.clockOut>=at));
+    const uncovered=activity.filter(a=>!covered(a.createdAt));
+    if(!uncovered.length)return[];
+    const jobs=await this.jobs.find();
+    const jobMap=new Map(jobs.map(j=>[j.id,j]));
+    return uncovered.map(a=>({jobId:a.jobId,jobNumber:a.jobNumber,orderNumber:jobMap.get(a.jobId)?.orderNumber||'',occurredAt:a.createdAt,note:a.note}));
   }
   async listProductionJobActivity(jobId:string){
     const job=await this.jobs.findOneBy({id:jobId});if(!job)throw new NotFoundException('Production job not found');
@@ -191,10 +254,23 @@ export class OrderService implements OnApplicationBootstrap {
       job.dueDate=dto.dueDate??job.dueDate;
       job.internalNote=dto.internalNote??job.internalNote;
       await jobs.save(job);
+      let rollConsumptionGapNote='';
+      if(stageChanged&&dto.stage==='in_production'){
+        const alreadyConsumed=await manager.getRepository(MaterialConsumption).existsBy({jobId:job.id});
+        if(!alreadyConsumed){
+          const consumed=await computeRollConsumption(manager,job,actor);
+          if(!consumed){
+            // A roll exists for this service but none fit/had stock — flag the gap
+            // rather than letting it surface later as an unexplained physical-count shortfall.
+            const hasRollMaterial=await manager.getRepository(MaterialItem).existsBy({kind:'roll',serviceCode:job.serviceCode});
+            if(hasRollMaterial)rollConsumptionGapNote='No roll material had a fitting width in stock — log material use manually.';
+          }
+        }
+      }
       await manager.getRepository(ProductionJobActivity).save({
         jobId:job.id,orderId:job.orderId,jobNumber:job.jobNumber,
         type:stageChanged?'stage_change':'assignment',fromStage:previousStage,toStage:job.stage,
-        note:dto.internalNote||'',actor,
+        note:[dto.internalNote,rollConsumptionGapNote].filter(Boolean).join(' — ')||'',actor,
       });
       const status=stageChanged?this.orderStatusForStage(job.stage):null;
       if(!status)return {job,notification:null};
@@ -217,8 +293,8 @@ export class OrderService implements OnApplicationBootstrap {
     return result.job;
   }
 
-  async releaseOrderToProduction(orderId:string,actor='system'){
-    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor));
+  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string}){
+    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor,override));
     // Existing outbox records are committed with the jobs; retries do not queue them again.
     await this.notifications.deliverQueued(result.notificationIds);
     return result.jobs;
@@ -238,6 +314,8 @@ export class OrderService implements OnApplicationBootstrap {
   private assertEstimateMatches(input:{fingerprint?:string},quote:Awaited<ReturnType<OrderService['estimate']>>){
     if(input.fingerprint&&input.fingerprint!==quote.fingerprint)throw new BadRequestException('Estimate has changed. Please refresh the quote and try again.');
   }
+  // Same try/catch-to-BadRequestException shape already used by AnalyticsService/PeopleService for dateOnly().
+  private validDate(value:string){try{return dateOnly(value)}catch{throw new BadRequestException('Enter a valid calendar date')}}
   private checkoutNote(dto:CreateGuestOrderDto){
     return [
       dto.customerNote?.trim()||'',

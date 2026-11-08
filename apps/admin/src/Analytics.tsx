@@ -17,8 +17,41 @@ type Report = {
   topCustomers: { id: string; name: string; email: string; orderCount: number; lifetimeValuePesewas: number }[];
 };
 
+type MaterialRow = { id: string; name: string; unit: string; stockQuantity: number; lowStock: boolean };
+type LoggedLine = { materialName: string; totalQuantity: number; unit: string };
+type FlagCounts = { customPriced: number; lateCancellations: number; unattended: number; shortfalls: number };
+
 const money = (p: number) => 'GH₵ ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const SEVERITY_ICON = { critical: <AlertTriangle />, warning: <AlertTriangle />, opportunity: <Lightbulb />, good: <CheckCircle2 /> };
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+const today = () => iso(new Date());
+
+type PresetId = 'today' | 'week' | 'month' | 'year' | 'all';
+const PRESETS: { id: PresetId; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'week', label: 'This week' },
+  { id: 'month', label: 'This month' },
+  { id: 'year', label: 'This year' },
+  { id: 'all', label: 'All-time' },
+];
+// All-time is capped at overview()'s 366-day maximum — labelled "Last 12 months"
+// rather than claiming to show everything, since the shop's data may go back further.
+function presetRange(id: PresetId): { from: string; to: string } {
+  const now = new Date();
+  const to = today();
+  if (id === 'today') return { from: to, to };
+  if (id === 'week') {
+    const day = now.getUTCDay();
+    const monday = new Date(now);
+    monday.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
+    return { from: iso(monday), to };
+  }
+  if (id === 'month') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))), to };
+  if (id === 'year') return { from: iso(new Date(Date.UTC(now.getUTCFullYear(), 0, 1))), to };
+  // overview() treats `to` as inclusive (end = to + 1 day) when computing the
+  // span, so from = now-365d gives a 366-day span — the server's exact cap.
+  return { from: iso(new Date(now.getTime() - 365 * 86400000)), to };
+}
 
 /** Bars are drawn relative to the busiest day, so a quiet week still reads. */
 function RevenueChart({ data }: { data: Report['revenueByDay'] }) {
@@ -36,35 +69,54 @@ function RevenueChart({ data }: { data: Report['revenueByDay'] }) {
 export default function Analytics({ notify, go }: { notify: (t: string) => void; go: (v: string) => void }) {
   const [report, setReport] = useState<Report | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [days, setDays] = useState(30);
+  const [preset, setPreset] = useState<PresetId>('month');
+  const [materials, setMaterials] = useState<MaterialRow[]>([]);
+  const [logged, setLogged] = useState<LoggedLine[]>([]);
+  const [flags, setFlags] = useState<FlagCounts>({ customPriced: 0, lateCancellations: 0, unattended: 0, shortfalls: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function load(window = days) {
+  async function load(id = preset) {
     setLoading(true); setError('');
     try {
-      const [r, i] = await Promise.all([api.analytics<Report>(window), api.analyticsInsights<Insight[]>()]);
-      setReport(r); setInsights(i);
+      const { from, to } = presetRange(id);
+      const [r, i, mats, recon, cp, lc, uj, sf] = await Promise.all([
+        api.analytics<Report>(30, from, to),
+        api.analyticsInsights<Insight[]>(),
+        api.materials<MaterialRow[]>(),
+        api.materialReconciliation<{ loggedByMaterial: LoggedLine[] }>(from, to),
+        api.flagCustomPriced<unknown[]>({ from, to }),
+        api.flagLateCancellations<unknown[]>({ from, to }),
+        api.flagUnattendedJobs<unknown[]>(to),
+        api.flagMaterialShortfalls<unknown[]>(from, to),
+      ]);
+      setReport(r); setInsights(i); setMaterials(mats); setLogged(recon.loggedByMaterial);
+      setFlags({ customPriced: cp.length, lateCancellations: lc.length, unattended: uj.length, shortfalls: sf.length });
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not load analytics'); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="loading"><RefreshCw className="spin" /><strong>Crunching the numbers</strong></div>;
   if (error) return <div className="error-state" role="alert"><AlertTriangle /><h2>Could not load analytics</h2><p>{error}</p><button className="button primary" onClick={() => load()}>Try again</button></div>;
   if (!report) return null;
 
   const up = report.revenue.changePercent >= 0;
+  const periodLabel = preset === 'all' ? 'Last 12 months' : PRESETS.find(p => p.id === preset)!.label;
+  const stock = (materialName: string) => materials.find(m => m.name === materialName);
 
   return (
     <div className="view-enter">
+      <p className="muted" style={{ marginBottom: 12 }}>Showing: {periodLabel}</p>
       <section className="surface" style={{ marginBottom: 20 }}>
         <div className="section-title">
           <div><h2>What needs your attention</h2><p>Ranked by urgency, from what the system can actually see</p></div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <select value={days} onChange={e => { setDays(Number(e.target.value)); load(Number(e.target.value)); }}>
-              {[7, 30, 90, 365].map(d => <option key={d} value={d}>Last {d} days</option>)}
-            </select>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {PRESETS.map(p => (
+              <button key={p.id} className={preset === p.id ? 'button primary' : 'button ghost'} onClick={() => { setPreset(p.id); load(p.id); }}>
+                {p.label}
+              </button>
+            ))}
             <button className="button ghost" onClick={() => load()}><RefreshCw />Refresh</button>
           </div>
         </div>
@@ -104,6 +156,35 @@ export default function Analytics({ notify, go }: { notify: (t: string) => void;
       <section className="surface" style={{ marginBottom: 20 }}>
         <div className="section-title"><div><h2>Revenue by day</h2><p>Paid orders less refunds, over the last {report.windowDays} days</p></div></div>
         <div style={{ padding: '0 20px 16px' }}><RevenueChart data={report.revenueByDay} /></div>
+      </section>
+
+      <section className="surface" style={{ marginBottom: 20 }}>
+        <div className="section-title"><div><h2>Materials</h2><p>Used this period vs. currently remaining</p></div></div>
+        {logged.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>Material</th><th>Used</th><th>Remaining</th></tr></thead>
+            <tbody>{logged.map(l => {
+              const m = stock(l.materialName);
+              return (
+                <tr key={l.materialName}>
+                  <td><strong>{l.materialName}</strong></td>
+                  <td className="number">{l.totalQuantity} {l.unit}</td>
+                  <td className="number">{m ? `${m.stockQuantity} ${m.unit}` : '—'}{m?.lowStock && <small style={{ color: 'var(--color-red)', display: 'block' }}>Low stock</small>}</td>
+                </tr>
+              );
+            })}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No material consumption logged in this period.</p>}
+      </section>
+
+      <section className="surface" style={{ marginBottom: 20 }}>
+        <div className="section-title"><div><h2>Flags</h2><p>Every review flag for this period — open Controls → Flags for full detail</p></div></div>
+        <div className="stat-row">
+          <div className="surface stat"><span>Custom-priced items</span><strong>{flags.customPriced}</strong><button className="button ghost" onClick={() => go('controls')}>Open</button></div>
+          <div className="surface stat"><span>Late cancellations/refunds</span><strong>{flags.lateCancellations}</strong><button className="button ghost" onClick={() => go('controls')}>Open</button></div>
+          <div className="surface stat"><span>Unattended jobs</span><strong>{flags.unattended}</strong><button className="button ghost" onClick={() => go('controls')}>Open</button></div>
+          <div className="surface stat"><span>Material shortfalls</span><strong>{flags.shortfalls}</strong><button className="button ghost" onClick={() => go('controls')}>Open</button></div>
+        </div>
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(340px,1fr))', gap: 16 }}>

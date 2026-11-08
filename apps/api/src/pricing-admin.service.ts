@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, OnApplicationBootst
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { calculateLargeFormat } from '@vikipat/pricing-engine';
-import { SavePricingDraftDto, TestPricingDraftDto, UpdatePricingCopyDto } from './dto';
+import { CreateServiceRuleDto, SavePricingDraftDto, TestPricingDraftDto, UpdatePricingCopyDto } from './dto';
 import { AuditLog, PricingRuleDraft, ServicePriceRule, ServicePriceRuleVersion } from './entities';
 import { CANONICAL_MATERIALS } from './pricing-material-seed';
 import { PHOTOPAPER_SIZES, parseFixedSizes } from './material-sizes';
@@ -110,6 +110,26 @@ export class PricingAdminService implements OnApplicationBootstrap {
     const saved = await this.rules.save(rule);
     await this.audit(actor, 'update_copy', 'pricing_rule', id, dto);
     return saved;
+  }
+
+  /** Admin-created materials no longer require an engineer to edit the seed file. */
+  async create(dto: CreateServiceRuleDto, email: string) {
+    const code = dto.code || this.slugify(dto.name);
+    if (await this.rules.existsBy({ code })) throw new BadRequestException('A service with this code already exists');
+    const rule = await this.rules.save(this.rules.create({
+      code, name: dto.name, material: dto.name, calculator: 'large_format_area', version: 1,
+      employeeRatePesewas: dto.employeeRatePesewas, marketerRatePesewas: dto.marketerRatePesewas,
+      walkInRatePesewas: dto.walkInRatePesewas, onlineRatePesewas: dto.onlineRatePesewas,
+      designMinimumPesewas: dto.designMinimumPesewas, roundingMode: dto.roundingMode,
+      active: true, category: 'finish',
+    }));
+    await this.versions.save(this.versions.create(this.versionSnapshot(rule, email)));
+    await this.audit(email, 'create', 'service_price_rule', rule.id, { code, name: dto.name });
+    return rule;
+  }
+
+  private slugify(value: string) {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
 
   async list() {
