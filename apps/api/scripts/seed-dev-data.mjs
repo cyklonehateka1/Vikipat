@@ -404,6 +404,75 @@ async function seedStockAdjustments(products) {
   console.log(`[inventory] Adjusted stock on ${targets.length} product(s) to populate the inventory audit trail.`);
 }
 
+const ROLL_MATERIALS = [
+  { name: 'Flexy/Banner 3ft roll', unit: 'm', stockQuantity: 120, lowStockThreshold: 20, kind: 'roll', rollWidthValue: 3, rollWidthUnit: 'ft', serviceCode: 'flexy-banner' },
+  { name: 'Flexy/Banner 5ft roll', unit: 'm', stockQuantity: 80, lowStockThreshold: 15, kind: 'roll', rollWidthValue: 5, rollWidthUnit: 'ft', serviceCode: 'flexy-banner' },
+  { name: 'Flexy/Banner 10ft roll', unit: 'm', stockQuantity: 40, lowStockThreshold: 10, kind: 'roll', rollWidthValue: 10, rollWidthUnit: 'ft', serviceCode: 'flexy-banner' },
+  { name: 'SAV/Sticker 1.27m roll', unit: 'm', stockQuantity: 60, lowStockThreshold: 10, kind: 'roll', rollWidthValue: 50, rollWidthUnit: 'in', serviceCode: 'sav-sticker' },
+  { name: 'Blueback 3ft roll', unit: 'm', stockQuantity: 50, lowStockThreshold: 10, kind: 'roll', rollWidthValue: 3, rollWidthUnit: 'ft', serviceCode: 'blueback' },
+  { name: 'Reflective SAV 4ft roll', unit: 'm', stockQuantity: 15, lowStockThreshold: 10, kind: 'roll', rollWidthValue: 4, rollWidthUnit: 'ft', serviceCode: 'reflective-sav' },
+];
+
+const COUNT_MATERIALS = [
+  { name: 'DTF Film A4 sheets', unit: 'sheet', stockQuantity: 500, lowStockThreshold: 100, kind: 'count' },
+  { name: 'Sublimation Paper A3', unit: 'sheet', stockQuantity: 300, lowStockThreshold: 50, kind: 'count' },
+  { name: 'Plain Cotton T-Shirts (blank)', unit: 'piece', stockQuantity: 200, lowStockThreshold: 40, kind: 'count' },
+  { name: 'Ceramic Mug Blanks', unit: 'piece', stockQuantity: 150, lowStockThreshold: 30, kind: 'count' },
+  { name: 'Lamination Pouches A4', unit: 'pouch', stockQuantity: 8, lowStockThreshold: 50, kind: 'count' },
+];
+
+async function ensureMaterials() {
+  const { data: existing } = await api('/admin/materials');
+  const byName = new Map(existing.map((m) => [m.name, m]));
+  let createdCount = 0;
+  for (const material of [...ROLL_MATERIALS, ...COUNT_MATERIALS]) {
+    if (byName.has(material.name)) continue;
+    const { status } = await api('/admin/materials', { method: 'POST', body: material, allow4xx: true });
+    if (status === 201 || status === 200) createdCount += 1;
+  }
+  console.log(`[materials] ${createdCount} new material item(s) created.`);
+  const { data: full } = await api('/admin/materials');
+  return full;
+}
+
+async function seedMaterialPhysicalCounts(materials) {
+  // A mix: counts right at/above tolerance (no flag), and a couple
+  // deliberately below tolerance so the Flags tab has something to show.
+  const byName = (name) => materials.find((m) => m.name === name);
+  const plan = [
+    { name: 'Flexy/Banner 3ft roll', ratio: 0.98 },
+    { name: 'Flexy/Banner 5ft roll', ratio: 0.70, note: 'Short by a fair bit - checking for an unlogged job.' },
+    { name: 'DTF Film A4 sheets', ratio: 0.95 },
+    { name: 'Lamination Pouches A4', ratio: 0.5, note: 'Pouches going missing faster than logged usage explains.' },
+    { name: 'Plain Cotton T-Shirts (blank)', ratio: 1.0 },
+  ];
+  let recorded = 0;
+  for (const entry of plan) {
+    const material = byName(entry.name);
+    if (!material) continue;
+    const measuredQuantity = Math.round(material.stockQuantity * entry.ratio * 100) / 100;
+    const { status } = await api(`/admin/materials/${material.id}/count`, {
+      method: 'POST',
+      body: { measuredQuantity, note: entry.note },
+      allow4xx: true,
+    });
+    if (status === 201 || status === 200) recorded += 1;
+  }
+  console.log(`[materials] Recorded ${recorded} physical count(s) (some below tolerance, to populate the shortfall flag).`);
+}
+
+async function seedProductCount(products) {
+  const target = products.find((p) => p.stock > 0);
+  if (!target) return;
+  const measuredQuantity = Math.max(0, target.stock - Math.ceil(target.stock * 0.15));
+  await api(`/admin/products/${target.id}/count`, {
+    method: 'POST',
+    body: { measuredQuantity, note: 'Physical stocktake - short vs. recorded count.' },
+    allow4xx: true,
+  });
+  console.log(`[materials] Recorded a product physical count on "${target.name}" (below tolerance).`);
+}
+
 async function seedSettings() {
   await api('/admin/settings', {
     method: 'PATCH',
@@ -434,6 +503,9 @@ async function main() {
   const serviceCodes = await fetchServiceCodes();
   await seedOrders(products, serviceCodes);
   await seedProductionPipeline();
+  const materials = await ensureMaterials();
+  await seedMaterialPhysicalCounts(materials);
+  await seedProductCount(products);
   await seedPricingDrafts();
   await seedStockAdjustments(products);
   await seedSettings();
@@ -441,7 +513,9 @@ async function main() {
   console.log('\nDone. The database now has staff across every role, a full product catalogue with');
   console.log('low-stock/out-of-stock/draft products, quotes in every status, online + walk-in +');
   console.log('salesperson orders, production jobs sitting in every workflow stage, pricing drafts');
-  console.log('pending publish plus a published version-history entry, and inventory adjustments.');
+  console.log('pending publish plus a published version-history entry, inventory adjustments, roll');
+  console.log('and count material items, and physical counts (some below tolerance) so the Controls');
+  console.log('> Flags tab and the owner Analytics dashboard both have real data to show.');
 }
 
 main().catch((err) => {

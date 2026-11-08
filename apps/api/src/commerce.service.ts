@@ -111,7 +111,9 @@ export class CommerceService {
 @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard)
 export class CommerceController {
   constructor(private commerce:CommerceService,private notifications:NotificationService){}
-  @Get('policies') @UseGuards(AdminOnlyGuard) policies(){return this.commerce.policies();}
+  // Read-only: the order detail screen always fetches this for its refund-policy
+  // blurb, so any orders.manage holder needs it too, not just admin.
+  @Get('policies') policies(@Req() r:Request){if(r.user!.role!=='admin'&&!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.policies();}
   @Patch('policies') @UseGuards(AdminOnlyGuard) save(@Body() dto:PolicyDto,@Req() r:Request){return this.commerce.savePolicies(dto,r.user!.email);}
   @Get('orders/:id') detail(@Param('id') id:string,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.detail(id);}
   @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('payments.record'))throw new ForbiddenException('Payment recording permission required');return this.commerce.payment(id,dto,r.user!.email);}
