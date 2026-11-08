@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 @Entity('users') export class User { @PrimaryGeneratedColumn('uuid') id!:string; @Column({unique:true}) email!:string; @Column() passwordHash!:string; @Column({default:true}) mustChangePassword!:boolean; @Column({default:'Admin'}) name!:string; @Column({default:'admin'}) role!:string; @Column({default:0}) tokenVersion!:number; @Column({default:true}) isActive!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
-@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) price!:number; /* cedis, 2 decimal places */ @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
+@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) price!:number; /* cedis, 2 decimal places */ @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @Column('decimal',{precision:5,scale:2,default:98,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) tolerancePercent!:number; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('stock_activity') export class StockActivity { @PrimaryGeneratedColumn('uuid') id!:string; @Column() productId!:string; @Column() productName!:string; @Column('integer') previousStock!:number; @Column('integer') newStock!:number; @Column() reason!:string; @Column() actorEmail!:string; @CreateDateColumn() createdAt!:Date; }
 @Entity('store_settings') export class StoreSettings { @PrimaryGeneratedColumn('uuid') id!:string; @Column({default:'Vikipat'}) businessName!:string; @Column({default:'024 236 6523'}) phone!:string; @Column({default:'Mallam–Gbawe Road, opposite Zen Filling Station, Accra'}) location!:string; @Column({default:'GHS'}) currency!:string; @Column({default:'Printing press and branding solutions for businesses, events and everyday people.'}) description!:string; @Column({default:false}) whatsappNotificationsEnabled!:boolean; @Column({default:'233555110844'}) whatsappBusinessNumber!:string; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('audit_log') export class AuditLog { @PrimaryGeneratedColumn('uuid') id!:string; @Column() action!:string; @Column() entity!:string; @Column({default:''}) entityId!:string; @Column() actorEmail!:string; @Column({type:'text',default:'{}'}) details!:string; @CreateDateColumn() createdAt!:Date; }
@@ -395,4 +395,74 @@ export class BusinessPolicy {
   @Column({primary: true}) id!: string;
   @Column('text') value!: string;
   @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** One row per order released into production while unpaid: who allowed it, and why. */
+@Entity('release_overrides')
+export class ReleaseOverride {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() orderId!: string;
+  @Column() orderNumber!: string;
+  @Column('text') reason!: string;
+  @Column() actorEmail!: string;
+  @CreateDateColumn() createdAt!: Date;
+}
+
+/** A raw consumable (vinyl, ink, paper) tracked separately from finished-goods Product stock. */
+@Entity('material_items')
+export class MaterialItem {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() name!: string;
+  @Column() unit!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) stockQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) lowStockThreshold!: number;
+  @Column({default:'count'}) kind!: 'roll' | 'count';
+  @Column('decimal',{precision:12,scale:4,nullable:true,transformer:{to:(v:number|null)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) rollWidthMetres!: number | null;
+  @Column({type:'varchar',nullable:true}) serviceCode!: string | null;
+  @Column('decimal',{precision:5,scale:2,default:90,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) tolerancePercent!: number;
+  @CreateDateColumn() createdAt!: Date;
+  @UpdateDateColumn() updatedAt!: Date;
+}
+
+/** Mirrors StockActivity for material_items instead of products. */
+@Entity('material_stock_activity')
+export class MaterialStockActivity {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() materialItemId!: string;
+  @Column() materialName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) previousQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) newQuantity!: number;
+  @Column() reason!: string;
+  @Column() actorEmail!: string;
+  @CreateDateColumn() createdAt!: Date;
+}
+
+/** One row per (job, material) consumption event, logged by staff working the job. */
+@Entity('material_consumption')
+export class MaterialConsumption {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Index() @Column() jobId!: string;
+  @Column() materialItemId!: string;
+  @Column() materialName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) quantity!: number;
+  @Column() unit!: string;
+  @Column() recordedBy!: string;
+  @CreateDateColumn() createdAt!: Date;
+}
+
+/** Ground-truth physical count, frozen against the target's tolerance at record time. */
+@Entity('material_physical_counts')
+@Index(['targetKind', 'targetId'])
+export class MaterialPhysicalCount {
+  @PrimaryGeneratedColumn('uuid') id!: string;
+  @Column() targetKind!: 'material_item' | 'product';
+  @Column() targetId!: string;
+  @Column() targetName!: string;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) measuredQuantity!: number;
+  @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) expectedQuantity!: number;
+  @Column('decimal',{precision:5,scale:2,nullable:true,transformer:{to:(v:number|null)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) accountedForPercent!: number | null;
+  @Column('decimal',{precision:5,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) toleranceAtRecordPercent!: number;
+  @Column() recordedBy!: string;
+  @CreateDateColumn() recordedAt!: Date;
+  @Column({type:'varchar',nullable:true}) note!: string | null;
 }

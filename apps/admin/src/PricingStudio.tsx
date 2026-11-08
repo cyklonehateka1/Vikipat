@@ -18,6 +18,32 @@ const when=(value:string)=>new Intl.DateTimeFormat('en-GH',{dateStyle:'medium',t
 export default function PricingStudio({rules,onReload,notify}:Props){
   const[selectedId,setSelectedId]=useState(rules[0]?.id||'');
   const selected=rules.find(rule=>rule.id===selectedId)||rules[0];
+  const[addingService,setAddingService]=useState(false);
+  const[newService,setNewService]=useState({name:'',employee:'',marketer:'',walkIn:'',online:'',designMinimum:'100.00',roundingMode:'nearest_cedi' as PricingRule['roundingMode']});
+  const[serviceBusy,setServiceBusy]=useState(false);
+  const[serviceError,setServiceError]=useState('');
+  async function addService(e:React.FormEvent){
+    e.preventDefault();setServiceBusy(true);setServiceError('');
+    try{
+      const created=await api.createPricingRule<PricingRule>({name:newService.name,employeeRatePesewas:pesewas(newService.employee),marketerRatePesewas:pesewas(newService.marketer),walkInRatePesewas:pesewas(newService.walkIn),onlineRatePesewas:pesewas(newService.online),designMinimumPesewas:pesewas(newService.designMinimum),roundingMode:newService.roundingMode});
+      setNewService({name:'',employee:'',marketer:'',walkIn:'',online:'',designMinimum:'100.00',roundingMode:'nearest_cedi'});
+      setAddingService(false);
+      await onReload();
+      setSelectedId(created.id);
+      notify('Service created');
+    }catch(e){setServiceError(errorText(e))}finally{setServiceBusy(false)}
+  }
+  const newServiceToggle=<button type="button" className="button ghost" onClick={()=>setAddingService(!addingService)}><Plus/>{addingService?'Close':'New service'}</button>;
+  const newServiceForm=<>
+    {serviceError&&<div className="alert" role="alert">{serviceError}</div>}
+    {addingService&&<form className="form-grid three" onSubmit={addService} style={{margin:'12px 0'}}>
+      <label>Name<input required value={newService.name} onChange={e=>setNewService({...newService,name:e.target.value})}/></label>
+      {(['employee','marketer','walkIn','online'] as const).map(key=><label key={key}>{key} rate (GH₵/ft²)<input required type="number" min="0" step="0.01" value={newService[key]} onChange={e=>setNewService({...newService,[key]:e.target.value})}/></label>)}
+      <label>Design minimum<input required type="number" min="100" step="0.01" value={newService.designMinimum} onChange={e=>setNewService({...newService,designMinimum:e.target.value})}/></label>
+      <label>Rounding<select value={newService.roundingMode} onChange={e=>setNewService({...newService,roundingMode:e.target.value as PricingRule['roundingMode']})}><option value="nearest_cedi">Nearest cedi</option><option value="up_to_cedi">Always round up</option></select></label>
+      <button className="button primary" disabled={serviceBusy} type="submit">{serviceBusy?'Saving…':'Save service'}</button>
+    </form>}
+  </>;
   const[form,setForm]=useState({employee:'',marketer:'',walkIn:'',online:'',designMinimum:'100.00',roundingMode:'nearest_cedi' as PricingRule['roundingMode'],changeNote:''});
   const[test,setTest]=useState({width:'3',height:'3',unit:'ft',quantity:'1',priceBook:'online',needsDesign:false});
   const[result,setResult]=useState<PricingResult|null>(null);
@@ -38,7 +64,7 @@ export default function PricingStudio({rules,onReload,notify}:Props){
     setSizes({allowCustomSize:selected.allowCustomSize!==false,rows:(selected.fixedSizes||[]).map(size=>({label:size.label,width:String(size.width),height:String(size.height),unit:size.unit}))});
   },[selected?.id,selected?.updatedAt]);
 
-  if(!selected)return <section className="surface pricing-empty"><Calculator/><h2>No pricing rules</h2><p>Published service rates will appear here.</p></section>;
+  if(!selected)return <div className="view-enter"><section className="surface"><div className="section-title"><div><h2>Print services</h2><p>No services yet</p></div>{newServiceToggle}</div>{newServiceForm}</section><section className="surface pricing-empty"><Calculator/><h2>No pricing rules</h2><p>Published service rates will appear here.</p></section></div>;
   const payload=()=>({employeeRatePesewas:pesewas(form.employee),marketerRatePesewas:pesewas(form.marketer),walkInRatePesewas:pesewas(form.walkIn),onlineRatePesewas:pesewas(form.online),designMinimumPesewas:pesewas(form.designMinimum),roundingMode:form.roundingMode,changeNote:form.changeNote});
   async function save(){setBusy('save');setError('');try{await api.savePricingDraft(selected.id,payload());await onReload();notify('Pricing draft saved')}catch(e){setError(errorText(e))}finally{setBusy('')}}
   async function runTest(){setBusy('test');setError('');try{const draft=await api.savePricingDraft<PricingDraft>(selected.id,payload());await onReload();setResult(await api.testPricingDraft<PricingResult>(draft.id,{width:Number(test.width),height:Number(test.height),unit:test.unit,quantity:Number(test.quantity),priceBook:test.priceBook,needsDesign:test.needsDesign}))}catch(e){setError(errorText(e))}finally{setBusy('')}}
@@ -49,7 +75,7 @@ export default function PricingStudio({rules,onReload,notify}:Props){
   async function publish(){if(!selected.draft)return;setBusy('publish');setError('');try{await api.publishPricingDraft(selected.draft.id);await onReload();notify('New pricing version published')}catch(e){setError(errorText(e))}finally{setBusy('')}}
 
   return <section className="pricing-studio view-enter">
-    <aside className="pricing-index surface"><div className="section-title"><div><h2>Large format</h2><p>{rules.length} published materials</p></div></div><div className="pricing-rule-list">{rules.map(rule=><button type="button" key={rule.id} className={selected.id===rule.id?'active':''} onClick={()=>setSelectedId(rule.id)}><span><strong>{rule.name}</strong><small>Version {rule.version} · GH₵ {cedis(rule.onlineRatePesewas)}/ft²{rule.allowCustomSize===false?' · Set sizes':''}</small></span>{rule.draft&&<b>Draft</b>}<ChevronRight/></button>)}</div></aside>
+    <aside className="pricing-index surface"><div className="section-title"><div><h2>Large format</h2><p>{rules.length} published materials</p></div>{newServiceToggle}</div>{newServiceForm}<div className="pricing-rule-list">{rules.map(rule=><button type="button" key={rule.id} className={selected.id===rule.id?'active':''} onClick={()=>setSelectedId(rule.id)}><span><strong>{rule.name}</strong><small>Version {rule.version} · GH₵ {cedis(rule.onlineRatePesewas)}/ft²{rule.allowCustomSize===false?' · Set sizes':''}</small></span>{rule.draft&&<b>Draft</b>}<ChevronRight/></button>)}</div></aside>
     <div className="pricing-editor surface"><header className="pricing-editor-head"><div><span className="status active"><i/>Published version {selected.version}</span><h2>{selected.name}</h2><p>Changes remain private until you test and publish the draft.</p></div><div className="pricing-version"><History/><span>Updated<strong>{when(selected.updatedAt)}</strong></span></div></header>{error&&<div className="alert" role="alert">{error}</div>}
       <div className="pricing-rate-grid">{([['employee','Employee'],['marketer','Marketer'],['walkIn','Walk-in'],['online','Online']] as const).map(([key,label])=><label key={key}>{label} rate <span>GH₵ per ft²</span><input type="number" min="0" step="0.01" value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/></label>)}</div>
       <div className="pricing-policy"><label>Design minimum <span>Starts from GH₵100 and requires review</span><input type="number" min="100" step="0.01" value={form.designMinimum} onChange={e=>setForm({...form,designMinimum:e.target.value})}/></label><label>Rounding policy <span>Every job total is a whole number of cedis</span><select value={form.roundingMode} onChange={e=>setForm({...form,roundingMode:e.target.value as PricingRule['roundingMode']})}><option value="nearest_cedi">Nearest cedi</option><option value="up_to_cedi">Always round up</option></select></label></div>

@@ -1,10 +1,10 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { lockedFindOne } from './db';
-import { NotificationOutbox, Order, OrderItem, OrderStatusHistory, ProductionJob, ProductionJobActivity, StoreSettings } from './entities';
+import { NotificationOutbox, Order, OrderItem, OrderStatusHistory, ProductionJob, ProductionJobActivity, ReleaseOverride, StoreSettings } from './entities';
 
 // The caller must own a transaction. All release entry points take this order lock.
-export async function releaseProductionJobs(manager: EntityManager, orderId: string, actor: string) {
+export async function releaseProductionJobs(manager: EntityManager, orderId: string, actor: string, override?: { reason: string }) {
   const orders = manager.getRepository(Order);
   const order = await lockedFindOne(manager, Order, {id: orderId});
   if (!order) throw new NotFoundException('Order not found');
@@ -20,7 +20,10 @@ export async function releaseProductionJobs(manager: EntityManager, orderId: str
   }
   if (['cancelled', 'completed', 'on_hold'].includes(order.status)) throw new BadRequestException('This order cannot be released in its current status');
   if (order.requiresReview) throw new BadRequestException('Order pricing must be reviewed before production release');
-  if (order.paymentStatus !== 'paid' && !['walk_in', 'salesperson'].includes(order.source)) throw new BadRequestException('Online orders must be paid before production release');
+  if (order.paymentStatus !== 'paid') {
+    if (!override?.reason) throw new BadRequestException('Payment must be recorded before production release');
+    await manager.getRepository(ReleaseOverride).save(manager.getRepository(ReleaseOverride).create({orderId, orderNumber: order.orderNumber, reason: override.reason, actorEmail: actor}));
+  }
   if (!items.length) throw new BadRequestException('An order must contain items before production release');
 
   // Validate all specifications before starting writes; never silently price/release corrupt work.
@@ -40,8 +43,9 @@ export async function releaseProductionJobs(manager: EntityManager, orderId: str
   });
   const created = await jobs.save(drafts);
   const activity = manager.getRepository(ProductionJobActivity);
+  const releaseNote = 'Production job released from order intake.' + (override?.reason ? ` (released unpaid: ${override.reason})` : '');
   await activity.save(created.map(job => activity.create({jobId: job.id, orderId, jobNumber: job.jobNumber,
-    type: 'system', toStage: job.stage, note: 'Production job released from order intake.', actor})));
+    type: 'system', toStage: job.stage, note: releaseNote, actor})));
   order.status = created.some(job => job.stage === 'artwork_review') ? 'artwork_review' : 'ready_for_production';
   await orders.save(order);
   const note = order.status === 'artwork_review' ? 'Artwork/design review is required before production.' : 'Order released into production intake.';
