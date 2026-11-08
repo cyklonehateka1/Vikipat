@@ -26,11 +26,11 @@ export class CustomerOrderController {
 @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,OperationsGuard)
 export class AdminOrderController {
   constructor(private orders:OrderService,private commerce:CommerceService,private materials:MaterialService){}
-  @Get() @UseGuards(AdminOnlyGuard) list(){return this.orders.list()}
+  @Get() list(@Req() request:Request){if(!request.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.orders.list()}
   @Get('production/intake') intake(@Req() request:Request){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');return this.orders.listProductionIntake()}
   @Get('production/jobs') jobs(@Req() request:Request){return this.orders.listProductionJobs(request.user!.role)}
-  @Post('estimate') @UseGuards(AdminOnlyGuard) estimate(@Body() dto:CreateGuestOrderDto){return this.orders.estimateStaff(dto)}
-  @Post() @UseGuards(AdminOnlyGuard) create(@Body() dto:CreateGuestOrderDto){return this.orders.createGuest(dto,dto.source==='salesperson'?'salesperson':'walk_in')}
+  @Post('estimate') estimate(@Req() request:Request,@Body() dto:CreateGuestOrderDto){if(!request.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.orders.estimateStaff(dto)}
+  @Post() create(@Req() request:Request,@Body() dto:CreateGuestOrderDto){if(!request.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.orders.createGuest(dto,dto.source==='salesperson'?'salesperson':'walk_in')}
   @Post(':id/release') release(@Req() request:Request,@Param('id') id:string,@Body() dto:ReleaseOrderDto){if(!request.user!.permissions.includes('jobs.release'))throw new ForbiddenException('Job release permission required');if(dto.overrideReason&&!request.user!.permissions.includes('jobs.release_unpaid'))throw new ForbiddenException('Permission to release an unpaid order is required');return this.orders.releaseOrderToProduction(id,request.user!.email,dto.overrideReason?{reason:dto.overrideReason}:undefined)}
   @Post(':id/refund') @UseGuards(AdminOnlyGuard) refund(@Req() request:Request,@Param('id') id:string,@Body() dto:RecordRefundDto){return this.commerce.refund(id,dto,request.user!.email)}
   @Patch(':id/status') @UseGuards(AdminOnlyGuard) update(@Req() request:Request,@Param('id') id:string,@Body() dto:UpdateOrderStatusDto){return this.orders.updateStatus(id,dto.status,dto.note||'',dto.customerVisible!==false,request.user!.email)}

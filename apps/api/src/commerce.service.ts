@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
 import { Request } from 'express';
@@ -108,15 +108,15 @@ export class CommerceService {
   }
 }
 @Controller('admin/commerce')
-@UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard)
+@UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard)
 export class CommerceController {
   constructor(private commerce:CommerceService,private notifications:NotificationService){}
-  @Get('policies') policies(){return this.commerce.policies();}
-  @Patch('policies') save(@Body() dto:PolicyDto,@Req() r:Request){return this.commerce.savePolicies(dto,r.user!.email);}
-  @Get('orders/:id') detail(@Param('id') id:string){return this.commerce.detail(id);}
-  @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){return this.commerce.payment(id,dto,r.user!.email);}
-  @Post('orders/:id/refunds') refund(@Param('id') id:string,@Body() dto:RecordRefundDto,@Req() r:Request){return this.commerce.refund(id,dto,r.user!.email);}
-  @Post('quotes/:id/email') email(@Param('id') id:string,@Body() dto:EmailDto,@Req() r:Request){return this.commerce.emailQuote(id,dto,r.user!.email);}
-  @Get('notifications') messages(){return this.notifications.list();}
-  @Post('notifications/:id/retry') retry(@Param('id') id:string){return this.notifications.retry(id);}
+  @Get('policies') @UseGuards(AdminOnlyGuard) policies(){return this.commerce.policies();}
+  @Patch('policies') @UseGuards(AdminOnlyGuard) save(@Body() dto:PolicyDto,@Req() r:Request){return this.commerce.savePolicies(dto,r.user!.email);}
+  @Get('orders/:id') detail(@Param('id') id:string,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.detail(id);}
+  @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.payment(id,dto,r.user!.email);}
+  @Post('orders/:id/refunds') @UseGuards(AdminOnlyGuard) refund(@Param('id') id:string,@Body() dto:RecordRefundDto,@Req() r:Request){return this.commerce.refund(id,dto,r.user!.email);}
+  @Post('quotes/:id/email') @UseGuards(AdminOnlyGuard) email(@Param('id') id:string,@Body() dto:EmailDto,@Req() r:Request){return this.commerce.emailQuote(id,dto,r.user!.email);}
+  @Get('notifications') @UseGuards(AdminOnlyGuard) messages(){return this.notifications.list();}
+  @Post('notifications/:id/retry') @UseGuards(AdminOnlyGuard) retry(@Param('id') id:string){return this.notifications.retry(id);}
 }

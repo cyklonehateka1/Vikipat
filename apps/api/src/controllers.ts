@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
@@ -27,24 +27,25 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Post('change-password') @UseGuards(AuthGuard,CsrfGuard) async changePassword(@Req() request:Request,@Body() dto:ChangePasswordDto,@Res({passthrough:true}) response:Response){const result=await this.auth.changePassword(request.user!.id,request.user!.email,dto.currentPassword,dto.newPassword);response.clearCookie('admin_session',{...cookieOptions,maxAge:0});return result}
 }
 
-@Controller('admin') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard,AdminOnlyGuard) export class AdminController {
+@Controller('admin') @UseGuards(AuthGuard,PasswordChangedGuard,CsrfGuard) export class AdminController {
   constructor(private admin:AdminService,private storage:StorageService,private materials:MaterialService){}
-  @Get('products') products(@Query('q') q?:string){return this.admin.list(q)}
-  @Get('products/:id') product(@Param('id') id:string){return this.admin.one(id)}
-  @Post('products') create(@Req() req:Request,@Body() dto:CreateProductDto){return this.admin.create(dto,req.user!.email)}
-  @Patch('products/:id') update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateProductDto){return this.admin.update(id,dto,req.user!.email)}
-  @Delete('products/:id') remove(@Req() req:Request,@Param('id') id:string){return this.admin.remove(id,req.user!.email)}
-  @Post('products/:id/stock') adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustStockDto){return this.admin.adjust(id,dto,req.user!.email)}
-  @Post('products/:id/count') recordProductCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note)}
-  @Get('stock-activity') stock(){return this.admin.stockActivity()}
-  @Get('dashboard') dashboard(){return this.admin.summary()}
-  @Get('insights') insights(){return this.admin.insights()}
-  @Get('activity') activity(){return this.admin.activity()}
-  @Get('settings') settings(){return this.admin.getSettings()}
-  @Patch('settings') updateSettings(@Req() req:Request,@Body() dto:UpdateSettingsDto){return this.admin.updateSettings(dto,req.user!.email)}
-  @Get('quotes') quotes(){return this.admin.listQuotes()}
-  @Patch('quotes/:id/status') updateQuote(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateQuoteStatusDto){return this.admin.updateQuoteStatus(id,dto.status,req.user!.email)}
-  @Post('media') @UseInterceptors(FileInterceptor('file',imageUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return this.storage.upload(file,{prefix:'catalogue',kind:'image'})}
+  // Read-only: also used by staff picking shop-product line items for a counter order.
+  @Get('products') products(@Req() req:Request,@Query('q') q?:string){if(req.user!.role!=='admin'&&!req.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.admin.list(q)}
+  @Get('products/:id') product(@Req() req:Request,@Param('id') id:string){if(req.user!.role!=='admin'&&!req.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.admin.one(id)}
+  @Post('products') @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateProductDto){return this.admin.create(dto,req.user!.email)}
+  @Patch('products/:id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateProductDto){return this.admin.update(id,dto,req.user!.email)}
+  @Delete('products/:id') @UseGuards(AdminOnlyGuard) remove(@Req() req:Request,@Param('id') id:string){return this.admin.remove(id,req.user!.email)}
+  @Post('products/:id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustStockDto){return this.admin.adjust(id,dto,req.user!.email)}
+  @Post('products/:id/count') @UseGuards(AdminOnlyGuard) recordProductCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note)}
+  @Get('stock-activity') @UseGuards(AdminOnlyGuard) stock(){return this.admin.stockActivity()}
+  @Get('dashboard') @UseGuards(AdminOnlyGuard) dashboard(){return this.admin.summary()}
+  @Get('insights') @UseGuards(AdminOnlyGuard) insights(){return this.admin.insights()}
+  @Get('activity') @UseGuards(AdminOnlyGuard) activity(){return this.admin.activity()}
+  @Get('settings') @UseGuards(AdminOnlyGuard) settings(){return this.admin.getSettings()}
+  @Patch('settings') @UseGuards(AdminOnlyGuard) updateSettings(@Req() req:Request,@Body() dto:UpdateSettingsDto){return this.admin.updateSettings(dto,req.user!.email)}
+  @Get('quotes') @UseGuards(AdminOnlyGuard) quotes(){return this.admin.listQuotes()}
+  @Patch('quotes/:id/status') @UseGuards(AdminOnlyGuard) updateQuote(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateQuoteStatusDto){return this.admin.updateQuoteStatus(id,dto.status,req.user!.email)}
+  @Post('media') @UseGuards(AdminOnlyGuard) @UseInterceptors(FileInterceptor('file',imageUpload)) upload(@UploadedFile() file:Express.Multer.File){if(!file)throw new BadRequestException('A valid JPG, PNG or WebP image is required');return this.storage.upload(file,{prefix:'catalogue',kind:'image'})}
 }
 
 // list/one are read by any operations staff (the job panel's material picker needs them);
