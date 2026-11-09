@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Injectable, NotFoundException, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, IsUUID, Length, Max, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { Request } from 'express';
 import { AuditLog, BusinessPolicy, NotificationOutbox, Order, OrderItem, OrderRefund, OrderStatusHistory, PaymentTransaction, ProductionJob, ProductionJobActivity, QuoteRequest } from './entities';
 import { lockedFindOne } from './db';
@@ -39,6 +40,14 @@ export class RecordRefundDto extends RecordPaymentDto {
 export class EmailDto {
   @IsString() @Length(3,160) subject!: string;
   @IsString() @Length(3,6000) text!: string;
+}
+class ConfirmQuoteItemDto {
+  @IsUUID() id!: string;
+  @IsInt() @Min(1) @Max(100000000) unitPricePesewas!: number;
+}
+export class ConfirmQuoteDto {
+  @IsString() @Length(3,300) reason!: string;
+  @ValidateNested({ each: true }) @Type(() => ConfirmQuoteItemDto) @ArrayMinSize(1) @ArrayMaxSize(30) items!: ConfirmQuoteItemDto[];
 }
 @Injectable()
 export class CommerceService {
@@ -101,6 +110,37 @@ export class CommerceService {
       return refund;
     });
   }
+  // A custom-priced item (or a design-review item) leaves an order at
+  // requiresReview=true, which blocks payment and release — until this
+  // runs, nothing clears that flag. Sets each named item's agreed price,
+  // recomputes the order total from every item, and puts the order back on
+  // the normal awaiting-payment path.
+  async confirmQuote(id:string,dto:ConfirmQuoteDto,actor:string) {
+    return this.db.transaction(async m=>{
+      const order=await lockedFindOne(m,Order,{id});if(!order)throw new NotFoundException('Order not found');
+      if(!order.requiresReview)throw new BadRequestException('This order does not need a pricing review');
+      const items=m.getRepository(OrderItem);
+      const orderItems=await items.findBy({orderId:id});
+      for(const line of dto.items){
+        const item=orderItems.find(i=>i.id===line.id);
+        if(!item)throw new BadRequestException(`Item ${line.id} does not belong to this order`);
+        item.unitPricePesewas=line.unitPricePesewas;
+        item.totalPesewas=line.unitPricePesewas*item.quantity;
+        await items.save(item);
+      }
+      const refreshed=await items.findBy({orderId:id});
+      if(refreshed.some(i=>!i.unitPricePesewas))throw new BadRequestException('Every item needs an agreed price before this order can proceed');
+      order.subtotalPesewas=refreshed.reduce((sum,i)=>sum+i.totalPesewas,0);
+      order.totalPesewas=order.subtotalPesewas+order.designFeePesewas+order.deliveryFeePesewas;
+      order.requiresReview=false;
+      order.status='awaiting_payment';
+      order.paymentStatus='pending';
+      await m.getRepository(Order).save(order);
+      await m.getRepository(AuditLog).save({actorEmail:actor,action:'quote_confirmed',entity:'order',entityId:id,details:JSON.stringify(dto)});
+      await m.getRepository(OrderStatusHistory).save({orderId:id,status:order.status,actor,customerVisible:true,note:`Pricing confirmed: ${dto.reason}`});
+      return order;
+    });
+  }
   async emailQuote(id:string,dto:EmailDto,actor:string) {
     const q=await this.db.getRepository(QuoteRequest).findOneBy({id});if(!q?.email)throw new BadRequestException('This quote has no email address');
     const record=await this.db.transaction(async m=>{const row=await m.getRepository(NotificationOutbox).save({orderId:'',channel:'email',recipient:q.email,template:'quote_reply',payload:JSON.stringify(dto)});q.status='Quoted';await m.getRepository(QuoteRequest).save(q);await m.getRepository(AuditLog).save({actorEmail:actor,action:'quote_email_queued',entity:'quote',entityId:id,details:JSON.stringify({notificationId:row.id})});return row;});
@@ -118,6 +158,7 @@ export class CommerceController {
   @Get('orders/:id') detail(@Param('id') id:string,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.detail(id);}
   @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('payments.record'))throw new ForbiddenException('Payment recording permission required');return this.commerce.payment(id,dto,r.user!.email);}
   @Post('orders/:id/refunds') @UseGuards(AdminOnlyGuard) refund(@Param('id') id:string,@Body() dto:RecordRefundDto,@Req() r:Request){return this.commerce.refund(id,dto,r.user!.email);}
+  @Patch('orders/:id/quote') confirmQuote(@Param('id') id:string,@Body() dto:ConfirmQuoteDto,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.confirmQuote(id,dto,r.user!.email);}
   @Post('quotes/:id/email') @UseGuards(AdminOnlyGuard) email(@Param('id') id:string,@Body() dto:EmailDto,@Req() r:Request){return this.commerce.emailQuote(id,dto,r.user!.email);}
   @Get('notifications') @UseGuards(AdminOnlyGuard) messages(){return this.notifications.list();}
   @Post('notifications/:id/retry') @UseGuards(AdminOnlyGuard) retry(@Param('id') id:string){return this.notifications.retry(id);}
