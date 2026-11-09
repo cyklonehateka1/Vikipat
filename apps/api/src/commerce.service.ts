@@ -118,7 +118,11 @@ export class CommerceService {
   async confirmQuote(id:string,dto:ConfirmQuoteDto,actor:string) {
     return this.db.transaction(async m=>{
       const order=await lockedFindOne(m,Order,{id});if(!order)throw new NotFoundException('Order not found');
-      if(!order.requiresReview)throw new BadRequestException('This order does not need a pricing review');
+      // Checking requiresReview alone isn't enough — an admin can cancel a
+      // pending_review order directly (customer backed out, etc.) without
+      // clearing that flag, and this must not be able to un-cancel it by
+      // resetting status back to awaiting_payment underneath that decision.
+      if(!order.requiresReview||order.status!=='pending_review')throw new BadRequestException('This order is not awaiting a pricing review');
       const items=m.getRepository(OrderItem);
       const orderItems=await items.findBy({orderId:id});
       for(const line of dto.items){
@@ -158,7 +162,9 @@ export class CommerceController {
   @Get('orders/:id') detail(@Param('id') id:string,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.detail(id);}
   @Post('orders/:id/payments') payment(@Param('id') id:string,@Body() dto:RecordPaymentDto,@Req() r:Request){if(!r.user!.permissions.includes('payments.record'))throw new ForbiddenException('Payment recording permission required');return this.commerce.payment(id,dto,r.user!.email);}
   @Post('orders/:id/refunds') @UseGuards(AdminOnlyGuard) refund(@Param('id') id:string,@Body() dto:RecordRefundDto,@Req() r:Request){return this.commerce.refund(id,dto,r.user!.email);}
-  @Patch('orders/:id/quote') confirmQuote(@Param('id') id:string,@Body() dto:ConfirmQuoteDto,@Req() r:Request){if(!r.user!.permissions.includes('orders.manage'))throw new ForbiddenException('Order management permission required');return this.commerce.confirmQuote(id,dto,r.user!.email);}
+  // Setting an order's price is a financial decision, same tier as recording
+  // a payment — not every orders.manage holder, only admin + operations_supervisor.
+  @Patch('orders/:id/quote') confirmQuote(@Param('id') id:string,@Body() dto:ConfirmQuoteDto,@Req() r:Request){if(!r.user!.permissions.includes('payments.record'))throw new ForbiddenException('Payment recording permission required');return this.commerce.confirmQuote(id,dto,r.user!.email);}
   @Post('quotes/:id/email') @UseGuards(AdminOnlyGuard) email(@Param('id') id:string,@Body() dto:EmailDto,@Req() r:Request){return this.commerce.emailQuote(id,dto,r.user!.email);}
   @Get('notifications') @UseGuards(AdminOnlyGuard) messages(){return this.notifications.list();}
   @Post('notifications/:id/retry') @UseGuards(AdminOnlyGuard) retry(@Param('id') id:string){return this.notifications.retry(id);}
