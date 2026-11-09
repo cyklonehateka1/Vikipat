@@ -1,6 +1,11 @@
 import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, Min, MinLength, ValidateIf, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { CATEGORIES } from './catalog.seed';
+
+// Defensive only today (no dangerouslySetInnerHTML downstream), but free-text fields are
+// stripped of HTML tags at the DTO layer so future UI/PDF/email rendering never inherits a
+// stored-XSS vector from something a customer typed.
+const StripTags = () => Transform(({ value }) => (typeof value === 'string' ? value.replace(/<[^>]*>/g, '') : value));
 export class LoginDto { @IsEmail() email!:string; @IsString() @MinLength(8) password!:string; }
 export class RequestPasswordResetDto { @IsEmail() @Length(3,254) email!:string; }
 export class ResetPasswordDto { @IsString() @Length(64,64) token!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
@@ -9,7 +14,7 @@ export class CreateProductDto { @IsString() @Length(2,120) name!:string; @IsIn(C
 export class UpdateProductDto { @IsOptional() @IsString() @Length(2,120) name?:string; @IsOptional() @IsIn(CATEGORIES) category?:string; @IsOptional() @IsNumber({maxDecimalPlaces:2},{message:'price can have at most 2 decimal places'}) @Min(.01) @Max(1000000) price?:number; @IsOptional() @IsString() @Length(1,40) unit?:string; @IsOptional() @IsString() @Length(1,1000) description?:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsOptional() @IsInt() @Min(0) @Max(1000000) stock?:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number; }
 export class AdjustStockDto { @IsInt() @Min(0) @Max(1000000) stock!:number; @IsString() @Length(3,160) reason!:string; }
 export class UpdateSettingsDto { @IsString() @Length(2,100) businessName!:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsString() @Length(2,150) location!:string; @IsIn(['GHS']) currency!:string; @IsString() @Length(10,500) description!:string; @IsOptional() @IsBoolean() whatsappNotificationsEnabled?:boolean; @IsOptional() @IsString() @Matches(/^\d{10,15}$/) whatsappBusinessNumber?:string; }
-export class CreateQuoteDto { @IsString() @Length(2,120) name!:string; @IsOptional() @IsString() @Length(0,120) company?:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsOptional() @IsEmail() email?:string; @IsIn(CATEGORIES) need!:string; @IsString() @Length(1,80) quantity!:string; @IsOptional() @IsString() @Length(0,80) size?:string; @IsOptional() @IsString() @Length(0,100) material?:string; @IsOptional() @IsString() @Length(0,40) deadline?:string; @IsOptional() @IsString() @Length(0,180) location?:string; @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string; @IsOptional() @IsString() @Length(0,180) artworkName?:string; @IsOptional() @IsString() @Length(0,2000) message?:string; @IsOptional() @IsString() @Length(0,0) website?:string; }
+export class CreateQuoteDto { @IsString() @Length(2,120) name!:string; @IsOptional() @IsString() @Length(0,120) company?:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsOptional() @IsEmail() email?:string; @IsIn(CATEGORIES) need!:string; @IsString() @Length(1,80) quantity!:string; @IsOptional() @IsString() @Length(0,80) size?:string; @IsOptional() @IsString() @Length(0,100) material?:string; @IsOptional() @IsString() @Length(0,40) deadline?:string; @IsOptional() @IsString() @Length(0,180) location?:string; @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string; @IsOptional() @IsString() @Length(0,180) artworkName?:string; @IsOptional() @StripTags() @IsString() @Length(0,2000) message?:string; @IsOptional() @IsString() @Length(0,0) website?:string; }
 export class UpdateQuoteStatusDto { @IsIn(['New','Contacted','Quoted','Won','Closed']) status!:'New'|'Contacted'|'Quoted'|'Won'|'Closed'; }
 
 export class LargeFormatEstimateDto {
@@ -29,7 +34,7 @@ export class OrderLineItemDto {
   @IsIn(['large_format','product','custom']) type!: 'large_format'|'product'|'custom';
   @ValidateIf(o=>o.type==='custom') @IsString() @Length(2,160) name?:string;
   @IsOptional() @IsInt() @Min(1) @Max(100000000) unitPricePesewas?:number;
-  @IsOptional() @IsString() @Length(0,2000) description?:string;
+  @IsOptional() @StripTags() @IsString() @Length(0,2000) description?:string;
   @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string;
   @IsOptional() @IsString() @Length(0,180) artworkName?:string;
 
@@ -64,7 +69,7 @@ export class CreateGuestOrderDto {
   @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) customerPhone?: string;
   @IsOptional() @IsIn(['online','walk_in','salesperson']) source?: 'online'|'walk_in'|'salesperson';
   @ValidateNested({ each: true }) @Type(() => OrderLineItemDto) @ArrayMinSize(1) @ArrayMaxSize(30) items!: OrderLineItemDto[];
-  @IsOptional() @IsString() @Length(0,1000) customerNote?: string;
+  @IsOptional() @StripTags() @IsString() @Length(0,1000) customerNote?: string;
   @IsOptional() @IsString() @Length(0,80) fulfilmentMethod?: string;
   @IsOptional() @IsString() @Length(0,250) deliveryAddress?: string;
   @IsOptional() @IsString() @Length(0,120) deliveryLandmark?: string;
