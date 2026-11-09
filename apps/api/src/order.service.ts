@@ -87,6 +87,10 @@ export class OrderService implements OnApplicationBootstrap {
     if(dto.fulfilmentMethod&&!['pickup','delivery'].includes(dto.fulfilmentMethod))throw new BadRequestException('Choose pickup or delivery');
     if(dto.fulfilmentMethod==='delivery'&&!dto.deliveryAddress?.trim())throw new BadRequestException('A delivery address is required');
     if(dto.artworkOption==='link'&&!/^https?:\/\//.test(dto.artworkLink||''))throw new BadRequestException('Enter a valid artwork link');
+    // Uploaded artwork always comes from this app's own /uploads/ endpoint (see
+    // AdminService.createQuote for the same rule) — never an arbitrary external host.
+    if(dto.artworkUrl)this.assertArtworkUrl(dto.artworkUrl);
+    for(const line of dto.items)if(line.artworkUrl)this.assertArtworkUrl(line.artworkUrl);
     if(dto.requestedDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(dto.requestedDate)||!Number.isFinite(Date.parse(dto.requestedDate))||new Date(dto.requestedDate).toISOString().slice(0,10)!==dto.requestedDate))throw new BadRequestException('Enter a valid required date');
     if(dto.website)return{success:true};
     const priceBook=priceBookForSource(source); const allowConfirmedDesignFee=source!=='online';
@@ -312,6 +316,7 @@ export class OrderService implements OnApplicationBootstrap {
     return result.jobs;
   }
   private async safeOrder(order:Order){const items=await this.items.findBy({orderId:order.id});const history=await this.history.find({where:{orderId:order.id,customerVisible:true},order:{createdAt:'ASC'}});return{orderNumber:order.orderNumber,customerName:order.customerName,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,promisedDate:order.promisedDate,createdAt:order.createdAt,updatedAt:order.updatedAt,items:items.map(i=>({name:i.name,quantity:i.quantity,totalPesewas:i.totalPesewas,specification:JSON.parse(i.specification)})),timeline:history.map(h=>({status:PUBLIC_STATUS[h.status],note:h.note,createdAt:h.createdAt}))}}
+  private assertArtworkUrl(url:string){const origin=process.env.API_PUBLIC_URL||'http://localhost:3000';if(!url.startsWith(origin+'/uploads/'))throw new BadRequestException('Invalid artwork URL')}
   private hmac(value:string){return createHmac('sha256',process.env.TRACKING_OTP_SECRET||process.env.JWT_SECRET||'development-only').update(value).digest('hex')}
   /**
    * Per-sq-ft rates change rarely, so this is a lightweight "did the rate
