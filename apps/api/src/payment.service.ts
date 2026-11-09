@@ -7,6 +7,16 @@ import { DataSource, Repository } from 'typeorm';
 import { lockedFindOne } from './db';
 import { NotificationOutbox, Order, OrderStatusHistory, PaymentTransaction } from './entities';
 
+// An unauthenticated caller (bound only by the route's own rate limit) can hit this
+// endpoint with any guessed reference. Never echo Paystack's raw response shape or its
+// internal status vocabulary (abandoned/reversed/queued/...) back to them — collapse it
+// to the minimal, generic status our own order-paid-state already distinguishes.
+function genericPaystackStatus(status: unknown): 'success' | 'failed' | 'pending' {
+  if (status === 'success') return 'success';
+  if (status === 'pending' || status === 'ongoing' || status === 'queued' || status === 'processing') return 'pending';
+  return 'failed';
+}
+
 type PaymentInitResult = {
   reference: string;
   authorizationUrl: string;
@@ -129,7 +139,7 @@ export class PaymentService {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload?.status) throw new BadRequestException('Could not verify payment');
-    if (payload?.data?.status !== 'success') return { received: true, paid: false, reference, status: payload?.data?.status || 'unknown' };
+    if (payload?.data?.status !== 'success') return { received: true, paid: false, reference, status: genericPaystackStatus(payload?.data?.status) };
     return this.markPaystackPaid(reference, payload.data);
   }
 
