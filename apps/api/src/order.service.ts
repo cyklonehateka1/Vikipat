@@ -140,7 +140,19 @@ export class OrderService implements OnApplicationBootstrap {
   async requestOtp(orderNumber:string,email:string){
     const normalized=email.trim().toLowerCase(); const order=await this.orders.findOneBy({orderNumber,customerEmail:normalized});
     let devOtp:string|undefined;
-    if(order){await this.otps.update({orderId:order.id,consumed:false},{consumed:true}); const code=String(randomInt(0,1000000)).padStart(6,'0'); const otp=this.otps.create({orderId:order.id,emailHash:this.hmac(normalized),codeHash:this.hmac(`${order.id}:${code}`),expiresAt:new Date(Date.now()+10*60*1000)}); await this.otps.save(otp); await this.notifications.queueEmail(order,'tracking_otp',{subject:`Your Vikipat tracking code`,text:`Your verification code is ${code}. It expires in 10 minutes. Never share this code.`}); if(process.env.NODE_ENV!=='production')devOtp=code;}
+    if(order){
+      // An attacker who exhausts the 5-attempt lockout on an active OTP must not be able to
+      // reset it by simply requesting a new one — carry the exhausted state (attempts + the
+      // original expiry) forward onto the reissued OTP until it naturally expires.
+      const existing=await this.otps.findOne({where:{orderId:order.id,consumed:false},order:{createdAt:'DESC'}});
+      const lockedOut=Boolean(existing&&existing.expiresAt.getTime()>=Date.now()&&existing.attempts>=5);
+      await this.otps.update({orderId:order.id,consumed:false},{consumed:true});
+      const code=String(randomInt(0,1000000)).padStart(6,'0');
+      const otp=this.otps.create({orderId:order.id,emailHash:this.hmac(normalized),codeHash:this.hmac(`${order.id}:${code}`),expiresAt:lockedOut?existing!.expiresAt:new Date(Date.now()+10*60*1000),attempts:lockedOut?existing!.attempts:0});
+      await this.otps.save(otp);
+      await this.notifications.queueEmail(order,'tracking_otp',{subject:`Your Vikipat tracking code`,text:`Your verification code is ${code}. It expires in 10 minutes. Never share this code.`});
+      if(process.env.NODE_ENV!=='production'&&process.env.ALLOW_DEV_OTP==='true')devOtp=code;
+    }
     else this.hmac(`${orderNumber}:${normalized}:dummy`);
     return{message:'If the order number and email match, a verification code has been sent.',expiresInSeconds:600,...(devOtp?{devOtp}: {})};
   }
