@@ -207,3 +207,4 @@ export class TestPricingDraftDto {
 }
 
 export class CreateCustomerDto { @StripTags() @IsString() @Length(2,120) name!:string; @IsOptional() @IsEmail() @Length(3,254) email?:string; @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone?:string; @IsOptional() @StripTags() @IsString() @Length(0,120) company?:string; }
+export class UpdateCustomerDto { @IsOptional() @StripTags() @IsString() @Length(2,120) name?:string; @IsOptional() @IsEmail() @Length(3,254) email?:string; @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone?:string; @IsOptional() @StripTags() @IsString() @Length(0,120) company?:string; }

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, U
 import { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { CustomerService } from './customer.service';
-import { CreateCustomerDto } from './dto';
+import { CreateCustomerDto, UpdateCustomerDto } from './dto';
 import { PeopleService } from './people.service';
 import { PaymentReconciliationService } from './payment-reconciliation.service';
 import {
@@ -103,5 +103,8 @@ export class CustomerController {
   }
   @Post() create(@Body() dto: CreateCustomerDto, @Req() req: Request) {
     return this.customers.createCustomer(dto, req.user!.email);
+  }
+  @Patch(':id') update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCustomerDto, @Req() req: Request) {
+    return this.customers.updateCustomer(id, dto, req.user!.email);
   }
 }

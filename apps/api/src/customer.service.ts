@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { AuditLog, Customer, Order, PaymentTransaction } from './entities';
-import { CreateCustomerDto } from './dto';
+import { CreateCustomerDto, UpdateCustomerDto } from './dto';
 import { balances } from './finance';
 
 const normaliseEmail = (value?: string) => (value || '').trim().toLowerCase();
@@ -192,6 +192,37 @@ export class CustomerService {
     );
     await this.audits.save({ actorEmail, action: 'customer_created', entity: 'customer', entityId: customer.id, details: JSON.stringify({ name: customer.name, email: customer.email || '', phone, company: customer.company }) });
     return this.toProfile(customer, 0);
+  }
+
+  async updateCustomer(id: string, dto: UpdateCustomerDto, actorEmail: string) {
+    const customer = await this.customers.findOneBy({ id });
+    if (!customer) throw new NotFoundException('Customer not found');
+    const phones = this.parsePhones(customer.phones);
+    const current = { name: customer.name, email: customer.email || '', phone: phones[0] || '', company: customer.company };
+    const next = { ...current };
+    if (dto.name !== undefined) next.name = dto.name.trim();
+    if (dto.email !== undefined) next.email = normaliseEmail(dto.email);
+    if (dto.phone !== undefined) next.phone = dto.phone.trim();
+    if (dto.company !== undefined) next.company = dto.company.trim();
+    if (next.email !== current.email) await this.assertEmailFree(next.email, id);
+
+    const before: Record<string, string> = {}, after: Record<string, string> = {};
+    for (const key of Object.keys(current) as (keyof typeof current)[]) {
+      if (current[key] !== next[key]) { before[key] = current[key]; after[key] = next[key]; }
+    }
+    if (!Object.keys(after).length) return this.toProfile(customer, 0);
+
+    customer.name = next.name;
+    customer.email = next.email || null;
+    customer.company = next.company;
+    if ('phone' in after && next.phone) {
+      const merged = [next.phone, ...phones.filter((p) => canonicalPhone(p) !== canonicalPhone(next.phone))].slice(0, 10);
+      customer.phones = JSON.stringify(merged);
+      customer.phoneIndex = phoneIndexOf(merged);
+    }
+    const saved = await this.customers.save(customer);
+    await this.audits.save({ actorEmail, action: 'customer_updated', entity: 'customer', entityId: id, details: JSON.stringify({ before, after }) });
+    return this.toProfile(saved, 0);
   }
 
   /** Keeps lifetime value honest when money goes back out the door. */

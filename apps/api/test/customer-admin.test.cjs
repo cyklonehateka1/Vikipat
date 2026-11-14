@@ -44,3 +44,32 @@ test('creating a customer with an email another customer holds is rejected', asy
   assert.equal(state.customers.length, 1);
   assert.equal(state.audit.length, 0);
 });
+
+test('updating a name logs only the changed field as before and after', async () => {
+  const { service, state } = fixture([{ id: 'cust-1', name: 'Kofi', email: 'kofi@example.com', company: 'KB', phones: '["0241111111"]' }]);
+  await service.updateCustomer('cust-1', { name: 'Kofi Boateng', email: 'kofi@example.com', company: 'KB' }, 'admin@vikipat.com');
+  assert.equal(state.customers[0].name, 'Kofi Boateng');
+  assert.equal(state.audit[0].action, 'customer_updated');
+  assert.equal(state.audit[0].entityId, 'cust-1');
+  assert.deepEqual(JSON.parse(state.audit[0].details), { before: { name: 'Kofi' }, after: { name: 'Kofi Boateng' } });
+});
+
+test('updating to an email another customer holds is rejected and the record is untouched', async () => {
+  const { service, state } = fixture([
+    { id: 'cust-1', name: 'Kofi', email: 'kofi@example.com' },
+    { id: 'cust-2', name: 'Ama', email: 'ama@example.com' },
+  ]);
+  await assert.rejects(service.updateCustomer('cust-1', { name: 'Changed', email: 'ama@example.com' }, 'admin@vikipat.com'), /already/);
+  assert.equal(state.customers[0].name, 'Kofi');
+  assert.equal(state.customers[0].email, 'kofi@example.com');
+  assert.equal(state.audit.length, 0);
+});
+
+test('activity can be filtered to one entity and id', async () => {
+  const { AdminService } = require('../dist/admin.service');
+  let where;
+  const audits = { find: async (opts) => { where = opts.where; return [{ id: 'a1', details: '{}' }]; } };
+  const admin = new AdminService({}, {}, {}, audits, {}, {});
+  await admin.activity({ entity: 'customer', entityId: 'cust-1' });
+  assert.deepEqual(where, { entity: 'customer', entityId: 'cust-1' });
+});

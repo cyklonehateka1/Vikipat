@@ -40,7 +40,7 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Get('stock-activity') @UseGuards(AdminOnlyGuard) stock(){return this.admin.stockActivity()}
   @Get('dashboard') @UseGuards(AdminOnlyGuard) dashboard(){return this.admin.summary()}
   @Get('insights') @UseGuards(AdminOnlyGuard) insights(){return this.admin.insights()}
-  @Get('activity') @UseGuards(AdminOnlyGuard) activity(){return this.admin.activity()}
+  @Get('activity') @UseGuards(AdminOnlyGuard) activity(@Query('entity') entity?:string,@Query('entityId') entityId?:string){return this.admin.activity({entity,entityId})}
   @Get('settings') @UseGuards(AdminOnlyGuard) settings(){return this.admin.getSettings()}
   @Patch('settings') @UseGuards(AdminOnlyGuard) updateSettings(@Req() req:Request,@Body() dto:UpdateSettingsDto){return this.admin.updateSettings(dto,req.user!.email)}
   @Get('quotes') @UseGuards(AdminOnlyGuard) quotes(){return this.admin.listQuotes()}
