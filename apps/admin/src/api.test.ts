@@ -69,6 +69,22 @@ test('updateProductionJob sets commandId and expectedVersion on the queued paylo
   expect(pending[0].expectedVersion).toBe(4);
 });
 
+test('releaseOrder sends expectedVersion in the request body', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({id: 'order-1'}),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await api.releaseOrder('order-1', undefined, 5);
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  const [, options] = fetchMock.mock.calls[0];
+  const sentBody = JSON.parse(options.body as string);
+  expect(sentBody.expectedVersion).toBe(5);
+});
+
 test('ApiError carries the parsed response body for a 409', async () => {
   vi.stubGlobal(
     'fetch',
