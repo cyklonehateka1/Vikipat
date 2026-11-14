@@ -20,7 +20,7 @@ function fixture() {
     manager: {
       transaction: async (fn) => {
         const repos = new Map([
-          [Order, { findOne: async () => state.order, save: async (o) => { state.order = o; return o; } }],
+          [Order, { findOne: async () => ({ ...state.order }), save: async (o) => { state.order = o; return o; } }],
           [OrderItem, { find: async () => state.items }],
           [ProductionJob, {
             find: async () => state.jobs,
@@ -80,5 +80,13 @@ test('releasing with a matching expectedVersion succeeds and bumps the version',
   const sync = { commandId: 'cmd-3', deviceId: 'device-a', expectedVersion: 1 };
   const result = await service.releaseOrderToProduction('order', 'staff@vikipat.com', undefined, sync);
   assert.equal(result.version, 2);
+  assert.equal(state.order.version, 2);
+});
+
+test('the version bump does not revert the status change made by releaseProductionJobs, even when each load returns a distinct entity instance', async () => {
+  const { service, state } = fixture();
+  const sync = { commandId: 'cmd-4', deviceId: 'device-a', expectedVersion: 1 };
+  await service.releaseOrderToProduction('order', 'staff@vikipat.com', undefined, sync);
+  assert.equal(state.order.status, 'ready_for_production');
   assert.equal(state.order.version, 2);
 });
