@@ -58,3 +58,26 @@ export async function getDeviceId(): Promise<string> {
 
   return deviceId;
 }
+
+export async function getCachedUser<T>(): Promise<T | undefined> {
+  const db = await openOfflineDb();
+  const value = await new Promise<T | undefined>((resolve, reject) => {
+    const tx = db.transaction('meta', 'readonly');
+    const req = tx.objectStore('meta').get('cachedUser');
+    req.onsuccess = () => resolve(req.result?.value);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+  return value;
+}
+
+export async function setCachedUser(user: unknown): Promise<void> {
+  const db = await openOfflineDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('meta', 'readwrite');
+    tx.objectStore('meta').put({key: 'cachedUser', value: user});
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}

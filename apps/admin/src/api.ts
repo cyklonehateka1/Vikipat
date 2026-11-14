@@ -10,7 +10,7 @@ async function request<T>(path:string,options:RequestInit={}){const headers=new 
 // A thrown TypeError (fetch rejection) means the browser couldn't reach the
 // network at all - distinct from an ApiError, which means the server
 // answered. Only the former is queued for later sync.
-function isNetworkFailure(e:unknown):boolean{return e instanceof TypeError}
+export function isNetworkFailure(e:unknown):boolean{return e instanceof TypeError}
 async function mutateOrQueue<T>(type:string,payload:Record<string,unknown>,idField:'requestKey'|'commandId',expectedVersion:number|undefined,send:()=>Promise<T>):Promise<T>{
   try{return await send()}
   catch(e){
