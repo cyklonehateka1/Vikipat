@@ -41,7 +41,7 @@
 **Interfaces:**
 - Produces: `version!: number` column (default `1`) on `Order`, `ProductionJob`, `Customer`, `MaterialItem`, `Product`.
 - Produces: `SyncedCommand { id: string (primary), deviceId: string, result: string, createdAt: Date }` in `entities.ts`.
-- Produces: `dedupeCommand<T>(manager: EntityManager, id: string, deviceId: string, run: () => Promise<T>): Promise<T>` in `db.ts` — checks `SyncedCommand` by `id` only (not by `deviceId`); if found, returns `JSON.parse(existing.result)`; otherwise runs `run()`, saves a `SyncedCommand` row with `JSON.stringify(result)`, and returns `result`. Must be called with the same transactional `manager` the caller already has open.
+- Produces: `dedupeCommand<T>(manager: EntityManager, id: string, deviceId: string, actorEmail: string, run: () => Promise<T>): Promise<T>` in `db.ts` — checks `SyncedCommand` by `id` only (not by `deviceId`); if found and `existing.actorEmail === actorEmail`, returns `JSON.parse(existing.result)`; if found with a different `actorEmail`, throws `ConflictException('Command id already used by a different actor')` rather than returning the cached result (fixed during Task 1's review — a command id is not an authorization boundary on its own); otherwise runs `run()`, saves a `SyncedCommand` row (including `actorEmail`) with `JSON.stringify(result)`, and returns `result`. Must be called with the same transactional `manager` the caller already has open.
 - Produces: `assertVersion(current: number, expected: number | undefined): void` in `db.ts` — throws `ConflictException` (import from `@nestjs/common`) when `expected !== undefined && expected !== current`; no-op when `expected` is `undefined`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -91,7 +91,7 @@ git commit -m "Add version columns and a shared command-dedupe table"
 
 **Interfaces:**
 - Consumes: `dedupeCommand`, `assertVersion` from Task 1's `db.ts`.
-- Produces: `releaseOrderToProduction(orderId: string, actor: string, override?: {reason: string}, sync?: {commandId: string, deviceId: string, expectedVersion?: number})` — when `sync` is passed, wraps the existing transactional body in `dedupeCommand(manager, sync.commandId, sync.deviceId, () => ...)`, and calls `assertVersion(order.version, sync.expectedVersion)` right after the existing `lockedFindOne` load of the order, before any mutation. On success, increments `order.version` by 1 alongside the existing save.
+- Produces: `releaseOrderToProduction(orderId: string, actor: string, override?: {reason: string}, sync?: {commandId: string, deviceId: string, expectedVersion?: number})` — when `sync` is passed, wraps the existing transactional body in `dedupeCommand(manager, sync.commandId, sync.deviceId, actor, () => ...)` (the method's own `actor` parameter is the actorEmail), and calls `assertVersion(order.version, sync.expectedVersion)` right after the existing `lockedFindOne` load of the order, before any mutation. On success, increments `order.version` by 1 alongside the existing save.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -234,7 +234,7 @@ git commit -m "Dedupe and version-check customer create and update"
 **Interfaces:**
 - Consumes: `dedupeCommand`, `assertVersion` from Task 1.
 - Produces: `AdjustStockDto.stock` and `AdjustMaterialStockDto.stockQuantity` are read as an absolute target when `dto.delta` is falsy (today's behavior, unchanged), and as a signed amount added to the current quantity when `dto.delta` is `true`. Reject (clamp is wrong here — `BadRequestException`) if a delta adjustment would take the quantity below 0.
-- Produces: both `adjust` methods wrap their body in `dedupeCommand(manager, dto.commandId, dto.deviceId, ...)` when `dto.commandId` is present. Version increments on every successful adjust (delta or absolute), but delta adjustments never check `expectedVersion` (none is sent) — only `recordPhysicalCount` checks `assertVersion(target.version, dto.expectedVersion)` before computing `accountedForPercent`, since a count is the one absolute, non-commutative case that can race against a queued delta.
+- Produces: both `adjust` methods wrap their body in `dedupeCommand(manager, dto.commandId, dto.deviceId, email, ...)` when `dto.commandId` is present (the method's own `email` parameter is the actorEmail). Version increments on every successful adjust (delta or absolute), but delta adjustments never check `expectedVersion` (none is sent) — only `recordPhysicalCount` checks `assertVersion(target.version, dto.expectedVersion)` before computing `accountedForPercent`, since a count is the one absolute, non-commutative case that can race against a queued delta.
 - Produces: `recordPhysicalCount(targetKind, targetId, measuredQuantity, actorEmail, note, sync?: {commandId: string, deviceId: string, expectedVersion?: number})` — signature gains the optional `sync` parameter; existing callers (the controller routes) pass it through from the DTO.
 
 - [ ] **Step 1: Write the failing tests**
