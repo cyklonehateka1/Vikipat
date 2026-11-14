@@ -205,3 +205,5 @@ export class TestPricingDraftDto {
   @IsOptional() @IsBoolean() needsDesign?: boolean;
   @IsOptional() @IsInt() @Min(10000) @Max(100000000) confirmedDesignFeePesewas?: number;
 }
+
+export class CreateCustomerDto { @StripTags() @IsString() @Length(2,120) name!:string; @IsOptional() @IsEmail() @Length(3,254) email?:string; @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone?:string; @IsOptional() @StripTags() @IsString() @Length(0,120) company?:string; }

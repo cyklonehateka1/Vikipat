@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshCw, Search, Users } from 'lucide-react';
+import { RefreshCw, Search, UserPlus, Users, X } from 'lucide-react';
 import { api } from './api';
 
 type Customer = {
@@ -14,6 +14,39 @@ type CustomerDetail = Customer & {
 const money = (p: number) => 'GH₵ ' + (p / 100).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const when = (v: string | null) => (v ? new Intl.DateTimeFormat('en-GH', { dateStyle: 'medium' }).format(new Date(v)) : '—');
 
+type CustomerForm = { name: string; email: string; phone: string; company: string };
+
+function CustomerModal({ customer, onClose, onSave }: { customer?: Customer; onClose: () => void; onSave: (data: CustomerForm) => Promise<void> }) {
+  const [form, setForm] = useState<CustomerForm>({ name: customer?.name || '', email: customer?.email || '', phone: customer?.phones[0] || '', company: customer?.company || '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const set = (key: keyof CustomerForm, value: string) => setForm({ ...form, [key]: value });
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setError('');
+    try { await onSave(form); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not save customer'); setBusy(false); }
+  }
+  return (
+    <div className="modal-backdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <form className="product-modal" onSubmit={submit}>
+        <header><div><span>CUSTOMERS</span><h2>{customer ? 'Edit customer' : 'Add customer'}</h2></div><button type="button" onClick={onClose} aria-label="Close editor"><X /></button></header>
+        {error && <div className="alert" role="alert">{error}</div>}
+        <div className="modal-fields">
+          <label>Name<input value={form.name} onChange={e => set('name', e.target.value)} required minLength={2} maxLength={120} autoFocus /></label>
+          <div className="form-grid">
+            <label>Email · optional<input type="email" value={form.email} onChange={e => set('email', e.target.value)} /></label>
+            <label>Phone · optional<input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} /></label>
+          </div>
+          <label>Company · optional<input value={form.company} onChange={e => set('company', e.target.value)} maxLength={120} /></label>
+        </div>
+        <footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={busy}>{busy ? 'Saving…' : 'Save customer'}</button></footer>
+      </form>
+    </div>
+  );
+}
+
+const payload = (f: CustomerForm) => ({ name: f.name.trim(), email: f.email.trim() || undefined, phone: f.phone.trim() || undefined, company: f.company.trim() });
+
 /**
  * Checkout stays guest-only; these profiles are derived from the orders
  * themselves, keyed on email, so repeat buyers are visible without anyone
@@ -24,6 +57,7 @@ export default function Customers() {
   const [selected, setSelected] = useState<CustomerDetail | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
 
   async function load(q = search) {
@@ -46,6 +80,7 @@ export default function Customers() {
           <form style={{ display: 'flex', gap: 8 }} onSubmit={e => { e.preventDefault(); load(); }}>
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search email, name or phone" />
             <button className="button ghost"><Search />Search</button>
+            <button type="button" className="button primary" onClick={() => setAdding(true)}><UserPlus />Add customer</button>
           </form>
         </div>
 
@@ -97,6 +132,8 @@ export default function Customers() {
           </table></div>
         </section>
       )}
+
+      {adding && <CustomerModal onClose={() => setAdding(false)} onSave={async data => { const created = await api.createCustomer<Customer>(payload(data)); setAdding(false); await load(); setSelected(await api.customer<CustomerDetail>(created.id)); }} />}
     </div>
   );
 }

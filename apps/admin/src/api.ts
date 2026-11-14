@@ -59,6 +59,7 @@ export const api={
   reconcilePayments:<T>()=>request<T>('/admin/analytics/reconcile',{method:'POST'}),
   customers:<T>(q='')=>request<T>(`/admin/customers${q?`?q=${encodeURIComponent(q)}`:''}`),
   customer:<T>(id:string)=>request<T>(`/admin/customers/${id}`),
+  createCustomer:<T>(data:unknown)=>request<T>('/admin/customers',{method:'POST',body:JSON.stringify(data)}),
   refundOrder:<T>(id:string,amountPesewas:number,reason:string)=>request<T>(`/admin/orders/${id}/refund`,{method:'POST',body:JSON.stringify({amountPesewas,reason})}),
   // Password recovery
   forgotPassword:<T>(email:string)=>request<T>('/auth/forgot-password',{method:'POST',body:JSON.stringify({email})}),

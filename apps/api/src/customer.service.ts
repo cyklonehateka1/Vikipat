@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { Customer, Order, PaymentTransaction } from './entities';
+import { AuditLog, Customer, Order, PaymentTransaction } from './entities';
+import { CreateCustomerDto } from './dto';
 import { balances } from './finance';
 
 const normaliseEmail = (value?: string) => (value || '').trim().toLowerCase();
@@ -50,6 +51,7 @@ export class CustomerService {
     @InjectRepository(Customer) private readonly customers: Repository<Customer>,
     @InjectRepository(Order) private readonly orders: Repository<Order>,
     @InjectRepository(PaymentTransaction) private readonly payments: Repository<PaymentTransaction>,
+    @InjectRepository(AuditLog) private readonly audits: Repository<AuditLog>,
   ) {}
 
   private parsePhones(raw: string): string[] {
@@ -164,6 +166,32 @@ export class CustomerService {
 
     const saved = await repo.save(customer);
     return saved.id;
+  }
+
+  private async assertEmailFree(email: string, ownId?: string) {
+    if (!email) return;
+    const holder = await this.customers.findOneBy({ email });
+    if (holder && holder.id !== ownId) throw new BadRequestException('Another customer already uses this email');
+  }
+
+  async createCustomer(dto: CreateCustomerDto, actorEmail: string) {
+    const email = normaliseEmail(dto.email);
+    await this.assertEmailFree(email);
+    const phone = (dto.phone || '').trim();
+    const phones = phone ? [phone] : [];
+    const customer = await this.customers.save(
+      this.customers.create({
+        email: email || null,
+        name: dto.name.trim(),
+        company: dto.company?.trim() || '',
+        phones: JSON.stringify(phones),
+        phoneIndex: phoneIndexOf(phones),
+        orderCount: 0,
+        lifetimeValuePesewas: 0,
+      }),
+    );
+    await this.audits.save({ actorEmail, action: 'customer_created', entity: 'customer', entityId: customer.id, details: JSON.stringify({ name: customer.name, email: customer.email || '', phone, company: customer.company }) });
+    return this.toProfile(customer, 0);
   }
 
   /** Keeps lifetime value honest when money goes back out the door. */
