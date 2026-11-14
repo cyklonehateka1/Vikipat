@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import {afterEach, beforeEach, expect, test, vi} from 'vitest';
 import {openOfflineDb} from './db';
-import {enqueueCommand, listCommands, updateCommandStatus} from './queue';
+import {conflictSubject, enqueueCommand, listCommands, updateCommandStatus} from './queue';
 
 const realIndexedDB = globalThis.indexedDB;
 
@@ -77,4 +77,17 @@ test('commands from listCommands come back ordered by creation order even when t
 
   const commands = await listCommands();
   expect(commands.map((c) => c.id)).toEqual([first.id, second.id, third.id]);
+});
+
+test('conflictSubject picks the first identifiable id out of the payload', async () => {
+  const withOrder = await enqueueCommand('order.release', {orderId: 'ord-1', overrideReason: 'x'});
+  expect(conflictSubject(withOrder)).toBe('orderId: ord-1');
+
+  const withJob = await enqueueCommand('productionJob.update', {jobId: 'job-9'});
+  expect(conflictSubject(withJob)).toBe('jobId: job-9');
+});
+
+test('conflictSubject falls back to the command type when payload has no known id field', async () => {
+  const command = await enqueueCommand('customer.create', {name: 'Ama'});
+  expect(conflictSubject(command)).toBe('customer.create');
 });

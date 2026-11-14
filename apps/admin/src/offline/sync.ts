@@ -39,8 +39,13 @@ async function ensureDefaultHandlers(): Promise<void> {
   }
 }
 
+// The conflict is already persisted onto the command by updateCommandStatus
+// (status 'conflict' with conflictState) just before this is called, so the
+// Flags screen can read it straight from listCommands('conflict'). Nothing
+// further is needed here.
 export function raiseConflictFlag(command: QueuedCommand, serverState: object): void {
-  console.log('conflict flag raised', command.id, serverState);
+  void command;
+  void serverState;
 }
 
 export async function runSyncPass(): Promise<{synced: number; conflicts: number; failed: number}> {

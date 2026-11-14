@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { api } from './api';
 import { Empty, money, when } from './main';
+import { conflictSubject, listCommands } from './offline/queue';
+import type { QueuedCommand } from './offline/queue';
 
 type Tab = 'flags' | 'reconciliation';
 
@@ -41,19 +43,21 @@ function FlagsTab() {
   const [lateCancellations, setLateCancellations] = useState<LateCancellation[]>([]);
   const [unattended, setUnattended] = useState<UnattendedJob[]>([]);
   const [shortfalls, setShortfalls] = useState<MaterialShortfall[]>([]);
+  const [conflicts, setConflicts] = useState<QueuedCommand[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      const [cp, lc, uj, sf] = await Promise.all([
+      const [cp, lc, uj, sf, cf] = await Promise.all([
         api.flagCustomPriced<CustomPricedItem[]>(range),
         api.flagLateCancellations<LateCancellation[]>(range),
         api.flagUnattendedJobs<UnattendedJob[]>(date),
         api.flagMaterialShortfalls<MaterialShortfall[]>(range.from, range.to),
+        listCommands('conflict'),
       ]);
-      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setError('');
+      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setConflicts(cf); setError('');
     } catch (e) { setError(errText(e)); }
     finally { setLoading(false); }
   }
@@ -141,6 +145,25 @@ function FlagsTab() {
             ))}</tbody>
           </table></div>
         ) : <p className="muted" style={{ padding: 20 }}>No shortfalls recorded in this range.</p>}
+      </section>
+
+      <section className="surface" style={{ marginTop: 16 }}>
+        <div className="section-title">
+          <div><h2>Sync conflicts</h2><p>Offline changes a device queued that the server rejected on reconnect — the device's intended change and the server's current state, for a person to resolve by hand</p></div>
+        </div>
+        {conflicts.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>What</th><th>Queued</th><th>Device sent</th><th>Server has</th></tr></thead>
+            <tbody>{conflicts.map((c) => (
+              <tr key={c.id}>
+                <td><strong>{c.type}</strong><br /><span className="muted">{conflictSubject(c)}</span></td>
+                <td>{when(c.createdAt)}</td>
+                <td><pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.payload, null, 2)}</pre></td>
+                <td><pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.conflictState ?? {}, null, 2)}</pre></td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No sync conflicts.</p>}
       </section>
     </div>
   );

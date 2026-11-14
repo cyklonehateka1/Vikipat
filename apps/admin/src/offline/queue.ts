@@ -8,6 +8,7 @@ export type QueuedCommand = {
   deviceId: string;
   createdAt: string;
   status: 'pending' | 'syncing' | 'synced' | 'conflict' | 'failed';
+  conflictState?: object;
 };
 
 type StoredCommand = QueuedCommand & {sequence: number};
@@ -77,6 +78,17 @@ export async function listCommands(status?: QueuedCommand['status']): Promise<Qu
   return filtered
     .sort((a, b) => a.sequence - b.sequence)
     .map(({sequence: _seq, ...command}) => command);
+}
+
+const SUBJECT_ID_FIELDS = ['orderId', 'jobId', 'customerId', 'materialId', 'productId'];
+
+export function conflictSubject(command: QueuedCommand): string {
+  const payload = command.payload as Record<string, unknown>;
+  for (const field of SUBJECT_ID_FIELDS) {
+    const value = payload?.[field];
+    if (typeof value === 'string' && value) return `${field}: ${value}`;
+  }
+  return command.type;
 }
 
 export async function updateCommandStatus(
