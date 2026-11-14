@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import './offline/testSessionStorage';
 import {afterEach, beforeEach, expect, test, vi} from 'vitest';
-import {openOfflineDb} from './offline/db';
+import {getCachedUser, openOfflineDb, setCachedUser} from './offline/db';
 import {listCommands} from './offline/queue';
-import {api, ApiError} from './api';
+import {api, ApiError, isQueued, setSessionActor} from './api';
 
 const realIndexedDB = globalThis.indexedDB;
 
@@ -102,4 +102,45 @@ test('ApiError carries the parsed response body for a 409', async () => {
     expect(e).toBeInstanceOf(ApiError);
     expect((e as ApiError).body).toEqual({version: 7});
   }
+});
+
+test('releaseOrder sends a commandId and deviceId even when online', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ok: true, status: 200, json: async () => ({jobs: [], version: 2})});
+  vi.stubGlobal('fetch', fetchMock);
+
+  await api.releaseOrder('order-1');
+
+  const sentBody = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+  expect(sentBody.commandId).toMatch(/^[0-9a-f-]{36}$/);
+  expect(typeof sentBody.deviceId).toBe('string');
+  expect(sentBody.orderId).toBeUndefined();
+});
+
+test('a create that gets queued is marked as queued rather than looking like a server record', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+  const result = await api.createOrder({customerName: 'Ama'});
+
+  expect(isQueued(result)).toBe(true);
+  expect(isQueued({id: 'order-1'})).toBe(false);
+});
+
+test('queued commands record the actor who made them', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+  setSessionActor('ama@vikipat.com');
+
+  await api.updateCustomer('cust-1', {name: 'Ama'});
+
+  const [command] = await listCommands('pending');
+  expect(command.actor).toBe('ama@vikipat.com');
+  setSessionActor('');
+});
+
+test('logout clears the cached user even when the logout request cannot reach the server', async () => {
+  await setCachedUser({email: 'ama@vikipat.com'});
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+  await api.logout().catch(() => {});
+
+  expect(await getCachedUser()).toBeUndefined();
 });

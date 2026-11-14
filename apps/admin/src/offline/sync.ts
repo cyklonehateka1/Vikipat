@@ -1,54 +1,29 @@
 import {listCommands, updateCommandStatus} from './queue';
-import type {QueuedCommand} from './queue';
-import type {api as Api} from '../api';
 
 type CommandHandler = (payload: any) => Promise<unknown>;
 
 export const commandHandlers: Record<string, CommandHandler> = {};
 
+export type SyncOptions = {actor?: string; onAuthPaused?: () => void};
+
 let defaultsLoaded = false;
 
-// api.ts touches browser-only globals at module load, so it's pulled in
-// lazily rather than imported at the top of this file (tests supply their
-// own handlers and never need the real module).
+// api.ts touches browser globals at load, so it is imported lazily.
 async function ensureDefaultHandlers(): Promise<void> {
   if (defaultsLoaded) return;
   defaultsLoaded = true;
 
   try {
-    const {api}: {api: typeof Api} = await import('../api');
-    const defaults: Record<string, CommandHandler> = {
-      'order.create': (payload) => api.createOrder(payload),
-      'payment.record': (payload) => api.recordPayment(payload.orderId, payload),
-      'refund.record': (payload) => api.recordRefund(payload.orderId, payload),
-      'order.release': (payload) => api.releaseOrder(payload.orderId, payload.overrideReason, payload.expectedVersion),
-      'productionJob.update': (payload) => api.updateProductionJob(payload.jobId, payload),
-      'customer.create': (payload) => api.createCustomer(payload),
-      'customer.update': (payload) => api.updateCustomer(payload.customerId, payload),
-      'material.adjustStock': (payload) => api.adjustMaterialStock(payload.materialId, payload),
-      'material.recordCount': (payload) => api.recordMaterialCount(payload.materialId, payload),
-      'stock.adjust': (payload) => api.adjustStock(payload.productId, payload.stock, payload.reason, payload.commandId),
-    };
-
-    for (const [type, handler] of Object.entries(defaults)) {
-      if (!(type in commandHandlers)) commandHandlers[type] = handler;
+    const {commandTypes, sendCommand} = await import('../api');
+    for (const type of commandTypes) {
+      if (!(type in commandHandlers)) commandHandlers[type] = (payload) => sendCommand(type, payload);
     }
   } catch {
-    // api module unavailable in this environment; callers are expected to
-    // have populated commandHandlers themselves (e.g. tests).
+    // no api module here (tests register their own handlers)
   }
 }
 
-// The conflict is already persisted onto the command by updateCommandStatus
-// (status 'conflict' with conflictState) just before this is called, so the
-// Flags screen can read it straight from listCommands('conflict'). Nothing
-// further is needed here.
-export function raiseConflictFlag(command: QueuedCommand, serverState: object): void {
-  void command;
-  void serverState;
-}
-
-export async function runSyncPass(): Promise<{synced: number; conflicts: number; failed: number}> {
+export async function runSyncPass(options: SyncOptions = {}): Promise<{synced: number; conflicts: number; failed: number}> {
   await ensureDefaultHandlers();
 
   const pending = await listCommands('pending');
@@ -60,7 +35,15 @@ export async function runSyncPass(): Promise<{synced: number; conflicts: number;
   let failedCount = 0;
 
   for (const command of commands) {
+    // Another staff member's changes wait for them to sign in again.
+    if (command.actor && command.actor !== options.actor) continue;
+
     const handler = commandHandlers[command.type];
+    if (!handler) {
+      await updateCommandStatus(command.id, 'failed', {lastError: `Unknown command type ${command.type}`});
+      failedCount++;
+      continue;
+    }
     await updateCommandStatus(command.id, 'syncing');
 
     try {
@@ -73,13 +56,16 @@ export async function runSyncPass(): Promise<{synced: number; conflicts: number;
       if (status === 409) {
         const serverState = (error as {body?: object}).body ?? {};
         await updateCommandStatus(command.id, 'conflict', {conflictState: serverState});
-        raiseConflictFlag(command, serverState);
         conflicts++;
-      } else if (status === 401 || status === 403) {
-        await updateCommandStatus(command.id, 'pending');
+      } else if (status === 401) {
+        await updateCommandStatus(command.id, command.status === 'failed' ? 'failed' : 'pending');
+        options.onAuthPaused?.();
+        break;
+      } else if (error instanceof TypeError) {
+        await updateCommandStatus(command.id, command.status === 'failed' ? 'failed' : 'pending');
         break;
       } else {
-        await updateCommandStatus(command.id, 'failed');
+        await updateCommandStatus(command.id, 'failed', {lastError: (error as Error).message || 'Request failed'});
         failedCount++;
       }
     }
@@ -88,20 +74,15 @@ export async function runSyncPass(): Promise<{synced: number; conflicts: number;
   return {synced, conflicts, failed: failedCount};
 }
 
-export function startSyncLoop(intervalMs: number): () => void {
-  void runSyncPass();
+export function startSyncLoop(intervalMs: number, options: SyncOptions = {}): () => void {
+  const pass = () => void runSyncPass(options);
+  pass();
 
-  const onOnline = () => {
-    void runSyncPass();
-  };
-
-  window.addEventListener('online', onOnline);
-  const interval = setInterval(() => {
-    void runSyncPass();
-  }, intervalMs);
+  window.addEventListener('online', pass);
+  const interval = setInterval(pass, intervalMs);
 
   return () => {
     clearInterval(interval);
-    window.removeEventListener('online', onOnline);
+    window.removeEventListener('online', pass);
   };
 }

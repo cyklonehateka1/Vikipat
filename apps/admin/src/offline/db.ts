@@ -45,7 +45,10 @@ export async function getDeviceId(): Promise<string> {
     req.onerror = () => reject(req.error);
   });
 
-  if (existing) return existing;
+  if (existing) {
+    db.close();
+    return existing;
+  }
 
   const deviceId = crypto.randomUUID();
 
@@ -55,6 +58,7 @@ export async function getDeviceId(): Promise<string> {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
 
   return deviceId;
 }
@@ -76,6 +80,17 @@ export async function setCachedUser(user: unknown): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction('meta', 'readwrite');
     tx.objectStore('meta').put({key: 'cachedUser', value: user});
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function clearCachedUser(): Promise<void> {
+  const db = await openOfflineDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('meta', 'readwrite');
+    tx.objectStore('meta').delete('cachedUser');
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

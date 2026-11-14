@@ -9,6 +9,8 @@ export type QueuedCommand = {
   createdAt: string;
   status: 'pending' | 'syncing' | 'synced' | 'conflict' | 'failed';
   conflictState?: object;
+  actor?: string;
+  lastError?: string;
 };
 
 type StoredCommand = QueuedCommand & {sequence: number};
@@ -37,6 +39,7 @@ export async function enqueueCommand(
   type: string,
   payload: object,
   expectedVersion?: number,
+  actor?: string,
 ): Promise<QueuedCommand> {
   const deviceId = await getDeviceId();
   const db = await openOfflineDb();
@@ -48,6 +51,7 @@ export async function enqueueCommand(
     payload,
     ...(expectedVersion !== undefined ? {expectedVersion} : {}),
     deviceId,
+    ...(actor ? {actor} : {}),
     createdAt: new Date().toISOString(),
     status: 'pending',
     sequence,
@@ -59,6 +63,7 @@ export async function enqueueCommand(
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
 
   const {sequence: _seq, ...command} = stored;
   return command;
@@ -73,6 +78,7 @@ export async function listCommands(status?: QueuedCommand['status']): Promise<Qu
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+  db.close();
 
   const filtered = status ? all.filter((c) => c.status === status) : all;
   return filtered
@@ -86,9 +92,10 @@ export function subjectSyncStatus(
   commands: QueuedCommand[],
   field: string,
   id: string,
-): 'pending' | 'conflict' | undefined {
+): 'pending' | 'conflict' | 'failed' | undefined {
   const matching = commands.filter((c) => (c.payload as Record<string, unknown>)?.[field] === id);
   if (matching.some((c) => c.status === 'conflict')) return 'conflict';
+  if (matching.some((c) => c.status === 'failed')) return 'failed';
   if (matching.some((c) => c.status === 'pending' || c.status === 'syncing')) return 'pending';
   return undefined;
 }
@@ -116,7 +123,10 @@ export async function updateCommandStatus(
     req.onerror = () => reject(req.error);
   });
 
-  if (!existing) return;
+  if (!existing) {
+    db.close();
+    return;
+  }
 
   const updated = {...existing, ...extra, status};
 
@@ -126,4 +136,5 @@ export async function updateCommandStatus(
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+  db.close();
 }
