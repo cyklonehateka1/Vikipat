@@ -111,6 +111,8 @@ input[type=checkbox],input[type=radio]{accent-color:var(--color-ink)}
 .status.quoted i{background:var(--color-blue)}
 .status.won i{background:var(--color-green)}
 .status small{display:block;margin-top:2px;color:var(--color-muted);font-size:10px;font-weight:600;letter-spacing:0;text-transform:none}
+.status.sync-pending i{background:var(--color-blue)}
+.status.sync-conflict i{background:var(--color-red)}
 .row-actions{display:flex;justify-content:flex-end;gap:2px}
 .row-actions button{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--color-muted)}
 .row-actions button:hover{background:var(--color-paper);color:var(--color-ink)}

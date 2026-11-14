@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, Min, MinLength, ValidateIf, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Matches, Max, Min, MinLength, Validate, ValidateIf, ValidateNested, ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { CATEGORIES } from './catalog.seed';
 
@@ -6,13 +6,24 @@ import { CATEGORIES } from './catalog.seed';
 // stripped of HTML tags at the DTO layer so future UI/PDF/email rendering never inherits a
 // stored-XSS vector from something a customer typed.
 const StripTags = () => Transform(({ value }) => (typeof value === 'string' ? value.replace(/<[^>]*>/g, '') : value));
+
+// @ValidateIf would gate every validator on the property, not just @Min.
+@ValidatorConstraint({ name: 'nonNegativeUnlessDelta' })
+class NonNegativeUnlessDelta implements ValidatorConstraintInterface {
+  validate(value: number, args: ValidationArguments) {
+    return (args.object as { delta?: boolean }).delta ? true : value >= 0;
+  }
+  defaultMessage(args: ValidationArguments) {
+    return `${args.property} must not be less than 0`;
+  }
+}
 export class LoginDto { @IsEmail() email!:string; @IsString() @MinLength(8) password!:string; }
 export class RequestPasswordResetDto { @IsEmail() @Length(3,254) email!:string; }
 export class ResetPasswordDto { @IsString() @Length(64,64) token!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
 export class ChangePasswordDto { @IsString() currentPassword!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
 export class CreateProductDto { @IsString() @Length(2,120) name!:string; @IsIn(CATEGORIES) category!:string; @IsNumber({maxDecimalPlaces:2},{message:'price can have at most 2 decimal places'}) @Min(.01) @Max(1000000) price!:number; @IsString() @Length(1,40) unit!:string; @IsString() @Length(1,1000) description!:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsInt() @Min(0) @Max(1000000) stock!:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number; }
 export class UpdateProductDto { @IsOptional() @IsString() @Length(2,120) name?:string; @IsOptional() @IsIn(CATEGORIES) category?:string; @IsOptional() @IsNumber({maxDecimalPlaces:2},{message:'price can have at most 2 decimal places'}) @Min(.01) @Max(1000000) price?:number; @IsOptional() @IsString() @Length(1,40) unit?:string; @IsOptional() @IsString() @Length(1,1000) description?:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsOptional() @IsInt() @Min(0) @Max(1000000) stock?:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number; }
-export class AdjustStockDto { @IsInt() @Min(0) @Max(1000000) stock!:number; @IsString() @Length(3,160) reason!:string; }
+export class AdjustStockDto { @IsInt() @Max(1000000) @Validate(NonNegativeUnlessDelta) stock!:number; @IsString() @Length(3,160) reason!:string; @IsOptional() @IsBoolean() delta?:boolean; @IsOptional() @IsUUID() commandId?:string; @IsOptional() @IsString() @Length(1,120) deviceId?:string; @IsOptional() @IsInt() @Min(1) expectedVersion?:number; }
 export class UpdateSettingsDto { @IsString() @Length(2,100) businessName!:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsString() @Length(2,150) location!:string; @IsIn(['GHS']) currency!:string; @IsString() @Length(10,500) description!:string; @IsOptional() @IsBoolean() whatsappNotificationsEnabled?:boolean; @IsOptional() @IsString() @Matches(/^\d{10,15}$/) whatsappBusinessNumber?:string; }
 export class CreateQuoteDto { @IsString() @Length(2,120) name!:string; @IsOptional() @IsString() @Length(0,120) company?:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsOptional() @IsEmail() email?:string; @IsIn(CATEGORIES) need!:string; @IsString() @Length(1,80) quantity!:string; @IsOptional() @IsString() @Length(0,80) size?:string; @IsOptional() @IsString() @Length(0,100) material?:string; @IsOptional() @IsString() @Length(0,40) deadline?:string; @IsOptional() @IsString() @Length(0,180) location?:string; @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string; @IsOptional() @IsString() @Length(0,180) artworkName?:string; @IsOptional() @StripTags() @IsString() @Length(0,2000) message?:string; @IsOptional() @IsString() @Length(0,0) website?:string; }
 export class UpdateQuoteStatusDto { @IsIn(['New','Contacted','Quoted','Won','Closed']) status!:'New'|'Contacted'|'Quoted'|'Won'|'Closed'; }
@@ -110,6 +121,9 @@ export class UpdateProductionJobDto {
   @IsOptional() @IsString() @Length(0,120) assignedTo?: string;
   @IsOptional() @IsString() @Length(0,40) dueDate?: string;
   @IsOptional() @IsString() @Length(0,500) internalNote?: string;
+  @IsOptional() @IsUUID() commandId?: string;
+  @IsOptional() @IsString() @Length(1, 120) deviceId?: string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
 }
 
 export class AddProductionJobNoteDto {
@@ -118,6 +132,9 @@ export class AddProductionJobNoteDto {
 
 export class ReleaseOrderDto {
   @IsOptional() @IsString() @Length(10, 500) @Matches(/\S/) overrideReason?: string;
+  @IsOptional() @IsUUID() commandId?: string;
+  @IsOptional() @IsString() @Length(1, 120) deviceId?: string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
 }
 
 export class CreateMaterialItemDto {
@@ -145,10 +162,17 @@ export class UpdateMaterialItemDto {
 export class RecordPhysicalCountDto {
   @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) measuredQuantity!:number;
   @IsOptional() @IsString() @Length(0,500) note?:string;
+  @IsOptional() @IsUUID() commandId?:string;
+  @IsOptional() @IsString() @Length(1,120) deviceId?:string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?:number;
 }
 export class AdjustMaterialStockDto {
-  @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(1000000) stockQuantity!:number;
+  @IsNumber({maxDecimalPlaces:2}) @Max(1000000) @Validate(NonNegativeUnlessDelta) stockQuantity!:number;
   @IsString() @Length(3,160) reason!:string;
+  @IsOptional() @IsBoolean() delta?:boolean;
+  @IsOptional() @IsUUID() commandId?:string;
+  @IsOptional() @IsString() @Length(1,120) deviceId?:string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?:number;
 }
 export class LogMaterialConsumptionDto {
   @IsUUID() materialItemId!:string;
@@ -205,3 +229,6 @@ export class TestPricingDraftDto {
   @IsOptional() @IsBoolean() needsDesign?: boolean;
   @IsOptional() @IsInt() @Min(10000) @Max(100000000) confirmedDesignFeePesewas?: number;
 }
+
+export class CreateCustomerDto { @StripTags() @IsString() @Length(2,120) name!:string; @IsOptional() @IsEmail() @Length(3,254) email?:string; @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone?:string; @IsOptional() @StripTags() @IsString() @Length(0,120) company?:string; @IsOptional() @IsUUID() commandId?:string; @IsOptional() @IsString() @Length(1,120) deviceId?:string; }
+export class UpdateCustomerDto { @IsOptional() @StripTags() @IsString() @Length(2,120) name?:string; @IsOptional() @IsEmail() @Length(3,254) email?:string; @IsOptional() @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone?:string; @IsOptional() @StripTags() @IsString() @Length(0,120) company?:string; @IsOptional() @IsUUID() commandId?:string; @IsOptional() @IsString() @Length(1,120) deviceId?:string; @IsOptional() @IsInt() @Min(1) expectedVersion?:number; }

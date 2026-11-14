@@ -2,10 +2,11 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 require('reflect-metadata');
 const { MaterialService } = require('../dist/material.service');
+const { MaterialItem, MaterialStockActivity } = require('../dist/entities');
 
 function fixture() {
   const state = {
-    material: { id: 'm1', name: 'Flexy banner roll', unit: 'sq ft', stockQuantity: 100, lowStockThreshold: 20 },
+    material: { id: 'm1', name: 'Flexy banner roll', unit: 'sq ft', stockQuantity: 100, lowStockThreshold: 20, version: 1 },
     activity: [],
   };
   const materials = {
@@ -18,6 +19,13 @@ function fixture() {
     save: async (data) => { state.activity.push(data); return data; },
   };
   const auth = { audit: async () => {} };
+  const repos = new Map([
+    [MaterialItem, { findOne: async ({ where }) => (where.id === state.material.id ? { ...state.material } : null), save: async (m) => { state.material = { ...state.material, ...m }; return state.material; } }],
+    [MaterialStockActivity, stocks],
+  ]);
+  materials.manager = {
+    transaction: async (fn) => fn({ connection: { options: { type: 'sqlite' } }, getRepository: (entity) => repos.get(entity) }),
+  };
   const service = new MaterialService(materials, stocks, auth);
   return { service, state };
 }

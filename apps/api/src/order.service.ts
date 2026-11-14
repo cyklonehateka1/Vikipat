@@ -1,7 +1,7 @@
 import { releaseProductionJobs } from './production-release';
 import { computeRollConsumption } from './roll-consumption';
 import { allowedProductionStages, permittedProductionStages } from './production-workflow';
-import { lockedFindOne } from './db';
+import { assertVersion, dedupeCommand, lockedFindOne } from './db';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnApplicationBootstrap, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -175,7 +175,7 @@ export class OrderService implements OnApplicationBootstrap {
       .andWhere("(order.paymentStatus = :paid OR order.source IN (:...sources))",{paid:'paid',sources:['walk_in','salesperson']})
       .andWhere('NOT EXISTS (SELECT 1 FROM production_jobs job WHERE job."orderId" = CAST(order.id AS text))')
       .orderBy('order.createdAt','DESC').take(250).getMany();
-    return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
+    return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas,version})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas,version}));
   }
   /** Orders created on one calendar day, by channel — for the owner's daily digest. */
   async ordersCreatedOn(date:string){
@@ -256,9 +256,11 @@ export class OrderService implements OnApplicationBootstrap {
   async updateStatus(id:string,status:OrderStatus,note:string,customerVisible:boolean,actor:string){const order=await this.orders.findOneBy({id});if(!order)throw new NotFoundException('Order not found');if(status==='paid'&&order.paymentStatus!=='paid')throw new BadRequestException('Record a payment before marking an order paid');if(order.status==='cancelled'&&status!=='cancelled')throw new BadRequestException('Cancelled orders cannot be reopened here');order.status=status;await this.orders.save(order);await this.history.save(this.history.create({orderId:id,status,note,actor,customerVisible}));if(customerVisible){const payload={subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, your order ${order.orderNumber} is now ${PUBLIC_STATUS[status]}.${note?` ${note}`:''}`};await this.notifications.queueEmail(order,'order_status',payload);await this.notifications.queueWhatsApp(order,'order_status',payload)}return order}
   async updateProductionJob(id:string,dto:UpdateProductionJobDto,actor:string,role:string){
     const result=await this.jobs.manager.transaction(async manager=>{
+      const run=async()=>{
       const jobs=manager.getRepository(ProductionJob);
       const job=await lockedFindOne(manager,ProductionJob,{id});
       if(!job)throw new NotFoundException('Production job not found');
+      assertVersion(job.version,dto.expectedVersion);
       const previousStage=job.stage;
       if(!allowedProductionStages(previousStage).includes(dto.stage))throw new BadRequestException(`Cannot move production job from ${previousStage} to ${dto.stage}. Refresh the job and choose an allowed stage.`);
       if(!permittedProductionStages(previousStage,role).includes(dto.stage))throw new ForbiddenException('Your role cannot make this stage change');
@@ -269,6 +271,7 @@ export class OrderService implements OnApplicationBootstrap {
       job.assignedTo=dto.assignedTo??job.assignedTo;
       job.dueDate=dto.dueDate??job.dueDate;
       job.internalNote=dto.internalNote??job.internalNote;
+      job.version+=1;
       await jobs.save(job);
       let rollConsumptionGapNote='';
       if(stageChanged&&dto.stage==='in_production'){
@@ -300,6 +303,8 @@ export class OrderService implements OnApplicationBootstrap {
       const note=`Your order is now ${PUBLIC_STATUS[status]}.`;
       await manager.getRepository(OrderStatusHistory).save({orderId:order.id,status,note,actor,customerVisible:true});
       return {job,notification:{order,payload:{subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, ${note}`}}};
+      };
+      return dto.commandId?dedupeCommand(manager,dto.commandId,dto.deviceId||'',actor,run):run();
     });
     if(result.notification){
       const {order,payload}=result.notification;
@@ -309,11 +314,26 @@ export class OrderService implements OnApplicationBootstrap {
     return result.job;
   }
 
-  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string}){
-    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor,override));
+  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string},sync?:{commandId?:string,deviceId?:string,expectedVersion?:number}){
+    const result=await this.orders.manager.transaction(async manager=>{
+      const run=async()=>{
+        const order=await lockedFindOne(manager,Order,{id:orderId});
+        if(!order)throw new NotFoundException('Order not found');
+        assertVersion(order.version,sync?.expectedVersion);
+        const released=await releaseProductionJobs(manager,orderId,actor,override);
+        // Re-fetch: releaseProductionJobs saved its own copy, so `order` is stale.
+        const orders=manager.getRepository(Order);
+        const updated=await orders.findOne({where:{id:orderId}});
+        if(!updated)throw new NotFoundException('Order not found');
+        updated.version+=1;
+        await orders.save(updated);
+        return {jobs:released.jobs,notificationIds:released.notificationIds,version:updated.version};
+      };
+      return sync?.commandId?dedupeCommand(manager,sync.commandId,sync.deviceId||'',actor,run):run();
+    });
     // Existing outbox records are committed with the jobs; retries do not queue them again.
     await this.notifications.deliverQueued(result.notificationIds);
-    return result.jobs;
+    return {jobs:result.jobs,version:result.version};
   }
   private async safeOrder(order:Order){const items=await this.items.findBy({orderId:order.id});const history=await this.history.find({where:{orderId:order.id,customerVisible:true},order:{createdAt:'ASC'}});return{orderNumber:order.orderNumber,customerName:order.customerName,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,promisedDate:order.promisedDate,createdAt:order.createdAt,updatedAt:order.updatedAt,items:items.map(i=>({name:i.name,quantity:i.quantity,totalPesewas:i.totalPesewas,specification:JSON.parse(i.specification)})),timeline:history.map(h=>({status:PUBLIC_STATUS[h.status],note:h.note,createdAt:h.createdAt}))}}
   private assertArtworkUrl(url:string){const origin=process.env.API_PUBLIC_URL||'http://localhost:3000';if(!url.startsWith(origin+'/uploads/'))throw new BadRequestException('Invalid artwork URL')}

@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { api } from './api';
+import { recordMaterialCount as recordVersionedCount, setMaterialStock } from './versionedActions';
 import { Empty, money, when } from './main';
+import { conflictSubject, listCommands } from './offline/queue';
+import type { QueuedCommand } from './offline/queue';
 
-type Tab = 'flags' | 'materials' | 'reconciliation';
+type Tab = 'flags' | 'reconciliation';
 
-const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', materials: 'Materials', reconciliation: 'Reconciliation' };
+const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', reconciliation: 'Reconciliation' };
 
-type MaterialItem = {
+type MaterialItem = { version?: number;
   id: string; name: string; unit: string; stockQuantity: number; lowStockThreshold: number; lowStock: boolean;
   kind: 'roll' | 'count'; rollWidthMetres: number | null; serviceCode: string | null;
   createdAt: string; updatedAt: string;
@@ -41,19 +44,21 @@ function FlagsTab() {
   const [lateCancellations, setLateCancellations] = useState<LateCancellation[]>([]);
   const [unattended, setUnattended] = useState<UnattendedJob[]>([]);
   const [shortfalls, setShortfalls] = useState<MaterialShortfall[]>([]);
+  const [conflicts, setConflicts] = useState<QueuedCommand[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      const [cp, lc, uj, sf] = await Promise.all([
+      const [cp, lc, uj, sf, cf] = await Promise.all([
         api.flagCustomPriced<CustomPricedItem[]>(range),
         api.flagLateCancellations<LateCancellation[]>(range),
         api.flagUnattendedJobs<UnattendedJob[]>(date),
         api.flagMaterialShortfalls<MaterialShortfall[]>(range.from, range.to),
+        listCommands(),
       ]);
-      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setError('');
+      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setConflicts(cf.filter((c) => c.status === 'conflict' || c.status === 'failed')); setError('');
     } catch (e) { setError(errText(e)); }
     finally { setLoading(false); }
   }
@@ -142,11 +147,30 @@ function FlagsTab() {
           </table></div>
         ) : <p className="muted" style={{ padding: 20 }}>No shortfalls recorded in this range.</p>}
       </section>
+
+      <section className="surface" style={{ marginTop: 16 }}>
+        <div className="section-title">
+          <div><h2>Sync conflicts</h2><p>Changes saved on this device that the server rejected when they synced, to resolve by hand</p></div>
+        </div>
+        {conflicts.length ? (
+          <div className="data-table"><table>
+            <thead><tr><th>What</th><th>Queued</th><th>Device sent</th><th>Server has</th></tr></thead>
+            <tbody>{conflicts.map((c) => (
+              <tr key={c.id}>
+                <td><strong>{c.type}</strong>{c.status === 'failed' && <> · <span className="status draft"><i />Failed, retrying</span></>}<br /><span className="muted">{conflictSubject(c)}</span></td>
+                <td>{when(c.createdAt)}</td>
+                <td><pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.payload, null, 2)}</pre></td>
+                <td>{c.status === 'failed' ? c.lastError : <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.conflictState ?? {}, null, 2)}</pre>}</td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        ) : <p className="muted" style={{ padding: 20 }}>No sync conflicts.</p>}
+      </section>
     </div>
   );
 }
 
-function MaterialsTab() {
+export function Materials({ addSignal = 0 }: { addSignal?: number }) {
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -162,6 +186,7 @@ function MaterialsTab() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); api.pricingRules<PricingRule[]>().then(setRules).catch(() => {}); }, []);
+  useEffect(() => { if (addSignal) setAdding(true); }, [addSignal]);
 
   async function addMaterial(e: React.FormEvent) {
     e.preventDefault();
@@ -190,7 +215,7 @@ function MaterialsTab() {
     if (!Number.isFinite(value) || value < 0) { setError('Enter a quantity of zero or more'); return; }
     const reason = prompt('Reason for adjustment', 'Physical count');
     if (!reason) return;
-    try { await api.adjustMaterialStock(material.id, { stockQuantity: value, reason }); await load(); }
+    try { await setMaterialStock(material, value, reason); await load(); }
     catch (e) { setError(errText(e)); }
   }
 
@@ -200,14 +225,14 @@ function MaterialsTab() {
     const value = Number(raw);
     if (!Number.isFinite(value) || value < 0) { setError('Enter a quantity of zero or more'); return; }
     const note = prompt('Note (optional)', '') || undefined;
-    try { await api.recordMaterialCount(material.id, { measuredQuantity: value, note }); await load(); }
+    try { await recordVersionedCount(material, value, note); await load(); }
     catch (e) { setError(errText(e)); }
   }
 
   if (loading) return <p role="status">Loading materials…</p>;
 
   return (
-    <section className="surface">
+    <section className="surface view-enter">
       {error && <div className="alert" role="alert">{error}</div>}
       <div className="section-title">
         <div><h2>Material stock</h2><p>Raw consumables — vinyl, ink, paper — tracked separately from shop products</p></div>
@@ -326,8 +351,8 @@ function ReconciliationTab() {
 }
 
 /**
- * Owner-only review surface: payment-override log, material stock and
- * per-job consumption, and the material/billed-area reconciliation report.
+ * Owner-only review surface: payment-override log and the material/billed-area
+ * reconciliation report.
  */
 export default function Controls() {
   const [tab, setTab] = useState<Tab>('flags');
@@ -335,7 +360,7 @@ export default function Controls() {
   return (
     <div className="view-enter">
       <div className="tab-row" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['flags', 'materials', 'reconciliation'] as const).map((t) => (
+        {(['flags', 'reconciliation'] as const).map((t) => (
           <button key={t} className={tab === t ? 'button primary' : 'button ghost'} onClick={() => setTab(t)}>
             {TAB_LABEL[t]}
           </button>
@@ -343,8 +368,6 @@ export default function Controls() {
       </div>
 
       {tab === 'flags' && <FlagsTab />}
-
-      {tab === 'materials' && <MaterialsTab />}
 
       {tab === 'reconciliation' && <ReconciliationTab />}
     </div>

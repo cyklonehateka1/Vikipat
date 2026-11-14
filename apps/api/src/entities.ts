@@ -1,6 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 @Entity('users') export class User { @PrimaryGeneratedColumn('uuid') id!:string; @Column({unique:true}) email!:string; @Column() passwordHash!:string; @Column({default:true}) mustChangePassword!:boolean; @Column({default:'Admin'}) name!:string; @Column({default:'admin'}) role!:string; @Column({default:0}) tokenVersion!:number; @Column({default:true}) isActive!:boolean; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
-@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) price!:number; /* cedis, 2 decimal places */ @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @Column('decimal',{precision:5,scale:2,default:98,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) tolerancePercent!:number; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
+@Entity('products') export class Product { @PrimaryGeneratedColumn('uuid') id!:string; @Column() name!:string; @Column() category!:string; @Column('decimal',{precision:12,scale:2,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) price!:number; /* cedis, 2 decimal places */ @Column({default:'item'}) unit!:string; @Column({default:''}) description!:string; @Column({default:''}) image!:string; @Column('integer',{default:0}) stock!:number; @Column({default:'Active'}) status!:'Active'|'Draft'; @Column({default:false}) featured!:boolean; @Column('decimal',{precision:5,scale:2,default:98,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) tolerancePercent!:number; @Column('integer',{default:1}) version!:number; @CreateDateColumn() createdAt!:Date; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('stock_activity') export class StockActivity { @PrimaryGeneratedColumn('uuid') id!:string; @Column() productId!:string; @Column() productName!:string; @Column('integer') previousStock!:number; @Column('integer') newStock!:number; @Column() reason!:string; @Column() actorEmail!:string; @CreateDateColumn() createdAt!:Date; }
 @Entity('store_settings') export class StoreSettings { @PrimaryGeneratedColumn('uuid') id!:string; @Column({default:'Vikipat'}) businessName!:string; @Column({default:'024 236 6523'}) phone!:string; @Column({default:'Mallam–Gbawe Road, opposite Zen Filling Station, Accra'}) location!:string; @Column({default:'GHS'}) currency!:string; @Column({default:'Printing press and branding solutions for businesses, events and everyday people.'}) description!:string; @Column({default:false}) whatsappNotificationsEnabled!:boolean; @Column({default:'233555110844'}) whatsappBusinessNumber!:string; @UpdateDateColumn() updatedAt!:Date; }
 @Entity('audit_log') export class AuditLog { @PrimaryGeneratedColumn('uuid') id!:string; @Column() action!:string; @Column() entity!:string; @Column({default:''}) entityId!:string; @Column() actorEmail!:string; @Column({type:'text',default:'{}'}) details!:string; @CreateDateColumn() createdAt!:Date; }
@@ -121,6 +121,7 @@ export class Customer {
   @Column('integer', { default: 0 }) lifetimeValuePesewas!: number;
   @Column({ type: Date, nullable: true }) firstOrderAt!: Date | null;
   @Column({ type: Date, nullable: true }) lastOrderAt!: Date | null;
+  @Column('integer', { default: 1 }) version!: number;
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }
@@ -151,6 +152,7 @@ export class Order {
   @Column({ default: false }) requiresReview!: boolean;
   @Column({ default: '' }) promisedDate!: string;
   @Column({ type: 'text', default: '' }) customerNote!: string;
+  @Column('integer', { default: 1 }) version!: number;
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }
@@ -160,7 +162,7 @@ export class PaymentTransaction {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column() orderId!: string;
   @Column() orderNumber!: string;
-  @Column() provider!: 'paystack'|'cash'|'momo'|'bank_transfer';
+  @Column() provider!: 'paystack'|'cash'|'momo'|'bank_transfer'|'cheque';
   @Column({ unique: true }) reference!: string;
   @Column('integer') amountPesewas!: number;
   @Column({type: Date, nullable: true}) paidAt!: Date | null;
@@ -207,6 +209,7 @@ export class ProductionJob {
   @Column({ default: '' }) dueDate!: string;
   @Column({ type: 'text', default: '{}' }) specification!: string;
   @Column({ default: '' }) internalNote!: string;
+  @Column('integer', { default: 1 }) version!: number;
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }
@@ -420,6 +423,7 @@ export class MaterialItem {
   @Column('decimal',{precision:12,scale:4,nullable:true,transformer:{to:(v:number|null)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) rollWidthMetres!: number | null;
   @Column({type:'varchar',nullable:true}) serviceCode!: string | null;
   @Column('decimal',{precision:5,scale:2,default:90,transformer:{to:(v:number)=>v,from:(v:string|number|null)=>v==null?v:Number(v)}}) tolerancePercent!: number;
+  @Column('integer', { default: 1 }) version!: number;
   @CreateDateColumn() createdAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }
@@ -465,4 +469,14 @@ export class MaterialPhysicalCount {
   @Column() recordedBy!: string;
   @CreateDateColumn() recordedAt!: Date;
   @Column({type:'varchar',nullable:true}) note!: string | null;
+}
+
+/** Records a processed offline command once, so a retried submission returns the original result instead of re-applying it. */
+@Entity('synced_commands')
+export class SyncedCommand {
+  @PrimaryColumn() id!: string;
+  @Column() deviceId!: string;
+  @Column() actorEmail!: string;
+  @Column({ type: 'text' }) result!: string;
+  @CreateDateColumn() createdAt!: Date;
 }
