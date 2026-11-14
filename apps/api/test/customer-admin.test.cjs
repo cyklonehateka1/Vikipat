@@ -2,13 +2,18 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 require('reflect-metadata');
 const { CustomerService } = require('../dist/customer.service');
+const { Customer, AuditLog, SyncedCommand } = require('../dist/entities');
 
 function fixture(customers = []) {
-  const state = { customers: customers.map((c) => ({ phones: '[]', phoneIndex: '', company: '', orderCount: 0, lifetimeValuePesewas: 0, firstOrderAt: null, lastOrderAt: null, ...c })), audit: [] };
+  const state = { customers: customers.map((c) => ({ phones: '[]', phoneIndex: '', company: '', orderCount: 0, lifetimeValuePesewas: 0, firstOrderAt: null, lastOrderAt: null, version: 1, ...c })), audit: [], commands: new Map() };
   let next = state.customers.length;
   const customerRepo = {
     create: (data) => ({ ...data }),
     findOneBy: async (where) => state.customers.find((c) => Object.entries(where).every(([k, v]) => c[k] === v)) || null,
+    findOne: async ({ where }) => {
+      const match = state.customers.find((c) => Object.entries(where).every(([k, v]) => c[k] === v));
+      return match ? { ...match } : null;
+    },
     save: async (c) => {
       if (!c.id) { c.id = `cust-${++next}`; state.customers.push(c); }
       else Object.assign(state.customers.find((x) => x.id === c.id), c);
@@ -21,6 +26,14 @@ function fixture(customers = []) {
   };
   const empty = { find: async () => [] };
   const audits = { save: async (a) => { state.audit.push(a); return a; } };
+  const syncedCommands = {
+    findOne: async ({ where: { id } }) => state.commands.get(id) ?? null,
+    save: async (row) => { state.commands.set(row.id, row); return row; },
+  };
+  const repos = new Map([[Customer, customerRepo], [AuditLog, audits], [SyncedCommand, syncedCommands]]);
+  customerRepo.manager = {
+    transaction: async (fn) => fn({ connection: { options: { type: 'sqlite' } }, getRepository: (entity) => repos.get(entity) }),
+  };
   return { service: new CustomerService(customerRepo, empty, empty, audits), state };
 }
 

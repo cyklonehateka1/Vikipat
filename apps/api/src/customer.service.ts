@@ -4,6 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { AuditLog, Customer, Order, PaymentTransaction } from './entities';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto';
 import { balances } from './finance';
+import { assertVersion, dedupeCommand, lockedFindOne } from './db';
 
 const normaliseEmail = (value?: string) => (value || '').trim().toLowerCase();
 
@@ -168,61 +169,75 @@ export class CustomerService {
     return saved.id;
   }
 
-  private async assertEmailFree(email: string, ownId?: string) {
+  private async assertEmailFree(repo: Repository<Customer>, email: string, ownId?: string) {
     if (!email) return;
-    const holder = await this.customers.findOneBy({ email });
+    const holder = await repo.findOneBy({ email });
     if (holder && holder.id !== ownId) throw new BadRequestException('Another customer already uses this email');
   }
 
   async createCustomer(dto: CreateCustomerDto, actorEmail: string) {
-    const email = normaliseEmail(dto.email);
-    await this.assertEmailFree(email);
-    const phone = (dto.phone || '').trim();
-    const phones = phone ? [phone] : [];
-    const customer = await this.customers.save(
-      this.customers.create({
-        email: email || null,
-        name: dto.name.trim(),
-        company: dto.company?.trim() || '',
-        phones: JSON.stringify(phones),
-        phoneIndex: phoneIndexOf(phones),
-        orderCount: 0,
-        lifetimeValuePesewas: 0,
-      }),
-    );
-    await this.audits.save({ actorEmail, action: 'customer_created', entity: 'customer', entityId: customer.id, details: JSON.stringify({ name: customer.name, email: customer.email || '', phone, company: customer.company }) });
-    return this.toProfile(customer, 0);
+    return this.customers.manager.transaction(async (manager) => {
+      const run = async () => {
+        const repo = manager.getRepository(Customer);
+        const email = normaliseEmail(dto.email);
+        await this.assertEmailFree(repo, email);
+        const phone = (dto.phone || '').trim();
+        const phones = phone ? [phone] : [];
+        const customer = await repo.save(
+          repo.create({
+            email: email || null,
+            name: dto.name.trim(),
+            company: dto.company?.trim() || '',
+            phones: JSON.stringify(phones),
+            phoneIndex: phoneIndexOf(phones),
+            orderCount: 0,
+            lifetimeValuePesewas: 0,
+          }),
+        );
+        await manager.getRepository(AuditLog).save({ actorEmail, action: 'customer_created', entity: 'customer', entityId: customer.id, details: JSON.stringify({ name: customer.name, email: customer.email || '', phone, company: customer.company }) });
+        return this.toProfile(customer, 0);
+      };
+      return dto.commandId ? dedupeCommand(manager, dto.commandId, dto.deviceId || '', actorEmail, run) : run();
+    });
   }
 
   async updateCustomer(id: string, dto: UpdateCustomerDto, actorEmail: string) {
-    const customer = await this.customers.findOneBy({ id });
-    if (!customer) throw new NotFoundException('Customer not found');
-    const phones = this.parsePhones(customer.phones);
-    const current = { name: customer.name, email: customer.email || '', phone: phones[0] || '', company: customer.company };
-    const next = { ...current };
-    if (dto.name !== undefined) next.name = dto.name.trim();
-    if (dto.email !== undefined) next.email = normaliseEmail(dto.email);
-    if (dto.phone !== undefined) next.phone = dto.phone.trim();
-    if (dto.company !== undefined) next.company = dto.company.trim();
-    if (next.email !== current.email) await this.assertEmailFree(next.email, id);
+    return this.customers.manager.transaction(async (manager) => {
+      const run = async () => {
+        const repo = manager.getRepository(Customer);
+        const customer = await lockedFindOne(manager, Customer, { id });
+        if (!customer) throw new NotFoundException('Customer not found');
+        assertVersion(customer.version, dto.expectedVersion);
+        const phones = this.parsePhones(customer.phones);
+        const current = { name: customer.name, email: customer.email || '', phone: phones[0] || '', company: customer.company };
+        const next = { ...current };
+        if (dto.name !== undefined) next.name = dto.name.trim();
+        if (dto.email !== undefined) next.email = normaliseEmail(dto.email);
+        if (dto.phone !== undefined) next.phone = dto.phone.trim();
+        if (dto.company !== undefined) next.company = dto.company.trim();
+        if (next.email !== current.email) await this.assertEmailFree(repo, next.email, id);
 
-    const before: Record<string, string> = {}, after: Record<string, string> = {};
-    for (const key of Object.keys(current) as (keyof typeof current)[]) {
-      if (current[key] !== next[key]) { before[key] = current[key]; after[key] = next[key]; }
-    }
-    if (!Object.keys(after).length) return this.toProfile(customer, 0);
+        const before: Record<string, string> = {}, after: Record<string, string> = {};
+        for (const key of Object.keys(current) as (keyof typeof current)[]) {
+          if (current[key] !== next[key]) { before[key] = current[key]; after[key] = next[key]; }
+        }
+        if (!Object.keys(after).length) return this.toProfile(customer, 0);
 
-    customer.name = next.name;
-    customer.email = next.email || null;
-    customer.company = next.company;
-    if ('phone' in after && next.phone) {
-      const merged = [next.phone, ...phones.filter((p) => canonicalPhone(p) !== canonicalPhone(next.phone))].slice(0, 10);
-      customer.phones = JSON.stringify(merged);
-      customer.phoneIndex = phoneIndexOf(merged);
-    }
-    const saved = await this.customers.save(customer);
-    await this.audits.save({ actorEmail, action: 'customer_updated', entity: 'customer', entityId: id, details: JSON.stringify({ before, after }) });
-    return this.toProfile(saved, 0);
+        customer.name = next.name;
+        customer.email = next.email || null;
+        customer.company = next.company;
+        if ('phone' in after && next.phone) {
+          const merged = [next.phone, ...phones.filter((p) => canonicalPhone(p) !== canonicalPhone(next.phone))].slice(0, 10);
+          customer.phones = JSON.stringify(merged);
+          customer.phoneIndex = phoneIndexOf(merged);
+        }
+        customer.version += 1;
+        const saved = await repo.save(customer);
+        await manager.getRepository(AuditLog).save({ actorEmail, action: 'customer_updated', entity: 'customer', entityId: id, details: JSON.stringify({ before, after }) });
+        return this.toProfile(saved, 0);
+      };
+      return dto.commandId ? dedupeCommand(manager, dto.commandId, dto.deviceId || '', actorEmail, run) : run();
+    });
   }
 
   /** Keeps lifetime value honest when money goes back out the door. */
