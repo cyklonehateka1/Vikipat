@@ -75,6 +75,8 @@ export class CommerceService {
       const payments=await m.getRepository(PaymentTransaction).findBy({orderId:id});
       const collected=collectedFor(order,payments);
       if(dto.amountPesewas>order.totalPesewas-collected)throw new BadRequestException('Payment exceeds the outstanding balance');
+      const after=collected+dto.amountPesewas;
+      if(after<order.totalPesewas&&after<order.totalPesewas*0.7)throw new BadRequestException('Partial payments must bring the order to at least 70% paid');
       const payment=await m.getRepository(PaymentTransaction).save({orderId:id,orderNumber:order.orderNumber,reference,amountPesewas:dto.amountPesewas,provider:dto.method,currency:'GHS',status:'paid',paidAt:occurredAt,recordedBy:actor,externalReference:dto.externalReference});
       order.paymentStatus=paymentState(order.totalPesewas,collected+dto.amountPesewas,order.refundedPesewas);
       if(order.paymentStatus==='paid'&&order.status==='awaiting_payment')order.status='paid';

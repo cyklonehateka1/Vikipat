@@ -48,3 +48,28 @@ test('a cheque payment is recorded with provider cheque', async () => {
   assert.equal(payment.provider, 'cheque');
   assert.equal(state.order.paymentStatus, 'paid');
 });
+
+test('a payment that settles the order in full is accepted', async () => {
+  const { service, state } = fixture({ totalPesewas: 100000 });
+  await service.payment('order-1', dto(100000), 'admin@vikipat.com');
+  assert.equal(state.order.paymentStatus, 'paid');
+});
+
+test('a partial payment leaving the order under 70% paid is rejected', async () => {
+  const { service, state } = fixture({ totalPesewas: 100000 });
+  await assert.rejects(service.payment('order-1', dto(69999), 'admin@vikipat.com'), /at least 70% paid/);
+  assert.equal(state.payments.length, 0);
+});
+
+test('a partial payment reaching 70% or more is accepted', async () => {
+  const { service, state } = fixture({ totalPesewas: 100000 });
+  await service.payment('order-1', dto(70000), 'admin@vikipat.com');
+  assert.equal(state.order.paymentStatus, 'part_paid');
+});
+
+test('a second payment that takes the combined total past 70% is accepted', async () => {
+  const { service, state } = fixture({ totalPesewas: 100000, payments: [{ amountPesewas: 40000, provider: 'cash' }] });
+  await service.payment('order-1', dto(35000), 'admin@vikipat.com');
+  assert.equal(state.payments.length, 2);
+  assert.equal(state.order.paymentStatus, 'part_paid');
+});
