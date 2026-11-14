@@ -2,7 +2,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 require('reflect-metadata');
 const { ConflictException, BadRequestException } = require('@nestjs/common');
+const { validate } = require('class-validator');
+const { plainToInstance } = require('class-transformer');
 const { MaterialService } = require('../dist/material.service');
+const { AdjustStockDto, AdjustMaterialStockDto } = require('../dist/dto');
 const { MaterialItem, MaterialStockActivity, MaterialPhysicalCount, Product, StockActivity, ProductionJob, MaterialConsumption, SyncedCommand } = require('../dist/entities');
 
 function fixture(material = {}) {
@@ -92,4 +95,32 @@ test('an absolute (non-delta) adjustment still behaves exactly as before', async
   assert.equal(result.stockQuantity, 25);
   assert.equal(state.material.stockQuantity, 25);
   assert.equal(state.material.version, 2);
+});
+
+test('an absolute (non-delta) negative stock adjustment is rejected at the DTO layer, before touching the DB', async () => {
+  const productDto = plainToInstance(AdjustStockDto, { stock: -5, reason: 'Bad request' });
+  const productErrors = await validate(productDto);
+  assert.ok(productErrors.length >= 1, 'expected a validation error for negative absolute product stock');
+  assert.ok(productErrors.some((e) => Array.isArray(Object.values(e.constraints || {})) && Object.values(e.constraints || {}).some((m) => /must not be less than 0/.test(m))));
+
+  const materialDto = plainToInstance(AdjustMaterialStockDto, { stockQuantity: -5, reason: 'Bad request' });
+  const materialErrors = await validate(materialDto);
+  assert.ok(materialErrors.length >= 1, 'expected a validation error for negative absolute material stock');
+  assert.ok(materialErrors.some((e) => Object.values(e.constraints || {}).some((m) => /must not be less than 0/.test(m))));
+
+  // a delta adjustment with a negative value must pass DTO validation (it's legitimate),
+  // and only be rejected once the service computes the resulting quantity.
+  const deltaDto = plainToInstance(AdjustMaterialStockDto, { stockQuantity: -5, reason: 'Usage', delta: true });
+  const deltaErrors = await validate(deltaDto);
+  assert.equal(deltaErrors.length, 0, 'a negative delta must not be rejected at the DTO layer');
+});
+
+test('a delta adjustment that would go negative is rejected by the service, not the DTO layer', async () => {
+  const { service, state } = fixture({ stockQuantity: 3 });
+  await assert.rejects(
+    service.adjust('mat-1', { stockQuantity: -5, reason: 'Usage', delta: true }, 'admin@vikipat.com'),
+    (err) => err instanceof BadRequestException,
+  );
+  assert.equal(state.material.stockQuantity, 3);
+  assert.equal(state.material.version, 1);
 });
