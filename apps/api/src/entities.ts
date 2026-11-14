@@ -160,7 +160,7 @@ export class PaymentTransaction {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column() orderId!: string;
   @Column() orderNumber!: string;
-  @Column() provider!: 'paystack'|'cash'|'momo'|'bank_transfer';
+  @Column() provider!: 'paystack'|'cash'|'momo'|'bank_transfer'|'cheque';
   @Column({ unique: true }) reference!: string;
   @Column('integer') amountPesewas!: number;
   @Column({type: Date, nullable: true}) paidAt!: Date | null;
