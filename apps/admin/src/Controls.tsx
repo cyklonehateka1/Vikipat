@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { api } from './api';
+import { recordMaterialCount as recordVersionedCount, setMaterialStock } from './versionedActions';
 import { Empty, money, when } from './main';
 import { conflictSubject, listCommands } from './offline/queue';
 import type { QueuedCommand } from './offline/queue';
@@ -9,7 +10,7 @@ type Tab = 'flags' | 'reconciliation';
 
 const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', reconciliation: 'Reconciliation' };
 
-type MaterialItem = {
+type MaterialItem = { version?: number;
   id: string; name: string; unit: string; stockQuantity: number; lowStockThreshold: number; lowStock: boolean;
   kind: 'roll' | 'count'; rollWidthMetres: number | null; serviceCode: string | null;
   createdAt: string; updatedAt: string;
@@ -55,9 +56,9 @@ function FlagsTab() {
         api.flagLateCancellations<LateCancellation[]>(range),
         api.flagUnattendedJobs<UnattendedJob[]>(date),
         api.flagMaterialShortfalls<MaterialShortfall[]>(range.from, range.to),
-        listCommands('conflict'),
+        listCommands(),
       ]);
-      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setConflicts(cf); setError('');
+      setCustomPriced(cp); setLateCancellations(lc); setUnattended(uj); setShortfalls(sf); setConflicts(cf.filter((c) => c.status === 'conflict' || c.status === 'failed')); setError('');
     } catch (e) { setError(errText(e)); }
     finally { setLoading(false); }
   }
@@ -149,17 +150,17 @@ function FlagsTab() {
 
       <section className="surface" style={{ marginTop: 16 }}>
         <div className="section-title">
-          <div><h2>Sync conflicts</h2><p>Offline changes a device queued that the server rejected on reconnect — the device's intended change and the server's current state, for a person to resolve by hand</p></div>
+          <div><h2>Sync conflicts</h2><p>Changes saved on this device that the server rejected when they synced, to resolve by hand</p></div>
         </div>
         {conflicts.length ? (
           <div className="data-table"><table>
             <thead><tr><th>What</th><th>Queued</th><th>Device sent</th><th>Server has</th></tr></thead>
             <tbody>{conflicts.map((c) => (
               <tr key={c.id}>
-                <td><strong>{c.type}</strong><br /><span className="muted">{conflictSubject(c)}</span></td>
+                <td><strong>{c.type}</strong>{c.status === 'failed' && <> · <span className="status draft"><i />Failed, retrying</span></>}<br /><span className="muted">{conflictSubject(c)}</span></td>
                 <td>{when(c.createdAt)}</td>
                 <td><pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.payload, null, 2)}</pre></td>
-                <td><pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.conflictState ?? {}, null, 2)}</pre></td>
+                <td>{c.status === 'failed' ? c.lastError : <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{JSON.stringify(c.conflictState ?? {}, null, 2)}</pre>}</td>
               </tr>
             ))}</tbody>
           </table></div>
@@ -214,7 +215,7 @@ export function Materials({ addSignal = 0 }: { addSignal?: number }) {
     if (!Number.isFinite(value) || value < 0) { setError('Enter a quantity of zero or more'); return; }
     const reason = prompt('Reason for adjustment', 'Physical count');
     if (!reason) return;
-    try { await api.adjustMaterialStock(material.id, { stockQuantity: value, reason }); await load(); }
+    try { await setMaterialStock(material, value, reason); await load(); }
     catch (e) { setError(errText(e)); }
   }
 
@@ -224,7 +225,7 @@ export function Materials({ addSignal = 0 }: { addSignal?: number }) {
     const value = Number(raw);
     if (!Number.isFinite(value) || value < 0) { setError('Enter a quantity of zero or more'); return; }
     const note = prompt('Note (optional)', '') || undefined;
-    try { await api.recordMaterialCount(material.id, { measuredQuantity: value, note }); await load(); }
+    try { await recordVersionedCount(material, value, note); await load(); }
     catch (e) { setError(errText(e)); }
   }
 

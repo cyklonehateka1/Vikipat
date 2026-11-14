@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, Search, UserPlus, Users, X } from 'lucide-react';
-import { api } from './api';
+import { api, isQueued } from './api';
+import { updateCustomer } from './versionedActions';
 import { listCommands, subjectSyncStatus } from './offline/queue';
 import type { QueuedCommand } from './offline/queue';
 import { SyncStatusBadge } from './offline/SyncStatusBadge';
@@ -8,7 +9,7 @@ import { SyncStatusBadge } from './offline/SyncStatusBadge';
 type Customer = {
   id: string; email: string; name: string; company: string; phones: string[];
   orderCount: number; lifetimeValuePesewas: number; averageOrderPesewas: number;
-  firstOrderAt: string | null; lastOrderAt: string | null;
+  firstOrderAt: string | null; lastOrderAt: string | null; version?: number;
 };
 type CustomerDetail = Customer & {
   orders: { id: string; orderNumber: string; source: string; status: string; paymentStatus: string; totalPesewas: number; refundedPesewas: number; createdAt: string }[];
@@ -59,7 +60,7 @@ const payload = (f: CustomerForm) => ({ name: f.name.trim(), email: f.email.trim
  * themselves, keyed on email, so repeat buyers are visible without anyone
  * having to create an account.
  */
-export default function Customers() {
+export default function Customers({ notify }: { notify?: (text: string) => void }) {
   const [rows, setRows] = useState<Customer[]>([]);
   const [selected, setSelected] = useState<CustomerDetail | null>(null);
   const [search, setSearch] = useState('');
@@ -168,8 +169,8 @@ export default function Customers() {
         </section>
       )}
 
-      {adding && <CustomerModal onClose={() => setAdding(false)} onSave={async data => { const created = await api.createCustomer<Customer>(payload(data)); setAdding(false); await load(); await open(created.id); }} />}
-      {editing && selected && <CustomerModal customer={selected} onClose={() => setEditing(false)} onSave={async data => { await api.updateCustomer(selected.id, payload(data)); setEditing(false); await load(); await open(selected.id); }} />}
+      {adding && <CustomerModal onClose={() => setAdding(false)} onSave={async data => { const created = await api.createCustomer<Customer>(payload(data)); setAdding(false); await load(); if (isQueued(created)) notify?.('Customer saved on this device, will sync when back online'); else await open(created.id); }} />}
+      {editing && selected && <CustomerModal customer={selected} onClose={() => setEditing(false)} onSave={async data => { const updated = await updateCustomer(selected, payload(data)); setEditing(false); await load(); if (isQueued(updated)) notify?.('Changes saved on this device, will sync when back online'); else await open(selected.id); }} />}
     </div>
   );
 }

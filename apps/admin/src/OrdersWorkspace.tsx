@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {Plus,Trash2,ArrowLeft,Printer,Search,RefreshCw} from 'lucide-react';
-import {api} from './api';
+import {api,isQueued} from './api';
 import type {PricingRule} from './PricingStudio';
 import {listCommands, subjectSyncStatus} from './offline/queue';
 import type {QueuedCommand} from './offline/queue';
@@ -24,7 +24,7 @@ function CustomerLookup({onPick}:{onPick:(c:CustomerMatch)=>void}){
     {open&&results.length>0&&<ul role="listbox" className="surface" style={{position:'absolute',zIndex:5,left:0,right:0,margin:0,padding:4,listStyle:'none',maxHeight:280,overflowY:'auto'}}>{results.map(c=><li key={c.id}><button type="button" className="button ghost" style={{width:'100%',justifyContent:'flex-start',textAlign:'left'}} onMouseDown={e=>e.preventDefault()} onClick={()=>{onPick(c);setQ('');setResults([]);setOpen(false);}}><span><strong>{c.name||c.email||c.phones[0]}</strong><small style={{display:'block'}}>{[c.phones[0],c.email,c.company].filter(Boolean).join(' · ')}</small></span></button></li>)}</ul>}
   </div>;
 }
-function CounterForm({rules,products,onCreated,onCancel}:{rules:PricingRule[];products:Product[];onCreated:(id:string)=>void;onCancel:()=>void}){
+function CounterForm({rules,products,onCreated,onQueued,onCancel}:{rules:PricingRule[];products:Product[];onCreated:(id:string)=>void;onQueued:()=>void;onCancel:()=>void}){
   const [form,setForm]=useState({customerName:'',customerEmail:'',customerPhone:'',source:'walk_in',salesperson:'',fulfilmentMethod:'pickup',deliveryAddress:'',deliveryLandmark:'',deliveryFee:'0',requestedDate:'',customerNote:'',artworkOption:'later',artworkLink:''});
   const [lines,setLines]=useState<Line[]>([line(rules)]),[estimate,setEstimate]=useState<{totalPesewas:number;requiresReview:boolean;lines:{name:string;totalPesewas:number}[]}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(false),[requestKey,setRequestKey]=useState(key);
   const [estimateInput,setEstimateInput]=useState('');
@@ -34,7 +34,7 @@ function CounterForm({rules,products,onCreated,onCancel}:{rules:PricingRule[];pr
   const currentInput=JSON.stringify(body());const validEstimate=estimate&&estimateInput===currentInput;
   const update=(k:string,value:Partial<Line>)=>setLines(ls=>ls.map(l=>l.key===k?{...l,...value}:l));
   async function review(e:React.FormEvent){e.preventDefault();setError('');setBusy(true);try{const result=await api.staffEstimate<NonNullable<typeof estimate>>(body());setEstimate(result);setEstimateInput(currentInput);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
-  async function create(){setBusy(true);setError('');try{const r=await api.createOrder<{id:string}>(body());onCreated(r.id);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+  async function create(){setBusy(true);setError('');try{const r=await api.createOrder<{id:string}>(body());if(isQueued(r))onQueued();else onCreated(r.id);}catch(e){setError(errorText(e));}finally{setBusy(false);}}
   async function upload(id:string,file?:File){if(!file)return;setUploading(true);setError('');try{const r=await api.uploadArtwork(file);update(id,{artworkUrl:r.url,artworkName:file.name});}catch(e){setError(errorText(e));}finally{setUploading(false);}}
   return <form className="counter-workspace" onSubmit={review}><div className="section-title"><div><span className="eyebrow">COUNTER / NEW ORDER</span><h2>Let’s get the details right.</h2><p>Add every item, review the price, then record payment.</p></div><button type="button" className="button ghost" onClick={onCancel}>Cancel</button></div>
     {error&&<p className="alert" role="alert">{error}</p>}
@@ -74,11 +74,11 @@ function OrderDetail({id,onBack,onChanged,canRecordPayment}:{id:string;onBack:()
     </section><section className="surface counter-section"><h3>Payment & refund history</h3>{!order.payments.length&&!order.refunds.length&&<p className="muted">No payments recorded yet.</p>}{order.payments.map(p=><p key={p.id}>{p.provider} · {p.status} · {money(p.amountPesewas)} · {p.externalReference}</p>)}{order.refunds.map(r=><p key={r.id}>Refund · {money(r.amountPesewas)} · {r.method} · {r.externalReference}<br/><small>{r.reason}</small></p>)}</section>
   </div>;
 }
-export default function OrdersWorkspace({orders,products,rules,onChanged,canRecordPayment}:{orders:Order[];products:Product[];rules:PricingRule[];onChanged:()=>void;canRecordPayment:boolean}){
+export default function OrdersWorkspace({orders,products,rules,onChanged,canRecordPayment,notify}:{orders:Order[];products:Product[];rules:PricingRule[];onChanged:()=>void;canRecordPayment:boolean;notify?:(text:string)=>void}){
   const [creating,setCreating]=useState(false),[selected,setSelected]=useState(''),[search,setSearch]=useState(''),[commands,setCommands]=useState<QueuedCommand[]>([]);
   useEffect(()=>{listCommands().then(setCommands).catch(()=>setCommands([]));},[orders]);
   if(selected)return <OrderDetail id={selected} onBack={()=>setSelected('')} onChanged={onChanged} canRecordPayment={canRecordPayment}/>;
-  if(creating)return <CounterForm rules={rules} products={products} onCancel={()=>setCreating(false)} onCreated={id=>{setCreating(false);setSelected(id);onChanged();}}/>;
+  if(creating)return <CounterForm rules={rules} products={products} onCancel={()=>setCreating(false)} onCreated={id=>{setCreating(false);setSelected(id);onChanged();}} onQueued={()=>{setCreating(false);onChanged();notify?.('Order saved on this device, will sync when back online');}}/>;
   const rows=orders.filter(o=>`${o.orderNumber} ${o.customerName} ${o.customerPhone} ${o.customerEmail}`.toLowerCase().includes(search.toLowerCase()));
   return <section className="surface"><div className="section-title"><div><span className="eyebrow">ORDER DESK</span><h2>Every job, one place.</h2><p>Counter, online and salesperson orders.</p></div><button className="button primary" onClick={()=>setCreating(true)}><Plus/>New counter order</button></div><label className="order-search"><Search size={18}/><input placeholder="Search customer, phone or order number" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="data-table"><table><thead><tr><th>Order</th><th>Customer</th><th>Channel</th><th>Status</th><th>Order value</th><th/></tr></thead><tbody>{rows.map(o=><tr key={o.id}><td><strong>{o.orderNumber}</strong><small>{new Date(o.createdAt).toLocaleDateString('en-GB')}</small></td><td>{o.customerName}<small>{o.customerPhone||o.customerEmail}</small></td><td>{o.source.replace('_',' ')}</td><td>{o.paymentStatus.replaceAll('_',' ')}<small>{o.status.replaceAll('_',' ')}</small><SyncStatusBadge status={subjectSyncStatus(commands,'orderId',o.id)}/></td><td>{money(o.totalPesewas)}</td><td><button className="button ghost" onClick={()=>setSelected(o.id)}>Open</button></td></tr>)}</tbody></table>{!rows.length&&<p className="empty">No matching orders. Create a counter order to get started.</p>}</div></section>;
 }
