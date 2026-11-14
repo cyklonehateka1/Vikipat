@@ -3,9 +3,9 @@ import { Plus, ShieldAlert } from 'lucide-react';
 import { api } from './api';
 import { Empty, money, when } from './main';
 
-type Tab = 'flags' | 'materials' | 'reconciliation';
+type Tab = 'flags' | 'reconciliation';
 
-const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', materials: 'Materials', reconciliation: 'Reconciliation' };
+const TAB_LABEL: Record<Tab, string> = { flags: 'Flags', reconciliation: 'Reconciliation' };
 
 type MaterialItem = {
   id: string; name: string; unit: string; stockQuantity: number; lowStockThreshold: number; lowStock: boolean;
@@ -146,7 +146,7 @@ function FlagsTab() {
   );
 }
 
-function MaterialsTab() {
+export function Materials({ addSignal = 0 }: { addSignal?: number }) {
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -162,6 +162,7 @@ function MaterialsTab() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); api.pricingRules<PricingRule[]>().then(setRules).catch(() => {}); }, []);
+  useEffect(() => { if (addSignal) setAdding(true); }, [addSignal]);
 
   async function addMaterial(e: React.FormEvent) {
     e.preventDefault();
@@ -207,7 +208,7 @@ function MaterialsTab() {
   if (loading) return <p role="status">Loading materials…</p>;
 
   return (
-    <section className="surface">
+    <section className="surface view-enter">
       {error && <div className="alert" role="alert">{error}</div>}
       <div className="section-title">
         <div><h2>Material stock</h2><p>Raw consumables — vinyl, ink, paper — tracked separately from shop products</p></div>
@@ -326,8 +327,8 @@ function ReconciliationTab() {
 }
 
 /**
- * Owner-only review surface: payment-override log, material stock and
- * per-job consumption, and the material/billed-area reconciliation report.
+ * Owner-only review surface: payment-override log and the material/billed-area
+ * reconciliation report.
  */
 export default function Controls() {
   const [tab, setTab] = useState<Tab>('flags');
@@ -335,7 +336,7 @@ export default function Controls() {
   return (
     <div className="view-enter">
       <div className="tab-row" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['flags', 'materials', 'reconciliation'] as const).map((t) => (
+        {(['flags', 'reconciliation'] as const).map((t) => (
           <button key={t} className={tab === t ? 'button primary' : 'button ghost'} onClick={() => setTab(t)}>
             {TAB_LABEL[t]}
           </button>
@@ -343,8 +344,6 @@ export default function Controls() {
       </div>
 
       {tab === 'flags' && <FlagsTab />}
-
-      {tab === 'materials' && <MaterialsTab />}
 
       {tab === 'reconciliation' && <ReconciliationTab />}
     </div>
