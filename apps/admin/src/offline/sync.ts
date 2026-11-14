@@ -21,13 +21,13 @@ async function ensureDefaultHandlers(): Promise<void> {
       'order.create': (payload) => api.createOrder(payload),
       'payment.record': (payload) => api.recordPayment(payload.orderId, payload),
       'refund.record': (payload) => api.recordRefund(payload.orderId, payload),
-      'order.release': (payload) => api.releaseOrder(payload.orderId, payload.overrideReason),
+      'order.release': (payload) => api.releaseOrder(payload.orderId, payload.overrideReason, payload.expectedVersion),
       'productionJob.update': (payload) => api.updateProductionJob(payload.jobId, payload),
       'customer.create': (payload) => api.createCustomer(payload),
       'customer.update': (payload) => api.updateCustomer(payload.customerId, payload),
       'material.adjustStock': (payload) => api.adjustMaterialStock(payload.materialId, payload),
       'material.recordCount': (payload) => api.recordMaterialCount(payload.materialId, payload),
-      'stock.adjust': (payload) => api.adjustStock(payload.productId, payload.stock, payload.reason),
+      'stock.adjust': (payload) => api.adjustStock(payload.productId, payload.stock, payload.reason, payload.commandId),
     };
 
     for (const [type, handler] of Object.entries(defaults)) {
