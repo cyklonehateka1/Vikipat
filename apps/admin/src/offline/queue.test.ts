@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import {afterEach, beforeEach, expect, test} from 'vitest';
+import {afterEach, beforeEach, expect, test, vi} from 'vitest';
 import {openOfflineDb} from './db';
 import {enqueueCommand, listCommands, updateCommandStatus} from './queue';
 
@@ -59,10 +59,21 @@ test('updateCommandStatus changes status and merges extra fields without losing 
   expect(updated.createdAt).toBe(command.createdAt);
 });
 
-test('commands from listCommands come back ordered by createdAt ascending', async () => {
-  const first = await enqueueCommand('order.create', {sku: 'a'});
-  const second = await enqueueCommand('order.create', {sku: 'b'});
-  const third = await enqueueCommand('order.create', {sku: 'c'});
+test('commands from listCommands come back ordered by creation order even when timestamps collide', async () => {
+  const fixedNow = new Date('2026-11-14T00:00:00.000Z');
+  const dateSpy = vi.spyOn(global, 'Date').mockImplementation(() => fixedNow as unknown as Date);
+
+  let first, second, third;
+  try {
+    first = await enqueueCommand('order.create', {sku: 'a'});
+    second = await enqueueCommand('order.create', {sku: 'b'});
+    third = await enqueueCommand('order.create', {sku: 'c'});
+  } finally {
+    dateSpy.mockRestore();
+  }
+
+  expect(first.createdAt).toBe(second.createdAt);
+  expect(second.createdAt).toBe(third.createdAt);
 
   const commands = await listCommands();
   expect(commands.map((c) => c.id)).toEqual([first.id, second.id, third.id]);
