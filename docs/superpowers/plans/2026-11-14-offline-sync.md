@@ -84,7 +84,7 @@ git commit -m "Add version columns and a shared command-dedupe table"
 ## Task 2: Release-to-production dedupe and version check
 
 **Files:**
-- Modify: `apps/api/src/dto.ts` (`ReleaseOrderDto` gets `commandId?: string` and `expectedVersion?: number`)
+- Modify: `apps/api/src/dto.ts` (`ReleaseOrderDto` gets `commandId?: string`, `deviceId?: string`, and `expectedVersion?: number`)
 - Modify: `apps/api/src/order.service.ts` (`releaseOrderToProduction`)
 - Modify: `apps/api/src/order.controller.ts` (the `:id/release` route, pass the new fields through)
 - Test: `apps/api/test/release-order-sync.test.cjs`
@@ -130,7 +130,7 @@ git commit -m "Dedupe and version-check order release for offline replay"
 ## Task 3: Production job stage move dedupe and version check
 
 **Files:**
-- Modify: `apps/api/src/dto.ts` (`UpdateProductionJobDto` gets `commandId?: string` and `expectedVersion?: number`)
+- Modify: `apps/api/src/dto.ts` (`UpdateProductionJobDto` gets `commandId?: string`, `deviceId?: string`, and `expectedVersion?: number`)
 - Modify: `apps/api/src/order.service.ts` (`updateProductionJob`)
 - Modify: `apps/api/src/order.controller.ts` (`production/jobs/:id` PATCH route)
 - Test: `apps/api/test/production-job-sync.test.cjs`
@@ -177,7 +177,7 @@ git commit -m "Dedupe and version-check production job stage moves"
 ## Task 4: Customer create/update dedupe and version check
 
 **Files:**
-- Modify: `apps/api/src/dto.ts` (`CreateCustomerDto` gets `commandId?: string`; `UpdateCustomerDto` gets `commandId?: string` and `expectedVersion?: number`)
+- Modify: `apps/api/src/dto.ts` (`CreateCustomerDto` gets `commandId?: string` and `deviceId?: string`; `UpdateCustomerDto` gets `commandId?: string`, `deviceId?: string`, and `expectedVersion?: number`)
 - Modify: `apps/api/src/customer.service.ts` (`createCustomer`, `updateCustomer`)
 - Modify: `apps/api/src/people.controller.ts` (the two customer routes)
 - Test: `apps/api/test/customer-sync.test.cjs`
@@ -225,7 +225,8 @@ git commit -m "Dedupe and version-check customer create and update"
 ## Task 5: Delta-based offline stock/material adjustments, version-checked physical counts
 
 **Files:**
-- Modify: `apps/api/src/dto.ts` (`AdjustStockDto` and `AdjustMaterialStockDto` get `delta?: boolean` and `commandId?: string`; `RecordPhysicalCountDto` gets `commandId?: string` and `expectedVersion?: number`)
+- Modify: `apps/api/src/dto.ts` (`AdjustStockDto` and `AdjustMaterialStockDto` get `delta?: boolean`, `commandId?: string`, and `deviceId?: string`; `RecordPhysicalCountDto` gets `commandId?: string`, `deviceId?: string`, and `expectedVersion?: number`)
+- Modify: `apps/api/src/controllers.ts` (the `products/:id/count` and `materials/:id/count` routes currently destructure individual DTO fields when calling `recordPhysicalCount` instead of passing `dto` through — update both call sites to also pass `dto.commandId`, `dto.deviceId`, and `dto.expectedVersion`)
 - Modify: `apps/api/src/admin.service.ts` (`adjust` for products)
 - Modify: `apps/api/src/material.service.ts` (`adjust` for materials, `recordPhysicalCount` for both)
 - Test: `apps/api/test/stock-sync.test.cjs`
@@ -233,7 +234,7 @@ git commit -m "Dedupe and version-check customer create and update"
 **Interfaces:**
 - Consumes: `dedupeCommand`, `assertVersion` from Task 1.
 - Produces: `AdjustStockDto.stock` and `AdjustMaterialStockDto.stockQuantity` are read as an absolute target when `dto.delta` is falsy (today's behavior, unchanged), and as a signed amount added to the current quantity when `dto.delta` is `true`. Reject (clamp is wrong here — `BadRequestException`) if a delta adjustment would take the quantity below 0.
-- Produces: both `adjust` methods wrap their body in `dedupeCommand` when `dto.commandId` is present. Version increments on every successful adjust (delta or absolute), but delta adjustments never check `expectedVersion` (none is sent) — only `recordPhysicalCount` checks `assertVersion(target.version, dto.expectedVersion)` before computing `accountedForPercent`, since a count is the one absolute, non-commutative case that can race against a queued delta.
+- Produces: both `adjust` methods wrap their body in `dedupeCommand(manager, dto.commandId, dto.deviceId, ...)` when `dto.commandId` is present. Version increments on every successful adjust (delta or absolute), but delta adjustments never check `expectedVersion` (none is sent) — only `recordPhysicalCount` checks `assertVersion(target.version, dto.expectedVersion)` before computing `accountedForPercent`, since a count is the one absolute, non-commutative case that can race against a queued delta.
 - Produces: `recordPhysicalCount(targetKind, targetId, measuredQuantity, actorEmail, note, sync?: {commandId: string, deviceId: string, expectedVersion?: number})` — signature gains the optional `sync` parameter; existing callers (the controller routes) pass it through from the DTO.
 
 - [ ] **Step 1: Write the failing tests**
