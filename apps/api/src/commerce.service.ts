@@ -27,12 +27,12 @@ export class PolicyDto {
 export class RecordPaymentDto {
   @IsUUID() requestKey!: string;
   @IsInt() @Min(1) @Max(100000000) amountPesewas!: number;
-  @IsIn(['cash','momo','bank_transfer']) method!: 'cash'|'momo'|'bank_transfer';
+  @IsIn(['cash','momo','bank_transfer','cheque']) method!: 'cash'|'momo'|'bank_transfer'|'cheque';
   @IsString() @Length(1,150) externalReference!: string;
   @IsISO8601({strict:true}) occurredAt!: string;
 }
 export class RecordRefundDto extends RecordPaymentDto {
-  @IsIn(['cash','momo','bank_transfer','paystack']) declare method: any;
+  @IsIn(['cash','momo','bank_transfer','cheque','paystack']) declare method: any;
   @IsString() @Length(3,1000) reason!: string;
   @IsBoolean() cancelRemainingWork!: boolean;
   @IsBoolean() confirmedExternalPayment!: boolean;
