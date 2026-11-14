@@ -6,6 +6,7 @@ self.addEventListener('install', (event) => {
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       const response = await fetch(SHELL_URL, { cache: 'reload' });
+      if (!response.ok) return;
       await cache.put(SHELL_URL, response.clone());
       const html = await response.clone().text();
       const hrefs = Array.from(html.matchAll(/(?:src|href)="(\/[^"]+\.(?:js|css))"/g)).map((m) => m[1]);
@@ -45,8 +46,10 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         try {
           const response = await fetch(request);
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(SHELL_URL, response.clone());
+          if (response.ok && !response.redirected) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(SHELL_URL, response.clone());
+          }
           return response;
         } catch {
           const cache = await caches.open(CACHE_NAME);
@@ -65,13 +68,9 @@ self.addEventListener('fetch', (event) => {
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(request);
         if (cached) return cached;
-        try {
-          const response = await fetch(request);
-          if (response.ok) cache.put(request, response.clone());
-          return response;
-        } catch (err) {
-          throw err;
-        }
+        const response = await fetch(request);
+        if (response.ok) cache.put(request, response.clone());
+        return response;
       })()
     );
   }

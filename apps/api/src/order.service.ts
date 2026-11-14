@@ -321,9 +321,7 @@ export class OrderService implements OnApplicationBootstrap {
         if(!order)throw new NotFoundException('Order not found');
         assertVersion(order.version,sync?.expectedVersion);
         const released=await releaseProductionJobs(manager,orderId,actor,override);
-        // Re-fetch rather than saving the pre-release `order` instance: releaseProductionJobs
-        // loaded and saved its own copy (e.g. with an updated status), and saving our stale
-        // snapshot here would silently overwrite that change.
+        // Re-fetch: releaseProductionJobs saved its own copy, so `order` is stale.
         const orders=manager.getRepository(Order);
         const updated=await orders.findOne({where:{id:orderId}});
         if(!updated)throw new NotFoundException('Order not found');

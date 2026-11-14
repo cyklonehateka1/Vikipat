@@ -1,18 +1,12 @@
 import {ApiError, isNetworkFailure} from '../api';
 
-// A real 401 means the session is genuinely gone - log out. Anything else
-// (a network failure, or any other error) keeps the last-known-good user
-// so the app doesn't drop to the login screen just because it's offline.
+// Only a real 401 logs out; offline or other errors keep the cached user.
 export function resolveBootUser<T>(error: unknown, cachedUser: T | undefined): T | null {
   if (error instanceof ApiError && error.status === 401) return null;
   return cachedUser ?? null;
 }
 
-// Loads one data source without letting its failure block or blank out
-// everything else. A network failure falls back to whatever `fallback`
-// resolves to (cached reference data, or the last-known list); any other
-// error is reported through `onError` (scoped to this source) and also
-// falls back, since the caller still needs something to render.
+// Loads one source; on failure falls back, reporting non-network errors via onError.
 export async function loadFailSoft<T>(
   fetcher: () => Promise<T>,
   fallback: () => Promise<T | undefined> | T | undefined,
