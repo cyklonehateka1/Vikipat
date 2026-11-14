@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
-import { lockedFindOne } from './db';
+import { assertVersion, dedupeCommand, lockedFindOne } from './db';
 import { dateOnly } from './finance';
 import { AdjustMaterialStockDto, CreateMaterialItemDto, LogMaterialConsumptionDto, UpdateMaterialItemDto } from './dto';
 import { MaterialConsumption, MaterialItem, MaterialPhysicalCount, MaterialStockActivity, Product, ProductionJob, StockActivity } from './entities';
@@ -69,13 +69,23 @@ export class MaterialService {
   }
 
   async adjust(id: string, dto: AdjustMaterialStockDto, email: string) {
-    const item = await this.one(id);
-    const previous = item.stockQuantity;
-    item.stockQuantity = dto.stockQuantity;
-    await this.materials.save(item);
-    await this.recordStock(item, previous, dto.stockQuantity, dto.reason, email);
-    await this.auth.audit(email, 'adjust_stock', 'material_item', id, dto);
-    return item;
+    return this.materials.manager.transaction(async (manager) => {
+      const run = async () => {
+        const item = await lockedFindOne(manager, MaterialItem, { id });
+        if (!item) throw new NotFoundException('Material item not found');
+        const previous = item.stockQuantity;
+        const newQuantity = dto.delta ? previous + dto.stockQuantity : dto.stockQuantity;
+        if (newQuantity < 0) throw new BadRequestException('Adjustment would take stock below zero');
+        item.stockQuantity = newQuantity;
+        item.version += 1;
+        const saved = await manager.getRepository(MaterialItem).save(item);
+        const stocks = manager.getRepository(MaterialStockActivity);
+        await stocks.save(stocks.create({ materialItemId: saved.id, materialName: saved.name, previousQuantity: previous, newQuantity, reason: dto.reason, actorEmail: email }));
+        await this.auth.audit(email, 'adjust_stock', 'material_item', id, dto);
+        return saved;
+      };
+      return dto.commandId ? dedupeCommand(manager, dto.commandId, dto.deviceId || '', email, run) : run();
+    });
   }
 
   private recordStock(item: MaterialItem, previousQuantity: number, newQuantity: number, reason: string, actorEmail: string) {
@@ -111,35 +121,41 @@ export class MaterialService {
    * drifting from the one number the rest of the system already trusts
    * (see docs/superpowers/specs/2026-11-07-material-reconciliation-and-analytics-design.md).
    */
-  async recordPhysicalCount(targetKind: 'material_item' | 'product', targetId: string, measuredQuantity: number, actor: string, note?: string): Promise<MaterialPhysicalCount> {
+  async recordPhysicalCount(targetKind: 'material_item' | 'product', targetId: string, measuredQuantity: number, actor: string, note?: string, sync?: { commandId: string; deviceId: string; expectedVersion?: number }): Promise<MaterialPhysicalCount> {
     if (targetKind === 'product' && !Number.isInteger(measuredQuantity)) throw new BadRequestException('Product stock counts must be a whole number');
 
     return this.materials.manager.transaction(async (manager) => {
-      const target = targetKind === 'material_item'
-        ? await lockedFindOne(manager, MaterialItem, { id: targetId })
-        : await lockedFindOne(manager, Product, { id: targetId });
-      if (!target) throw new NotFoundException(`${targetKind === 'material_item' ? 'Material item' : 'Product'} not found`);
-      const previousQuantity = targetKind === 'material_item' ? (target as MaterialItem).stockQuantity : (target as Product).stock;
+      const run = async () => {
+        const target = targetKind === 'material_item'
+          ? await lockedFindOne(manager, MaterialItem, { id: targetId })
+          : await lockedFindOne(manager, Product, { id: targetId });
+        if (!target) throw new NotFoundException(`${targetKind === 'material_item' ? 'Material item' : 'Product'} not found`);
+        assertVersion(target.version, sync?.expectedVersion);
+        const previousQuantity = targetKind === 'material_item' ? (target as MaterialItem).stockQuantity : (target as Product).stock;
 
-      const accountedForPercent = previousQuantity > 0 ? Math.round((measuredQuantity / previousQuantity) * 10000) / 100 : null;
-      const counts = manager.getRepository(MaterialPhysicalCount);
-      const record = await counts.save(counts.create({
-        targetKind, targetId, targetName: target.name, measuredQuantity, expectedQuantity: previousQuantity,
-        accountedForPercent, toleranceAtRecordPercent: target.tolerancePercent, recordedBy: actor, note: note ?? null,
-      }));
+        const accountedForPercent = previousQuantity > 0 ? Math.round((measuredQuantity / previousQuantity) * 10000) / 100 : null;
+        const counts = manager.getRepository(MaterialPhysicalCount);
+        const record = await counts.save(counts.create({
+          targetKind, targetId, targetName: target.name, measuredQuantity, expectedQuantity: previousQuantity,
+          accountedForPercent, toleranceAtRecordPercent: target.tolerancePercent, recordedBy: actor, note: note ?? null,
+        }));
 
-      if (targetKind === 'material_item') {
-        (target as MaterialItem).stockQuantity = measuredQuantity;
-        await manager.getRepository(MaterialItem).save(target as MaterialItem);
-        const stocks = manager.getRepository(MaterialStockActivity);
-        await stocks.save(stocks.create({ materialItemId: target.id, materialName: target.name, previousQuantity, newQuantity: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
-      } else {
-        (target as Product).stock = measuredQuantity;
-        await manager.getRepository(Product).save(target as Product);
-        const stocks = manager.getRepository(StockActivity);
-        await stocks.save(stocks.create({ productId: target.id, productName: target.name, previousStock: previousQuantity, newStock: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
-      }
-      return record;
+        if (targetKind === 'material_item') {
+          (target as MaterialItem).stockQuantity = measuredQuantity;
+          (target as MaterialItem).version += 1;
+          await manager.getRepository(MaterialItem).save(target as MaterialItem);
+          const stocks = manager.getRepository(MaterialStockActivity);
+          await stocks.save(stocks.create({ materialItemId: target.id, materialName: target.name, previousQuantity, newQuantity: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
+        } else {
+          (target as Product).stock = measuredQuantity;
+          (target as Product).version += 1;
+          await manager.getRepository(Product).save(target as Product);
+          const stocks = manager.getRepository(StockActivity);
+          await stocks.save(stocks.create({ productId: target.id, productName: target.name, previousStock: previousQuantity, newStock: measuredQuantity, reason: 'Physical count', actorEmail: actor }));
+        }
+        return record;
+      };
+      return sync?.commandId ? dedupeCommand(manager, sync.commandId, sync.deviceId || '', actor, run) : run();
     });
   }
 

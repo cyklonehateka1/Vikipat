@@ -36,7 +36,7 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Patch('products/:id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateProductDto){return this.admin.update(id,dto,req.user!.email)}
   @Delete('products/:id') @UseGuards(AdminOnlyGuard) remove(@Req() req:Request,@Param('id') id:string){return this.admin.remove(id,req.user!.email)}
   @Post('products/:id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustStockDto){return this.admin.adjust(id,dto,req.user!.email)}
-  @Post('products/:id/count') @UseGuards(AdminOnlyGuard) recordProductCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note)}
+  @Post('products/:id/count') @UseGuards(AdminOnlyGuard) recordProductCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('product',id,dto.measuredQuantity,req.user!.email,dto.note,{commandId:dto.commandId!,deviceId:dto.deviceId!,expectedVersion:dto.expectedVersion})}
   @Get('stock-activity') @UseGuards(AdminOnlyGuard) stock(){return this.admin.stockActivity()}
   @Get('dashboard') @UseGuards(AdminOnlyGuard) dashboard(){return this.admin.summary()}
   @Get('insights') @UseGuards(AdminOnlyGuard) insights(){return this.admin.insights()}
@@ -59,7 +59,7 @@ const artworkUpload={storage:memoryStorage(),limits:{fileSize:10*1024*1024,files
   @Post() @UseGuards(AdminOnlyGuard) create(@Req() req:Request,@Body() dto:CreateMaterialItemDto){return this.materials.create(dto,req.user!.email)}
   @Patch(':id') @UseGuards(AdminOnlyGuard) update(@Req() req:Request,@Param('id') id:string,@Body() dto:UpdateMaterialItemDto){return this.materials.update(id,dto,req.user!.email)}
   @Post(':id/stock') @UseGuards(AdminOnlyGuard) adjust(@Req() req:Request,@Param('id') id:string,@Body() dto:AdjustMaterialStockDto){return this.materials.adjust(id,dto,req.user!.email)}
-  @Post(':id/count') @UseGuards(AdminOnlyGuard) recordCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('material_item',id,dto.measuredQuantity,req.user!.email,dto.note)}
+  @Post(':id/count') @UseGuards(AdminOnlyGuard) recordCount(@Req() req:Request,@Param('id',ParseUUIDPipe) id:string,@Body() dto:RecordPhysicalCountDto){return this.materials.recordPhysicalCount('material_item',id,dto.measuredQuantity,req.user!.email,dto.note,{commandId:dto.commandId!,deviceId:dto.deviceId!,expectedVersion:dto.expectedVersion})}
 }
 
 @Controller('quotes') export class QuoteController {
