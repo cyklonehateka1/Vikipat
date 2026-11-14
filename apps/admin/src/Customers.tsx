@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshCw, Search, UserPlus, Users, X } from 'lucide-react';
 import { api } from './api';
+import { listCommands, subjectSyncStatus } from './offline/queue';
+import type { QueuedCommand } from './offline/queue';
+import { SyncStatusBadge } from './offline/SyncStatusBadge';
 
 type Customer = {
   id: string; email: string; name: string; company: string; phones: string[];
@@ -64,6 +67,7 @@ export default function Customers() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
   const [history, setHistory] = useState<AuditEntry[]>([]);
+  const [commands, setCommands] = useState<QueuedCommand[]>([]);
 
   async function open(id: string) {
     const [detail, entries] = await Promise.all([api.customer<CustomerDetail>(id), api.activity<AuditEntry[]>('customer', id).catch(() => [])]);
@@ -78,6 +82,7 @@ export default function Customers() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(''); }, []);
+  useEffect(() => { listCommands().then(setCommands).catch(() => setCommands([])); }, [rows]);
 
   if (loading && !rows.length) return <div className="loading"><RefreshCw className="spin" /><strong>Loading customers</strong></div>;
 
@@ -100,7 +105,7 @@ export default function Customers() {
             <thead><tr><th>Customer</th><th>Phones</th><th>Orders</th><th>Lifetime value</th><th>Average</th><th>Last order</th><th /></tr></thead>
             <tbody>{rows.map(c => (
               <tr key={c.id}>
-                <td><strong>{c.name || '—'}</strong><small>{c.email}{c.company ? ` · ${c.company}` : ''}</small></td>
+                <td><strong>{c.name || '—'}</strong><small>{c.email}{c.company ? ` · ${c.company}` : ''}</small><SyncStatusBadge status={subjectSyncStatus(commands, 'customerId', c.id)} /></td>
                 <td>{c.phones.length ? c.phones.join(', ') : <em>none recorded</em>}</td>
                 <td className="number">{c.orderCount}{c.orderCount > 1 && <small>repeat</small>}</td>
                 <td className="number"><strong>{money(c.lifetimeValuePesewas)}</strong></td>
@@ -125,7 +130,8 @@ export default function Customers() {
               <h2>{selected.name || selected.email}</h2>
               <p>{selected.email}{selected.phones.length ? ` · ${selected.phones.join(', ')}` : ''} · first order {when(selected.firstOrderAt)}</p>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <SyncStatusBadge status={subjectSyncStatus(commands, 'customerId', selected.id)} />
               <button className="button ghost" onClick={() => setEditing(true)}>Edit</button>
               <button className="button ghost" onClick={() => setSelected(null)}>Close</button>
             </div>

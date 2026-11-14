@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import {afterEach, beforeEach, expect, test, vi} from 'vitest';
 import {openOfflineDb} from './db';
-import {conflictSubject, enqueueCommand, listCommands, updateCommandStatus} from './queue';
+import {conflictSubject, enqueueCommand, listCommands, subjectSyncStatus, updateCommandStatus} from './queue';
 
 const realIndexedDB = globalThis.indexedDB;
 
@@ -90,4 +90,31 @@ test('conflictSubject picks the first identifiable id out of the payload', async
 test('conflictSubject falls back to the command type when payload has no known id field', async () => {
   const command = await enqueueCommand('customer.create', {name: 'Ama'});
   expect(conflictSubject(command)).toBe('customer.create');
+});
+
+test('subjectSyncStatus returns conflict when any matching command has conflicted', async () => {
+  const a = await enqueueCommand('payment.record', {orderId: 'ord-1'});
+  const b = await enqueueCommand('refund.record', {orderId: 'ord-1'});
+  await updateCommandStatus(a.id, 'synced');
+  await updateCommandStatus(b.id, 'conflict');
+
+  const commands = await listCommands();
+  expect(subjectSyncStatus(commands, 'orderId', 'ord-1')).toBe('conflict');
+});
+
+test('subjectSyncStatus returns pending when a matching command is pending or syncing but none conflict', async () => {
+  const a = await enqueueCommand('productionJob.update', {jobId: 'job-1'});
+  await updateCommandStatus(a.id, 'syncing');
+
+  const commands = await listCommands();
+  expect(subjectSyncStatus(commands, 'jobId', 'job-1')).toBe('pending');
+});
+
+test('subjectSyncStatus returns undefined when nothing matches or everything synced', async () => {
+  const a = await enqueueCommand('customer.update', {customerId: 'cus-1'});
+  await updateCommandStatus(a.id, 'synced');
+
+  const commands = await listCommands();
+  expect(subjectSyncStatus(commands, 'customerId', 'cus-1')).toBeUndefined();
+  expect(subjectSyncStatus(commands, 'customerId', 'cus-2')).toBeUndefined();
 });

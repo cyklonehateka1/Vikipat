@@ -82,6 +82,17 @@ export async function listCommands(status?: QueuedCommand['status']): Promise<Qu
 
 const SUBJECT_ID_FIELDS = ['orderId', 'jobId', 'customerId', 'materialId', 'productId'];
 
+export function subjectSyncStatus(
+  commands: QueuedCommand[],
+  field: string,
+  id: string,
+): 'pending' | 'conflict' | undefined {
+  const matching = commands.filter((c) => (c.payload as Record<string, unknown>)?.[field] === id);
+  if (matching.some((c) => c.status === 'conflict')) return 'conflict';
+  if (matching.some((c) => c.status === 'pending' || c.status === 'syncing')) return 'pending';
+  return undefined;
+}
+
 export function conflictSubject(command: QueuedCommand): string {
   const payload = command.payload as Record<string, unknown>;
   for (const field of SUBJECT_ID_FIELDS) {
