@@ -13,6 +13,14 @@ type Line={key:string;type:'large_format'|'product'|'custom';serviceCode:string;
 const lockedSizes=(rules:PricingRule[],code:string)=>{const r=rules.find(x=>x.code===code);return r&&r.allowCustomSize===false&&r.fixedSizes?.length?r.fixedSizes:null;};
 const sizeKey=(rules:PricingRule[],l:Line)=>{const i=(lockedSizes(rules,l.serviceCode)??[]).findIndex(s=>String(s.width)===l.width&&String(s.height)===l.height&&s.unit===l.unit);return i<0?'':String(i);};
 const line=(rules:PricingRule[]):Line=>({key:key(),type:'large_format',serviceCode:rules[0]?.code||'',productId:'',name:'',width:'',height:'',unit:'ft',quantity:'1',needsDesign:false,designFee:'100',unitPrice:'',description:'',artworkUrl:'',artworkName:''});
+type CustomerMatch={id:string;name:string;email:string;company:string;phones:string[]};
+function CustomerLookup({onPick}:{onPick:(c:CustomerMatch)=>void}){
+  const [q,setQ]=useState(''),[results,setResults]=useState<CustomerMatch[]>([]),[open,setOpen]=useState(false);
+  useEffect(()=>{const term=q.trim();if(term.length<2){setResults([]);return}const t=window.setTimeout(()=>{api.customers<CustomerMatch[]>(term).then(r=>setResults(r.slice(0,8))).catch(()=>setResults([]));},300);return()=>window.clearTimeout(t);},[q]);
+  return <div className="customer-lookup" style={{position:'relative',marginBottom:16}}><label>Find existing customer<input type="search" value={q} placeholder="Search name, phone or email" onChange={e=>{setQ(e.target.value);setOpen(true);}} onBlur={()=>window.setTimeout(()=>setOpen(false),150)} onFocus={()=>setOpen(true)}/></label>
+    {open&&results.length>0&&<ul role="listbox" className="surface" style={{position:'absolute',zIndex:5,left:0,right:0,margin:0,padding:4,listStyle:'none',maxHeight:280,overflowY:'auto'}}>{results.map(c=><li key={c.id}><button type="button" className="button ghost" style={{width:'100%',justifyContent:'flex-start',textAlign:'left'}} onMouseDown={e=>e.preventDefault()} onClick={()=>{onPick(c);setQ('');setResults([]);setOpen(false);}}><span><strong>{c.name||c.email||c.phones[0]}</strong><small style={{display:'block'}}>{[c.phones[0],c.email,c.company].filter(Boolean).join(' · ')}</small></span></button></li>)}</ul>}
+  </div>;
+}
 function CounterForm({rules,products,onCreated,onCancel}:{rules:PricingRule[];products:Product[];onCreated:(id:string)=>void;onCancel:()=>void}){
   const [form,setForm]=useState({customerName:'',customerEmail:'',customerPhone:'',source:'walk_in',salesperson:'',fulfilmentMethod:'pickup',deliveryAddress:'',deliveryLandmark:'',deliveryFee:'0',requestedDate:'',customerNote:'',artworkOption:'later',artworkLink:''});
   const [lines,setLines]=useState<Line[]>([line(rules)]),[estimate,setEstimate]=useState<{totalPesewas:number;requiresReview:boolean;lines:{name:string;totalPesewas:number}[]}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[uploading,setUploading]=useState(false),[requestKey,setRequestKey]=useState(key);
@@ -27,7 +35,7 @@ function CounterForm({rules,products,onCreated,onCancel}:{rules:PricingRule[];pr
   async function upload(id:string,file?:File){if(!file)return;setUploading(true);setError('');try{const r=await api.uploadArtwork(file);update(id,{artworkUrl:r.url,artworkName:file.name});}catch(e){setError(errorText(e));}finally{setUploading(false);}}
   return <form className="counter-workspace" onSubmit={review}><div className="section-title"><div><span className="eyebrow">COUNTER / NEW ORDER</span><h2>Let’s get the details right.</h2><p>Add every item, review the price, then record payment.</p></div><button type="button" className="button ghost" onClick={onCancel}>Cancel</button></div>
     {error&&<p className="alert" role="alert">{error}</p>}
-    <fieldset disabled={busy||uploading}><section className="surface counter-section"><h3><span>01</span> Customer & order</h3><div className="form-grid three">
+    <fieldset disabled={busy||uploading}><section className="surface counter-section"><h3><span>01</span> Customer & order</h3><CustomerLookup onPick={c=>setForm(f=>({...f,customerName:c.name||f.customerName,customerPhone:c.phones[0]||'',customerEmail:c.email||''}))}/><div className="form-grid three">
       <label>Customer name<input required minLength={2} value={form.customerName} onChange={e=>setForm({...form,customerName:e.target.value})}/></label>
       <label>Phone<input type="tel" required={!form.customerEmail} value={form.customerPhone} onChange={e=>setForm({...form,customerPhone:e.target.value})}/></label>
       <label>Email · optional<input type="email" value={form.customerEmail} onChange={e=>setForm({...form,customerEmail:e.target.value})}/><small>For email receipts and online tracking.</small></label>
