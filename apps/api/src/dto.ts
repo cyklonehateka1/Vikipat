@@ -7,11 +7,7 @@ import { CATEGORIES } from './catalog.seed';
 // stored-XSS vector from something a customer typed.
 const StripTags = () => Transform(({ value }) => (typeof value === 'string' ? value.replace(/<[^>]*>/g, '') : value));
 
-// A plain @ValidateIf(o=>!o.delta) @Min(0) pair doesn't compose with other
-// decorators on the same property (ValidateIf's condition ends up gating
-// every validator on that property, not just the one after it), so the
-// below/zero check for the absolute (non-delta) path needs its own
-// constraint rather than a conditional @Min.
+// @ValidateIf would gate every validator on the property, not just @Min.
 @ValidatorConstraint({ name: 'nonNegativeUnlessDelta' })
 class NonNegativeUnlessDelta implements ValidatorConstraintInterface {
   validate(value: number, args: ValidationArguments) {
@@ -27,7 +23,7 @@ export class ResetPasswordDto { @IsString() @Length(64,64) token!:string; @IsStr
 export class ChangePasswordDto { @IsString() currentPassword!:string; @IsString() @MinLength(12) @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,{message:'Password must include upper, lower, number and symbol'}) newPassword!:string; }
 export class CreateProductDto { @IsString() @Length(2,120) name!:string; @IsIn(CATEGORIES) category!:string; @IsNumber({maxDecimalPlaces:2},{message:'price can have at most 2 decimal places'}) @Min(.01) @Max(1000000) price!:number; @IsString() @Length(1,40) unit!:string; @IsString() @Length(1,1000) description!:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsInt() @Min(0) @Max(1000000) stock!:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number; }
 export class UpdateProductDto { @IsOptional() @IsString() @Length(2,120) name?:string; @IsOptional() @IsIn(CATEGORIES) category?:string; @IsOptional() @IsNumber({maxDecimalPlaces:2},{message:'price can have at most 2 decimal places'}) @Min(.01) @Max(1000000) price?:number; @IsOptional() @IsString() @Length(1,40) unit?:string; @IsOptional() @IsString() @Length(1,1000) description?:string; @IsOptional() @IsUrl({require_protocol:true}) image?:string; @IsOptional() @IsInt() @Min(0) @Max(1000000) stock?:number; @IsOptional() @IsIn(['Active','Draft']) status?:'Active'|'Draft'; @IsOptional() @IsBoolean() featured?:boolean; @IsOptional() @IsNumber({maxDecimalPlaces:2}) @Min(0) @Max(100) tolerancePercent?:number; }
-export class AdjustStockDto { @IsInt() @Max(1000000) @Validate(NonNegativeUnlessDelta) stock!:number; @IsString() @Length(3,160) reason!:string; @IsOptional() @IsBoolean() delta?:boolean; @IsOptional() @IsUUID() commandId?:string; @IsOptional() @IsString() @Length(1,120) deviceId?:string; }
+export class AdjustStockDto { @IsInt() @Max(1000000) @Validate(NonNegativeUnlessDelta) stock!:number; @IsString() @Length(3,160) reason!:string; @IsOptional() @IsBoolean() delta?:boolean; @IsOptional() @IsUUID() commandId?:string; @IsOptional() @IsString() @Length(1,120) deviceId?:string; @IsOptional() @IsInt() @Min(1) expectedVersion?:number; }
 export class UpdateSettingsDto { @IsString() @Length(2,100) businessName!:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsString() @Length(2,150) location!:string; @IsIn(['GHS']) currency!:string; @IsString() @Length(10,500) description!:string; @IsOptional() @IsBoolean() whatsappNotificationsEnabled?:boolean; @IsOptional() @IsString() @Matches(/^\d{10,15}$/) whatsappBusinessNumber?:string; }
 export class CreateQuoteDto { @IsString() @Length(2,120) name!:string; @IsOptional() @IsString() @Length(0,120) company?:string; @IsString() @Matches(/^[+0-9 ()-]{8,24}$/) phone!:string; @IsOptional() @IsEmail() email?:string; @IsIn(CATEGORIES) need!:string; @IsString() @Length(1,80) quantity!:string; @IsOptional() @IsString() @Length(0,80) size?:string; @IsOptional() @IsString() @Length(0,100) material?:string; @IsOptional() @IsString() @Length(0,40) deadline?:string; @IsOptional() @IsString() @Length(0,180) location?:string; @IsOptional() @IsUrl({require_protocol:true}) artworkUrl?:string; @IsOptional() @IsString() @Length(0,180) artworkName?:string; @IsOptional() @StripTags() @IsString() @Length(0,2000) message?:string; @IsOptional() @IsString() @Length(0,0) website?:string; }
 export class UpdateQuoteStatusDto { @IsIn(['New','Contacted','Quoted','Won','Closed']) status!:'New'|'Contacted'|'Quoted'|'Won'|'Closed'; }
@@ -176,6 +172,7 @@ export class AdjustMaterialStockDto {
   @IsOptional() @IsBoolean() delta?:boolean;
   @IsOptional() @IsUUID() commandId?:string;
   @IsOptional() @IsString() @Length(1,120) deviceId?:string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?:number;
 }
 export class LogMaterialConsumptionDto {
   @IsUUID() materialItemId!:string;

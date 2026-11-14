@@ -90,3 +90,19 @@ test('the version bump does not revert the status change made by releaseProducti
   assert.equal(state.order.status, 'ready_for_production');
   assert.equal(state.order.version, 2);
 });
+
+test('release returns the same {jobs, version} shape with or without a commandId', async () => {
+  const withSync = await fixture().service.releaseOrderToProduction('order', 'staff@vikipat.com', undefined, { commandId: 'cmd-5', deviceId: 'device-a' });
+  const without = await fixture().service.releaseOrderToProduction('order', 'staff@vikipat.com');
+  assert.deepEqual(Object.keys(withSync).sort(), ['jobs', 'version']);
+  assert.deepEqual(Object.keys(without).sort(), ['jobs', 'version']);
+});
+
+test('expectedVersion is enforced on release even without a commandId', async () => {
+  const { service, state } = fixture();
+  await assert.rejects(
+    service.releaseOrderToProduction('order', 'staff@vikipat.com', undefined, { expectedVersion: 2 }),
+    (err) => err instanceof ConflictException,
+  );
+  assert.equal(state.jobs.length, 0);
+});

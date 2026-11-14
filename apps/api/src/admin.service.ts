@@ -5,7 +5,7 @@ import { AdjustStockDto, CreateProductDto, CreateQuoteDto, UpdateProductDto, Upd
 import { AuditLog, Product, QuoteRequest, StockActivity, StoreSettings } from './entities';
 import { AuthService } from './auth.service';
 import { CATEGORIES, SEED_PRODUCTS } from './catalog.seed';
-import { dedupeCommand, lockedFindOne } from './db';
+import { assertVersion, dedupeCommand, lockedFindOne } from './db';
 @Injectable() export class AdminService implements OnApplicationBootstrap {
   constructor(@InjectRepository(Product) private products:Repository<Product>,@InjectRepository(StockActivity) private stocks:Repository<StockActivity>,@InjectRepository(StoreSettings) private settings:Repository<StoreSettings>,@InjectRepository(AuditLog) private audits:Repository<AuditLog>,@InjectRepository(QuoteRequest) private quotes:Repository<QuoteRequest>,private auth:AuthService){}
   async onApplicationBootstrap(){for(const seed of SEED_PRODUCTS){const existing=await this.products.findOneBy({name:seed.name});if(existing){Object.assign(existing,{category:seed.category});await this.products.save(existing)}else await this.products.save(this.products.create(seed))}if(await this.settings.count()===0)await this.settings.save(this.settings.create())}
@@ -30,6 +30,7 @@ import { dedupeCommand, lockedFindOne } from './db';
       const run=async()=>{
         const product=await lockedFindOne(manager,Product,{id});
         if(!product)throw new NotFoundException('Product not found');
+        if(!dto.delta)assertVersion(product.version,dto.expectedVersion);
         const previous=product.stock;
         const newStock=dto.delta?previous+dto.stock:dto.stock;
         if(newStock<0)throw new BadRequestException('Adjustment would take stock below zero');

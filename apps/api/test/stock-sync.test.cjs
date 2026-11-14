@@ -124,3 +124,38 @@ test('a delta adjustment that would go negative is rejected by the service, not 
   assert.equal(state.material.stockQuantity, 3);
   assert.equal(state.material.version, 1);
 });
+
+test('two devices setting an absolute material stock from the same version: the second is rejected as a conflict', async () => {
+  const { service, state } = fixture({ stockQuantity: 10, version: 1 });
+  await service.adjust('mat-1', { stockQuantity: 8, reason: 'Device A count', expectedVersion: 1, commandId: 'cmd-abs-a', deviceId: 'device-1' }, 'admin@vikipat.com');
+  await assert.rejects(
+    service.adjust('mat-1', { stockQuantity: 6, reason: 'Device B count', expectedVersion: 1, commandId: 'cmd-abs-b', deviceId: 'device-2' }, 'admin@vikipat.com'),
+    (err) => err instanceof ConflictException,
+  );
+  assert.equal(state.material.stockQuantity, 8);
+  assert.equal(state.material.version, 2);
+});
+
+test('two devices setting an absolute product stock from the same version: the second is rejected as a conflict', async () => {
+  const { AdminService } = require('../dist/admin.service');
+  const product = { id: 'prod-1', name: 'Mug', stock: 10, version: 1 };
+  const repos = new Map([
+    [Product, { findOne: async ({ where }) => (where.id === product.id ? { ...product } : null), save: async (p) => { Object.assign(product, p); return { ...product }; } }],
+    [StockActivity, { create: (d) => d, save: async (d) => d }],
+    [SyncedCommand, (() => { const m = new Map(); return { findOne: async ({ where: { id } }) => m.get(id) ?? null, save: async (r) => { m.set(r.id, r); return r; } }; })()],
+  ]);
+  const products = { manager: { transaction: async (fn) => fn({ connection: { options: { type: 'sqlite' } }, getRepository: (e) => repos.get(e) }) } };
+  const service = new AdminService(products, null, null, null, null, { audit: async () => {} });
+  await service.adjust('prod-1', { stock: 8, reason: 'Device A count', expectedVersion: 1, commandId: 'cmd-p-a', deviceId: 'd1' }, 'admin@vikipat.com');
+  await assert.rejects(
+    service.adjust('prod-1', { stock: 6, reason: 'Device B count', expectedVersion: 1, commandId: 'cmd-p-b', deviceId: 'd2' }, 'admin@vikipat.com'),
+    (err) => err instanceof ConflictException,
+  );
+  assert.equal(product.stock, 8);
+});
+
+test('absolute adjustment DTOs accept expectedVersion', async () => {
+  const opts = { whitelist: true, forbidNonWhitelisted: true };
+  assert.equal((await validate(plainToInstance(AdjustStockDto, { stock: 4, reason: 'Recount', expectedVersion: 3 }), opts)).length, 0);
+  assert.equal((await validate(plainToInstance(AdjustMaterialStockDto, { stockQuantity: 4, reason: 'Recount', expectedVersion: 3 }), opts)).length, 0);
+});

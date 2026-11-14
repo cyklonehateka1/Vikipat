@@ -73,6 +73,7 @@ export class MaterialService {
       const run = async () => {
         const item = await lockedFindOne(manager, MaterialItem, { id });
         if (!item) throw new NotFoundException('Material item not found');
+        if (!dto.delta) assertVersion(item.version, dto.expectedVersion);
         const previous = item.stockQuantity;
         const newQuantity = dto.delta ? previous + dto.stockQuantity : dto.stockQuantity;
         if (newQuantity < 0) throw new BadRequestException('Adjustment would take stock below zero');

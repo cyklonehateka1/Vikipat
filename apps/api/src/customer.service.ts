@@ -37,6 +37,7 @@ export interface CustomerProfile {
   averageOrderPesewas: number;
   firstOrderAt: Date | null;
   lastOrderAt: Date | null;
+  version: number;
 }
 
 /**
@@ -264,6 +265,7 @@ export class CustomerService {
       averageOrderPesewas: customer.orderCount ? Math.round(collected / customer.orderCount) : 0,
       firstOrderAt: customer.firstOrderAt,
       lastOrderAt: customer.lastOrderAt,
+      version: customer.version,
     };
   }
 

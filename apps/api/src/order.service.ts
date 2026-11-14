@@ -175,7 +175,7 @@ export class OrderService implements OnApplicationBootstrap {
       .andWhere("(order.paymentStatus = :paid OR order.source IN (:...sources))",{paid:'paid',sources:['walk_in','salesperson']})
       .andWhere('NOT EXISTS (SELECT 1 FROM production_jobs job WHERE job."orderId" = CAST(order.id AS text))')
       .orderBy('order.createdAt','DESC').take(250).getMany();
-    return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas}));
+    return orders.map(({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas,version})=>({id,orderNumber,customerName,source,paymentStatus,status,totalPesewas,version}));
   }
   /** Orders created on one calendar day, by channel — for the owner's daily digest. */
   async ordersCreatedOn(date:string){
@@ -314,7 +314,7 @@ export class OrderService implements OnApplicationBootstrap {
     return result.job;
   }
 
-  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string},sync?:{commandId:string,deviceId:string,expectedVersion?:number}){
+  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string},sync?:{commandId?:string,deviceId?:string,expectedVersion?:number}){
     const result=await this.orders.manager.transaction(async manager=>{
       const run=async()=>{
         const order=await lockedFindOne(manager,Order,{id:orderId});
@@ -331,11 +331,11 @@ export class OrderService implements OnApplicationBootstrap {
         await orders.save(updated);
         return {jobs:released.jobs,notificationIds:released.notificationIds,version:updated.version};
       };
-      return sync?dedupeCommand(manager,sync.commandId,sync.deviceId,actor,run):run();
+      return sync?.commandId?dedupeCommand(manager,sync.commandId,sync.deviceId||'',actor,run):run();
     });
     // Existing outbox records are committed with the jobs; retries do not queue them again.
     await this.notifications.deliverQueued(result.notificationIds);
-    return sync?{jobs:result.jobs,version:result.version}:result.jobs;
+    return {jobs:result.jobs,version:result.version};
   }
   private async safeOrder(order:Order){const items=await this.items.findBy({orderId:order.id});const history=await this.history.find({where:{orderId:order.id,customerVisible:true},order:{createdAt:'ASC'}});return{orderNumber:order.orderNumber,customerName:order.customerName,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,promisedDate:order.promisedDate,createdAt:order.createdAt,updatedAt:order.updatedAt,items:items.map(i=>({name:i.name,quantity:i.quantity,totalPesewas:i.totalPesewas,specification:JSON.parse(i.specification)})),timeline:history.map(h=>({status:PUBLIC_STATUS[h.status],note:h.note,createdAt:h.createdAt}))}}
   private assertArtworkUrl(url:string){const origin=process.env.API_PUBLIC_URL||'http://localhost:3000';if(!url.startsWith(origin+'/uploads/'))throw new BadRequestException('Invalid artwork URL')}
