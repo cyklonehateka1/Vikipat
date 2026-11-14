@@ -118,6 +118,9 @@ export class AddProductionJobNoteDto {
 
 export class ReleaseOrderDto {
   @IsOptional() @IsString() @Length(10, 500) @Matches(/\S/) overrideReason?: string;
+  @IsOptional() @IsUUID() commandId?: string;
+  @IsOptional() @IsString() @Length(1, 120) deviceId?: string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
 }
 
 export class CreateMaterialItemDto {

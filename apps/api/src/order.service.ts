@@ -1,7 +1,7 @@
 import { releaseProductionJobs } from './production-release';
 import { computeRollConsumption } from './roll-consumption';
 import { allowedProductionStages, permittedProductionStages } from './production-workflow';
-import { lockedFindOne } from './db';
+import { assertVersion, dedupeCommand, lockedFindOne } from './db';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnApplicationBootstrap, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -309,11 +309,22 @@ export class OrderService implements OnApplicationBootstrap {
     return result.job;
   }
 
-  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string}){
-    const result=await this.orders.manager.transaction(manager=>releaseProductionJobs(manager,orderId,actor,override));
+  async releaseOrderToProduction(orderId:string,actor='system',override?:{reason:string},sync?:{commandId:string,deviceId:string,expectedVersion?:number}){
+    const result=await this.orders.manager.transaction(async manager=>{
+      const run=async()=>{
+        const order=await lockedFindOne(manager,Order,{id:orderId});
+        if(!order)throw new NotFoundException('Order not found');
+        assertVersion(order.version,sync?.expectedVersion);
+        const released=await releaseProductionJobs(manager,orderId,actor,override);
+        order.version+=1;
+        await manager.getRepository(Order).save(order);
+        return {jobs:released.jobs,notificationIds:released.notificationIds,version:order.version};
+      };
+      return sync?dedupeCommand(manager,sync.commandId,sync.deviceId,actor,run):run();
+    });
     // Existing outbox records are committed with the jobs; retries do not queue them again.
     await this.notifications.deliverQueued(result.notificationIds);
-    return result.jobs;
+    return sync?{jobs:result.jobs,version:result.version}:result.jobs;
   }
   private async safeOrder(order:Order){const items=await this.items.findBy({orderId:order.id});const history=await this.history.find({where:{orderId:order.id,customerVisible:true},order:{createdAt:'ASC'}});return{orderNumber:order.orderNumber,customerName:order.customerName,status:PUBLIC_STATUS[order.status],paymentStatus:order.paymentStatus,totalPesewas:order.totalPesewas,promisedDate:order.promisedDate,createdAt:order.createdAt,updatedAt:order.updatedAt,items:items.map(i=>({name:i.name,quantity:i.quantity,totalPesewas:i.totalPesewas,specification:JSON.parse(i.specification)})),timeline:history.map(h=>({status:PUBLIC_STATUS[h.status],note:h.note,createdAt:h.createdAt}))}}
   private assertArtworkUrl(url:string){const origin=process.env.API_PUBLIC_URL||'http://localhost:3000';if(!url.startsWith(origin+'/uploads/'))throw new BadRequestException('Invalid artwork URL')}
