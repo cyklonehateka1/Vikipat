@@ -18,11 +18,24 @@ test('dedupeCommand runs the function once and returns the same result on a repe
   const { manager } = fixture();
   let calls = 0;
   const run = async () => { calls += 1; return { ok: true, calls }; };
-  const first = await dedupeCommand(manager, 'cmd-1', 'device-a', run);
-  const second = await dedupeCommand(manager, 'cmd-1', 'device-b', run);
+  const first = await dedupeCommand(manager, 'cmd-1', 'device-a', 'staff@vikipat.com', run);
+  const second = await dedupeCommand(manager, 'cmd-1', 'device-b', 'staff@vikipat.com', run);
   assert.equal(calls, 1);
   assert.deepEqual(first, { ok: true, calls: 1 });
   assert.deepEqual(second, { ok: true, calls: 1 });
+});
+
+test('dedupeCommand rejects a repeated id presented by a different actor instead of returning the cached result', async () => {
+  const { manager } = fixture();
+  let calls = 0;
+  const run = async () => { calls += 1; return { ok: true, calls }; };
+  const first = await dedupeCommand(manager, 'cmd-2', 'device-a', 'alice@vikipat.com', run);
+  await assert.rejects(
+    dedupeCommand(manager, 'cmd-2', 'device-b', 'bob@vikipat.com', run),
+    (err) => err instanceof ConflictException,
+  );
+  assert.equal(calls, 1);
+  assert.deepEqual(first, { ok: true, calls: 1 });
 });
 
 test('assertVersion throws ConflictException when expected does not match current', async () => {

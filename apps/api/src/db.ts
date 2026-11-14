@@ -12,12 +12,17 @@ export function lockedFindOne<T extends ObjectLiteral>(manager: EntityManager, e
 }
 
 // Replays the saved result for a command id already processed, instead of re-running it.
-export async function dedupeCommand<T>(manager: EntityManager, id: string, deviceId: string, run: () => Promise<T>): Promise<T> {
+export async function dedupeCommand<T>(manager: EntityManager, id: string, deviceId: string, actorEmail: string, run: () => Promise<T>): Promise<T> {
   const repo = manager.getRepository(SyncedCommand);
   const existing = await repo.findOne({ where: { id } });
-  if (existing) return JSON.parse(existing.result);
+  if (existing) {
+    if (existing.actorEmail !== actorEmail) {
+      throw new ConflictException('Command id already used by a different actor');
+    }
+    return JSON.parse(existing.result);
+  }
   const result = await run();
-  await repo.save({ id, deviceId, result: JSON.stringify(result) });
+  await repo.save({ id, deviceId, actorEmail, result: JSON.stringify(result) });
   return result;
 }
 

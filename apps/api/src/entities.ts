@@ -476,6 +476,7 @@ export class MaterialPhysicalCount {
 export class SyncedCommand {
   @PrimaryColumn() id!: string;
   @Column() deviceId!: string;
+  @Column() actorEmail!: string;
   @Column({ type: 'text' }) result!: string;
   @CreateDateColumn() createdAt!: Date;
 }

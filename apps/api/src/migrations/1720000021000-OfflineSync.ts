@@ -12,6 +12,7 @@ export class OfflineSync1720000021000 implements MigrationInterface {
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "synced_commands" (
       "id" varchar PRIMARY KEY,
       "deviceId" varchar NOT NULL,
+      "actorEmail" varchar NOT NULL,
       "result" text NOT NULL,
       "createdAt" timestamptz NOT NULL DEFAULT now()
     )`);
