@@ -256,9 +256,11 @@ export class OrderService implements OnApplicationBootstrap {
   async updateStatus(id:string,status:OrderStatus,note:string,customerVisible:boolean,actor:string){const order=await this.orders.findOneBy({id});if(!order)throw new NotFoundException('Order not found');if(status==='paid'&&order.paymentStatus!=='paid')throw new BadRequestException('Record a payment before marking an order paid');if(order.status==='cancelled'&&status!=='cancelled')throw new BadRequestException('Cancelled orders cannot be reopened here');order.status=status;await this.orders.save(order);await this.history.save(this.history.create({orderId:id,status,note,actor,customerVisible}));if(customerVisible){const payload={subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, your order ${order.orderNumber} is now ${PUBLIC_STATUS[status]}.${note?` ${note}`:''}`};await this.notifications.queueEmail(order,'order_status',payload);await this.notifications.queueWhatsApp(order,'order_status',payload)}return order}
   async updateProductionJob(id:string,dto:UpdateProductionJobDto,actor:string,role:string){
     const result=await this.jobs.manager.transaction(async manager=>{
+      const run=async()=>{
       const jobs=manager.getRepository(ProductionJob);
       const job=await lockedFindOne(manager,ProductionJob,{id});
       if(!job)throw new NotFoundException('Production job not found');
+      assertVersion(job.version,dto.expectedVersion);
       const previousStage=job.stage;
       if(!allowedProductionStages(previousStage).includes(dto.stage))throw new BadRequestException(`Cannot move production job from ${previousStage} to ${dto.stage}. Refresh the job and choose an allowed stage.`);
       if(!permittedProductionStages(previousStage,role).includes(dto.stage))throw new ForbiddenException('Your role cannot make this stage change');
@@ -269,6 +271,7 @@ export class OrderService implements OnApplicationBootstrap {
       job.assignedTo=dto.assignedTo??job.assignedTo;
       job.dueDate=dto.dueDate??job.dueDate;
       job.internalNote=dto.internalNote??job.internalNote;
+      job.version+=1;
       await jobs.save(job);
       let rollConsumptionGapNote='';
       if(stageChanged&&dto.stage==='in_production'){
@@ -300,6 +303,8 @@ export class OrderService implements OnApplicationBootstrap {
       const note=`Your order is now ${PUBLIC_STATUS[status]}.`;
       await manager.getRepository(OrderStatusHistory).save({orderId:order.id,status,note,actor,customerVisible:true});
       return {job,notification:{order,payload:{subject:`Vikipat order ${order.orderNumber}: ${PUBLIC_STATUS[status]}`,text:`Hello ${order.customerName}, ${note}`}}};
+      };
+      return dto.commandId?dedupeCommand(manager,dto.commandId,dto.deviceId||'',actor,run):run();
     });
     if(result.notification){
       const {order,payload}=result.notification;

@@ -110,6 +110,9 @@ export class UpdateProductionJobDto {
   @IsOptional() @IsString() @Length(0,120) assignedTo?: string;
   @IsOptional() @IsString() @Length(0,40) dueDate?: string;
   @IsOptional() @IsString() @Length(0,500) internalNote?: string;
+  @IsOptional() @IsUUID() commandId?: string;
+  @IsOptional() @IsString() @Length(1, 120) deviceId?: string;
+  @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
 }
 
 export class AddProductionJobNoteDto {
